@@ -1,58 +1,13 @@
 # Install x20
 
-## 1. Install the Sol worker role
+Follow the shared [installation and migration procedure](../docs/install.md) with profile `x20`. It covers backups, model metadata validation, role cleanup, config merging and live smoke tests. Do not install by copying only AGENTS.md.
 
-From the repository root, run:
+Profile inputs: [config.toml](config.toml), [routing instructions](agents-subset.md), [worker files](agents).
+
+Role installation, after the preflight:
 
 ```powershell
-New-Item -ItemType Directory -Force "$HOME\.codex\agents" | Out-Null
-Remove-Item "$HOME\.codex\agents\luna-worker.toml" -ErrorAction SilentlyContinue
-Copy-Item ".\x20\agents\sol-worker.toml" "$HOME\.codex\agents\sol-worker.toml" -Force
+python scripts/manage_roles.py install x20
 ```
 
-## 2. Update AGENTS.md
-
-Open:
-
-```text
-~/.codex/AGENTS.md
-```
-
-Replace the existing model/subagent-routing section with the contents of [`agents-subset.md`](agents-subset.md).
-
-## 3. Update config.toml
-
-Open:
-
-```text
-~/.codex/config.toml
-```
-
-Set the top-level values:
-
-```toml
-model = "gpt-5.6-sol"
-model_reasoning_effort = "xhigh"
-```
-
-Remove the `model_catalog_json` line if it is present.
-
-Merge these values into the existing config tables:
-
-```toml
-[features]
-multi_agent = true
-
-[features.multi_agent_v2]
-enabled = true
-multi_agent_mode_hint_text = ""
-max_concurrent_threads_per_session = 3
-```
-
-`max_concurrent_threads_per_session = 3` means the root plus at most two concurrently active subagents.
-
-Remove `extract_model` and `consolidation_model` from `[memories]` if they were added by another profile.
-
-## 4. Restart Codex
-
-Fully close Codex, reopen it, and start a new task/thread.
+This command manages role files only; complete the shared config/AGENTS steps and restart Codex. It respects `CODEX_HOME`; use `--home` for an explicitly selected separate Codex home.

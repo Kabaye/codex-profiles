@@ -1,0 +1,13 @@
+# Merge these keys; do not replace the complete user configuration.
+# No root model/effort override: preserve the user's current choice.
+# No model_catalog_json: use the normal account/provider catalog.
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 1
+default_subagent_model = "gpt-5.6-luna"
+default_subagent_reasoning_effort = "max"
+
+[memories]
+extract_model = "gpt-5.6-luna"
+consolidation_model = "gpt-5.6-luna"

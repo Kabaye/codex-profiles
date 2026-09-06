@@ -1,21 +1,23 @@
-## Agent routing
+<!-- codex-routing-rules:begin -->
+## Agent routing — x5
 
-- Use **GPT-5.6 Sol / xhigh** as the main agent for reasoning, architecture, decomposition, coordination, integration, and final acceptance.
-- Use the native `luna_worker` role for substantial delegated work and actual task execution: computer use, vision, browser/UI interaction, repository exploration, implementation, logs, tests/builds, and other tool-heavy work. Its role file pins **GPT-5.6 Luna / Max**; do not add per-spawn model/effort overrides.
-- Use `fork_turns = "none"` by default and give the worker a self-contained handoff. If the worker genuinely needs recent parent conversation context, use the smallest useful positive bounded `fork_turns`. Never use full-history `fork_turns = "all"`.
-- Sol may keep very small changes when delegation overhead would exceed the work.
+- The root model and effort selected by the user are authoritative. Profile defaults apply at installation, not as an instruction to switch a running root. Never change the root model/effort, enable Fast/Ultra, or alter configuration merely because a task seems difficult.
+- Installation default: **GPT-5.6 Sol / xhigh** for reasoning, architecture, decomposition, coordination, integration and acceptance.
+- All delegated work must use `luna_worker`, pinned to **GPT-5.6 Luna / max**. Never use another worker model or override its effort, including when the user selected another root.
+- Delegate substantial, well-scoped implementation, exploration and tool-heavy execution when the handoff is worthwhile. Keep simple questions, tiny edits and tightly coupled reasoning in the root. Do not force every implementation through a worker.
+- Luna executes the complete scoped workstream and its tests. Reasoning beyond Luna's assignment returns to the existing root; complexity does not authorize a more expensive child.
+- At most **two open subagent threads**. Start with one; use the second only for independent work or a justified verifier. A verification job uses the same Luna pin, in a fresh read-only assignment.
+- Default/worker/explorer compatibility aliases are pinned to Luna Max, but deliberately request `luna_worker`. If the pin cannot be verified, keep the work in the selected root instead of spawning an unpinned agent.
 
-### Ownership and coordination
+## Ownership and coordination
 
-- One `luna_worker` owns one coherent workstream end-to-end. A workstream may span backend, frontend, shared contracts, migrations, tests, and multiple files. Reuse that owner through its own implementation/fix/test loop; do not respawn for every finding or internal phase change.
-- Add another worker only for genuinely independent work. Delegated work should replace, not duplicate, the same exploration or implementation in Sol.
-- Use a fresh worker when responsibility truly changes, such as independent verification or release/deploy. After `interrupt_agent`, start a fresh worker for a new objective or role instead of reactivating it with `followup_task`.
-- If verification or production evidence reveals more work within the same objective, return it to the same owner; after the owner produces a new diff or release artifact, use fresh verification or release workers as needed.
-- Do not use nested delegation by default. Parallel writers should normally use separate worktrees; a shared checkout is acceptable only with explicitly disjoint ownership and no shared-state, Git, or build collisions.
-- Use native wait/coordination instead of frequent Sol polling. Sol inspects the actual diff and reruns key acceptance checks before final acceptance.
+- Assign one coherent workstream, including its implementation and fix/test loop, to one owner. Reuse that owner for follow-ups; change owner only when the responsibility or required model materially changes.
+- Delegation replaces work; the root and other workers must not repeat the same investigation or edit. A verifier checks a defined risk independently, not the entire task a second time.
+- Every spawn must specify an allowed native role and `fork_turns = "none"`. Supply objective, ownership, interfaces, constraints, relevant evidence and acceptance checks in the handoff. Only when essential, use the smallest positive integer string for recent turns. Never omit `fork_turns` or use `"all"`; full-history inheritance can defeat model routing.
+- Use no nested delegation, including spawning another Codex process as a workaround. Use native waits rather than busy polling. Close finished threads when they are no longer needed: the configured cap counts open child threads, not just workers currently using tools.
+- Parallelize only independent work with an expected wall-clock or verification benefit. Never fill slots for their own sake. Writers need separate authorized worktrees or demonstrably disjoint ownership without shared Git, build or state collisions.
+- Workers resolve ordinary implementation choices within their scope. Return `DECISION REQUIRED` for a material change to the agreed contract, architecture, security boundary, data integrity or backward compatibility; include evidence and a recommendation. Do not bounce routine choices back to the root.
+- Production writes, pushes, migrations and deployments require the user's existing authorization or an applicable approved runbook. These routing rules never grant permissions or weaken sandbox/approval policies.
+- The root inspects actual diffs and decisive acceptance evidence, reruns the highest-risk checks as appropriate, and reports unresolved gaps. Do not blindly repeat every passing command.
 
-### Model limits
-
-- **Sol xhigh** is the normal parent/orchestrator effort; **Sol High** is a manual downgrade only.
-- **Luna Max** is the only delegated worker model/effort in this setup. Do not automatically use Sol Max, Terra, GPT-5.5, Fast, or Ultra.
-- Production writes, pushes, migrations, and deploys require explicit authorization or an existing repository runbook.
+<!-- codex-routing-rules:end -->

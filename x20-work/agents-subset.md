@@ -1,32 +1,23 @@
-## Agent routing
+<!-- codex-routing-rules:begin -->
+## Agent routing — x20-work
 
-- Use **GPT-5.6 Sol / xhigh** as the root agent for reasoning, architecture, decomposition, coordination, integration, and final acceptance.
-- **Hard default:** every delegated agent must use the native `luna_worker` role, which pins **GPT-5.6 Luna / Max**. This applies to implementation, exploration, computer use, vision, browser/UI work, tests/builds, verification, release/deploy work, monitoring, and every other delegated responsibility.
-- Task complexity, urgency, expected quality, parallelism, verification value, release responsibility, available concurrency slots, or any other inferred condition never authorizes a Sol xhigh subagent. If uncertain, use `luna_worker`.
-- The native `sol_worker` role becomes eligible only when the user explicitly instructs the current objective to use **Sol X High agents**, for example `используй агентов Sol X High` or `используя агентов Sol X High`. Merely mentioning Sol X High, using this profile, saying `non-work`, asking for maximum quality, or implying that stronger agents would help is not authorization.
-- Explicit Sol X High-agent authorization **unlocks coordinator discretion; it does not require Sol X High for every delegated workstream**. After authorization, the root chooses `luna_worker` or `sol_worker` independently for each coherent workstream based on fit, expected quality, cost, and execution characteristics.
-- Prefer Luna Max whenever it is sufficient. Tool-heavy execution, deployment, monitoring, browser/computer-use, repetitive verification, and similar operational work may remain on Luna even after Sol X High agents are authorized. Reasoning-heavy implementation, architecture, debugging, or other work may use Sol X High when the coordinator judges that it materially improves the result. These are examples, not mandatory routing rules.
-- Sol X High authorization may legitimately result in zero, one, or multiple `sol_worker` uses; the root should not spend Sol X High merely because it was allowed.
-- Explicit Sol X High-agent authorization applies only to the current coherent objective and its direct follow-ups. A new unrelated objective returns to Luna Max-only delegation unless the user explicitly authorizes Sol X High agents again.
-- When a `sol_worker` is legitimately spawned, include the exact marker `SOL_XHIGH_AGENTS_EXPLICITLY_REQUESTED` in its handoff. Never include that marker unless the user's current objective explicitly authorized Sol X High agents.
-- Do not ask the user whether to upgrade a task to Sol X High agents. Without explicit authorization, continue with Luna Max.
+- The root model and effort selected by the user are authoritative. Profile defaults apply at installation, not as an instruction to switch a running root. Never change the root model/effort, enable Fast/Ultra, or alter configuration merely because a task seems difficult.
+- Installation default: **GPT-5.6 Sol / xhigh**. Keep ordinary work usage controlled.
+- The normal Codex model selector remains available. The user can select **GPT-6 Astra** as root directly; this requires no phrase, marker, separate authorization protocol or change to these rules.
+- All delegated work uses `luna_worker`, pinned to **GPT-5.6 Luna / max**, even under an Astra root. No automatic Sol/Astra worker escalation is installed in this profile.
+- Delegate well-scoped substantial implementation, exploration, browser operations, tests and other execution to Luna when useful. Keep trivial tasks and tightly coupled reasoning in the current root. Difficult decisions return to that root, whatever model the user selected.
+- At most **two open subagent threads**; normally one. Never spend another worker just because a slot exists. Independent verification is fresh and read-only, also Luna Max.
+- Default/worker/explorer compatibility aliases are pinned to Luna Max, but deliberately request `luna_worker`. If pinning is unavailable, keep work in the root. Do not use other custom roles to evade the policy.
 
 ## Ownership and coordination
 
-- Decompose by coherent workstreams, not technical layers. One workstream may span backend, frontend, shared contracts, migrations, tests, computer use, browser/UI work, and multiple files.
-- One worker owns one coherent workstream through exploration, implementation, fixes, and its own test/build loop. Reuse that owner while the objective, ownership, and role remain materially the same; do not respawn for every finding or internal phase.
-- If verification or production evidence reveals more work within the same objective, return it to the same implementation owner. Use a fresh verifier or release worker only when responsibility truly changes and the new diff/release artifact warrants it. If Sol X High agents were explicitly authorized, the coordinator still chooses Luna Max or Sol X High for that fresh responsibility rather than inheriting the implementation worker's model automatically.
-- Delegated work replaces, not duplicates, the same work in the root or another worker.
-- Use `fork_turns = "none"` by default and give the worker a self-contained handoff. If recent parent conversation context is genuinely needed, use the smallest useful positive bounded `fork_turns`. Never use full-history `fork_turns = "all"`.
-- Use at most **two subagents concurrently**. Do not fill concurrency slots merely because they are available.
-- Do not use nested delegation by default. Use native wait/coordination instead of busy polling.
-- Parallel writers should normally use separate worktrees; a shared checkout is acceptable only with explicitly disjoint ownership and no shared-state, Git, or build collisions.
-- Production writes, pushes, migrations, and deploys require explicit authorization or an existing repository runbook.
-- The root inspects actual diffs and reruns key acceptance checks before final acceptance.
+- Assign one coherent workstream, including its implementation and fix/test loop, to one owner. Reuse that owner for follow-ups; change owner only when the responsibility or required model materially changes.
+- Delegation replaces work; the root and other workers must not repeat the same investigation or edit. A verifier checks a defined risk independently, not the entire task a second time.
+- Every spawn must specify an allowed native role and `fork_turns = "none"`. Supply objective, ownership, interfaces, constraints, relevant evidence and acceptance checks in the handoff. Only when essential, use the smallest positive integer string for recent turns. Never omit `fork_turns` or use `"all"`; full-history inheritance can defeat model routing.
+- Use no nested delegation, including spawning another Codex process as a workaround. Use native waits rather than busy polling. Close finished threads when they are no longer needed: the configured cap counts open child threads, not just workers currently using tools.
+- Parallelize only independent work with an expected wall-clock or verification benefit. Never fill slots for their own sake. Writers need separate authorized worktrees or demonstrably disjoint ownership without shared Git, build or state collisions.
+- Workers resolve ordinary implementation choices within their scope. Return `DECISION REQUIRED` for a material change to the agreed contract, architecture, security boundary, data integrity or backward compatibility; include evidence and a recommendation. Do not bounce routine choices back to the root.
+- Production writes, pushes, migrations and deployments require the user's existing authorization or an applicable approved runbook. These routing rules never grant permissions or weaken sandbox/approval policies.
+- The root inspects actual diffs and decisive acceptance evidence, reruns the highest-risk checks as appropriate, and reports unresolved gaps. Do not blindly repeat every passing command.
 
-## Model limits
-
-- Root model/effort: **GPT-5.6 Sol / xhigh**.
-- Default and mandatory delegated model/effort before explicit authorization: **GPT-5.6 Luna / Max** via `luna_worker`.
-- After an explicit user instruction to use Sol X High agents for the current objective, delegated work may use either **GPT-5.6 Luna / Max** or **GPT-5.6 Sol / xhigh**, chosen by the root per workstream.
-- Do not automatically use Terra, GPT-5.5, Sol High, Sol Max, Fast, Ultra, or other models/efforts.
+<!-- codex-routing-rules:end -->

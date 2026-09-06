@@ -1,65 +1,9 @@
 # Remove lite
 
-## 1. Remove the Luna worker role
-
-Run in PowerShell:
+Follow the shared [removal procedure](../docs/remove.md). Remove only routing-owned settings and the marked routing block; preserve unrelated instructions, credentials, catalogs and memory data.
 
 ```powershell
-Remove-Item "$HOME\.codex\agents\luna-worker.toml" -ErrorAction SilentlyContinue
+python scripts/manage_roles.py remove
 ```
 
-## 2. Remove the routing rules
-
-Open:
-
-```text
-~/.codex/AGENTS.md
-```
-
-Delete the model/subagent-routing section that was copied from [`agents-subset.md`](agents-subset.md). Keep all unrelated instructions.
-
-## 3. Restore config.toml
-
-Open:
-
-```text
-~/.codex/config.toml
-```
-
-Remove these top-level values:
-
-```toml
-model = "gpt-5.6-luna"
-model_reasoning_effort = "max"
-model_catalog_json = "C:/Users/YOUR_USER/.codex/models.json"
-```
-
-Remove these setup-specific keys from their existing tables:
-
-```toml
-[features]
-multi_agent = true
-
-[features.multi_agent_v2]
-enabled = true
-multi_agent_mode_hint_text = ""
-max_concurrent_threads_per_session = 1
-
-[memories]
-extract_model = "gpt-5.6-luna"
-consolidation_model = "gpt-5.6-luna"
-```
-
-If one of those tables becomes empty, remove its empty table header too.
-
-## 4. Remove models.json
-
-Run in PowerShell:
-
-```powershell
-Remove-Item "$HOME\.codex\models.json" -ErrorAction SilentlyContinue
-```
-
-## 5. Restart Codex
-
-Fully close Codex, reopen it, and start a new task/thread.
+The command removes the currently managed role set, not a guessed set based on this page's name. It refuses to remove modified managed files. It does not edit config.toml or AGENTS.md. For a profile change, use the destination profile's install procedure instead of stacking profiles.
