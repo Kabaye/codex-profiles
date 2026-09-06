@@ -151,7 +151,6 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(outside.read_text(), 'name = "outside"\n')
 
     def test_explicit_legacy_adoption_and_crlf_cleanup(self):
-        # Synthetic known-blob fixture exercises the same whitelist path as legacy files.
         raw = b'name = "sol_worker"\nmodel = "legacy-fixture"\n'
         with patch.dict(roles.LEGACY, {"sol-worker.toml": {roles.git_blob(raw)}}):
             (self.home / "agents").mkdir(parents=True)
@@ -176,12 +175,14 @@ class ProfileTests(unittest.TestCase):
         state = (self.home / "routing-rules" / "roles-state.json").read_bytes()
         real_write = roles.atomic_write
         calls = 0
+
         def fail_once(path, data):
             nonlocal calls
             calls += 1
             if calls == 2:
                 raise OSError("injected write failure")
             real_write(path, data)
+
         with patch.object(roles, "atomic_write", side_effect=fail_once):
             with self.assertRaisesRegex(OSError, "injected"):
                 self.install("lite")
@@ -193,15 +194,24 @@ class ProfileTests(unittest.TestCase):
         catalog = {"models": [
             {"slug": "gpt-6-astra", "supported_reasoning_levels": [{"effort": e} for e in ("medium", "high")]},
             {"slug": "gpt-5.6-sol", "supported_reasoning_levels": [{"effort": e} for e in ("high", "xhigh")]},
+            {"slug": "gpt-5.6-terra", "supported_reasoning_levels": [{"effort": "medium"}]},
             {"slug": "gpt-5.6-luna", "supported_reasoning_levels": [{"effort": "max"}]},
         ]}
         self.assertEqual(presets.validate(catalog=catalog), [])
         catalog["models"][-1]["supported_reasoning_levels"] = []
         self.assertTrue(any("gpt-5.6-luna / max" in e for e in presets.validate(catalog=catalog)))
 
-    def test_lite_metadata_does_not_require_astra_entitlement(self):
-        catalog = {"models": [{"slug": "gpt-5.6-luna", "supported_reasoning_levels": [{"effort": "max"}]}]}
+    def test_lite_metadata_does_not_require_sol_or_astra_entitlement(self):
+        catalog = {"models": [
+            {"slug": "gpt-5.6-terra", "supported_reasoning_levels": [{"effort": "medium"}]},
+            {"slug": "gpt-5.6-luna", "supported_reasoning_levels": [{"effort": "max"}]},
+        ]}
         self.assertEqual(presets.validate(catalog=catalog, profile="lite"), [])
+        self.assertEqual(presets.validate_lite_catalog(catalog), [])
+        with_sol = {"models": catalog["models"] + [
+            {"slug": "gpt-5.6-sol", "supported_reasoning_levels": [{"effort": "high"}]}
+        ]}
+        self.assertTrue(presets.validate_lite_catalog(with_sol))
         self.assertTrue(presets.validate(catalog=catalog, profile="x20"))
 
     def test_malformed_metadata_rejected(self):
