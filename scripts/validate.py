@@ -13,7 +13,8 @@ EXPECTED = {
     "x5": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 2, {"luna_worker": ("gpt-5.6-luna", "max")}),
     "x20": ("gpt-6-astra", "medium", "gpt-5.6-sol", "high", 2,
             {"sol_worker": ("gpt-5.6-sol", "high"), "astra_worker": ("gpt-6-astra", "high")}),
-    "x20-work": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 2, {"luna_worker": ("gpt-5.6-luna", "max")}),
+    "x20-work": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 2,
+                 {"luna_worker": ("gpt-5.6-luna", "max"), "sol_worker": ("gpt-5.6-sol", "high")}),
 }
 
 

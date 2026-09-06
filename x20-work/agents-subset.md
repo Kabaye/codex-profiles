@@ -2,12 +2,17 @@
 ## Agent routing — x20-work
 
 - The root model and effort selected by the user are authoritative. Profile defaults apply at installation, not as an instruction to switch a running root. Never change the root model/effort, enable Fast/Ultra, or alter configuration merely because a task seems difficult.
-- Installation default: **GPT-5.6 Sol / xhigh**. Keep ordinary work usage controlled.
-- The normal Codex model selector remains available. The user can select **GPT-6 Astra** as root directly; this requires no phrase, marker, separate authorization protocol or change to these rules.
-- All delegated work uses `luna_worker`, pinned to **GPT-5.6 Luna / max**, even under an Astra root. No automatic Sol/Astra worker escalation is installed in this profile.
-- Delegate well-scoped substantial implementation, exploration, browser operations, tests and other execution to Luna when useful. Keep trivial tasks and tightly coupled reasoning in the current root. Difficult decisions return to that root, whatever model the user selected.
-- At most **two open subagent threads**; normally one. Never spend another worker just because a slot exists. Independent verification is fresh and read-only, also Luna Max.
-- Default/worker/explorer compatibility aliases are pinned to Luna Max, but deliberately request `luna_worker`. If pinning is unavailable, keep work in the root. Do not use other custom roles to evade the policy.
+- Installation default: **GPT-5.6 Sol / xhigh**. The normal Codex model selector remains available, so the user may select **GPT-6 Astra** as root directly. This needs no trigger phrase, marker or separate authorization protocol.
+- This profile has two delegated-work paths:
+  - **ordinary work / unclear context:** prefer `luna_worker`, pinned to **GPT-5.6 Luna / max**;
+  - **personal objective or explicit request for stronger delegated execution:** prefer `sol_worker`, pinned to **GPT-5.6 Sol / high**.
+- Treat an objective as personal only when the user says so or the current project/conversation context already establishes that fact clearly. Do not infer personal mode from task difficulty, root model, repository complexity or the mere selection of Astra. If the classification is unclear, stay on the work-safe Luna default.
+- The user may explicitly request `sol_worker` for any objective. That instruction is sufficient; do not require an exact phrase. Conversely, a clearly personal objective does not need the user to repeat a special phrase on every follow-up while the same objective continues.
+- For personal objectives, use Sol High for substantial implementation, repository exploration, debugging and verification when delegation is useful. Do not depend on Luna for the quality-critical path unless the user explicitly prefers the cheaper worker or Luna is clearly sufficient for a separate low-risk operational subtask.
+- For ordinary work, keep Luna-first delegation. Sol High remains available when the user explicitly asks for it, but task complexity alone does not automatically spend the stronger worker.
+- Selecting Astra as root changes only the root. It does not automatically turn children into Astra or Sol. This profile intentionally installs no Astra worker; if stronger reasoning is needed, keep it in the user-selected root and use Sol High for delegated execution when appropriate.
+- At most **two open subagent threads**; normally one. Never spend another worker just because a slot exists. Independent verification must target a named risk and use a fresh read-only assignment.
+- Default/worker/explorer compatibility aliases remain pinned to Luna Max, so accidental unnamed/default delegation stays economical. Deliberately request `luna_worker` or `sol_worker` according to the rules above. If the requested model pin cannot be verified, keep that work in the current root rather than silently substituting another worker.
 
 ## Ownership and coordination
 

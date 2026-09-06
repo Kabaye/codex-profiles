@@ -7,9 +7,11 @@ Four mutually exclusive local Codex routing presets. Reviewed on **2026-09-06**,
 | [lite](lite/install-lite.md) | Preserve the user's selection | Luna Max only | 1 | Luna / Luna |
 | [x5](x5/install-x5.md) | Sol xhigh | Luna Max only | 2 | Luna / Luna |
 | [x20](x20/install-x20.md) | Astra medium | Sol high; Astra high for justified difficult work | 2 | Codex/provider defaults |
-| [x20-work](x20-work/install-x20-work.md) | Sol xhigh | Luna Max only, even under a manually selected Astra root | 2 | Luna / Luna |
+| [x20-work](x20-work/install-x20-work.md) | Sol xhigh; manual Astra root available | Luna Max for ordinary work; Sol high for personal/high-quality delegated work | 2 | Luna / Luna |
 
-All profiles use the **normal model catalog**, without manufacturing capabilities or hiding available root models. The user's model/effort selection is authoritative: runtime routing never changes it. `x20-work` has no trigger phrases, authorization marker or costly worker unlock protocol.
+All profiles use the **normal model catalog**, without manufacturing capabilities or hiding available root models. The user's model/effort selection is authoritative: runtime routing never changes it.
+
+`x20-work` is intentionally two-mode without a magic phrase or separate authorization protocol. Ordinary work stays economical: Luna Max is the default delegated model. When the current objective is clearly personal, or the user explicitly asks for Sol, `sol_worker` is available and preferred for substantial delegated work. Selecting Astra as root does not by itself classify a task as personal and does not automatically upgrade every worker.
 
 `x20` is quality-first, not an always-Max tree. Astra handles reasoning and synthesis; coherent execution can use Sol. Hard debugging, state interactions or consequential independent verification can justify a bounded Astra High worker. A difficult end-to-end task may stay on Astra when splitting it would lose quality or cost more retries. These choices are an explicit starting policy, not a benchmark-proven universal optimum.
 
