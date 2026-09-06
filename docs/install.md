@@ -1,49 +1,67 @@
 # Installation and migration
 
-Install one profile at a time. This procedure targets the reviewed **Codex 0.153.4** behavior, not every older client. The supplied `config.toml` is a merge fragment, never a replacement for the user's whole config. See [technical evidence](research-2026-09-06.md) and [smoke tests](verification.md).
+Install one profile at a time. This procedure targets the reviewed **Codex 0.153.4** behavior. The supplied `config.toml` files are merge fragments, never replacements for the user's whole config. See [technical evidence](research-2026-09-06.md) and [smoke tests](verification.md).
 
 ## 1. Identify and preserve the real setup
 
-Close active Codex threads before changing role files. Run `codex --version` and `python --version`; the helper requires Python 3.11+. Do not automatically install software or update a managed work client.
+Close active Codex threads before changing role files. Run `codex --version` and `python --version`; the helpers require Python 3.11+. Do not automatically install software or update a managed work client.
 
-Resolve the actual Codex home: explicit `--home`, otherwise `CODEX_HOME`, otherwise the documented `~/.codex` default. Check the desktop/CLI/IDE environment separately; they can use different configuration. The commands below run from this repository root.
+Resolve the actual Codex home: explicit `--home`, otherwise `CODEX_HOME`, otherwise the documented `~/.codex` default. Desktop/CLI/IDE environments can differ, so check the one you are actually changing.
 
-Make private, timestamped backups of the existing `config.toml`, `AGENTS.md` and affected role files. Record the original values of every key to be changed. Do not copy credentials, auth files, session history or entire databases. Do not commit these backups. Keep personal and work homes separate.
+Make private, timestamped backups of the existing `config.toml`, `AGENTS.md` and affected role files. Record the original values of every key to be changed. Do not copy credentials, auth files, session history or entire databases. Do not commit these backups.
 
-Inspect effective configuration layers, selected profiles, project `.codex/config.toml`, project agent files and any plugin/managed overrides. Unknown role overrides require review. Do not remove organizational model restrictions, permissions, sandbox policy or unrelated settings to make this preset work.
+Inspect active configuration layers, selected profiles, project `.codex/config.toml`, project agent files and any managed/plugin overrides. Do not remove organizational restrictions, permissions, sandbox policy or unrelated settings merely to make a preset work.
 
-## 2. Validate real models without manufacturing a catalog
+## 2. Validate real model metadata
 
-If the existing `model_catalog_json` points to a catalog created by an older version of **this repository**, back up the line and temporarily remove/comment that line. Keep the file itself. Do not clear an administrator's or unrelated custom catalog; resolve that conflict before installation.
+If `model_catalog_json` currently points to a catalog created by an older version of this repository, back up the line and temporarily remove/comment it before running the model inspection. Do not clear an administrator's or unrelated custom catalog without understanding why it exists.
 
-Capture `codex debug models` from the actual installed account, using a private scratch directory. Save its JSON output unchanged and validate it:
+Capture the actual model metadata from the installed account/client. When supported:
 
 ```powershell
-python scripts/validate.py
+(codex debug models | Out-String) | Set-Content -Path PATH_TO_CAPTURED_MODELS_JSON -Encoding utf8
 python scripts/validate.py --profile x20 --models PATH_TO_CAPTURED_MODELS_JSON
 ```
 
-Replace `x20` with the destination profile and the path placeholder with the real captured file path. If this client's command/output differs, discover its supported metadata interface instead of inventing entries or JSON fields. The validator expects `models[]`, `slug` and `supported_reasoning_levels[].effort`; an unrecognized format is a stop, not an invitation to rewrite capabilities. With `--profile`, live metadata requirements cover only that destination: installing lite does not require Astra entitlement. Without it, all four profiles are checked.
+Replace `x20` with the destination profile. The validator checks only the models/efforts required by that profile. An unrecognized metadata format is a stop; do not invent entries or rewrite capabilities to make validation pass.
 
-Never set `supported_reasoning_levels`, `multi_agent_version`, context sizes or model visibility in a copied catalog to claim support. These presets do not generate `models.json`. Catalog presence does not prove backend entitlement; the smoke test is still required. Do not silently substitute another worker when a required pin is unavailable.
+## 3. Catalog policy differs by profile
 
-## 3. Merge the destination config
+### lite
 
-Merge the destination `PROFILE/config.toml` into the existing file, updating keys in their existing tables. Do not append duplicate `[agents]` or `[memories]` tables. Place root-level `model` and `model_reasoning_effort` before table headers.
+`lite` intentionally uses a **restricted catalog** containing only:
 
-Remove only settings introduced by an old routing profile:
+- `gpt-5.6-terra` — default root at `medium`;
+- `gpt-5.6-luna` — only delegated model, pinned to `max`.
 
-- The old routing-owned `model_catalog_json` line; leave its former file archived.
-- Legacy routing-owned `features.multi_agent` and `features.multi_agent_v2` fields (`enabled`, `multi_agent_mode_hint_text`, `max_concurrent_threads_per_session`). Preserve unrelated feature settings and remove empty headers only when appropriate.
-- Old routing-owned role registrations or conflicting `agents.max_threads`/`max_depth` settings. Do not use `max_depth` as a V2 nesting guarantee.
+Follow [lite/install-lite.md](../lite/install-lite.md) to generate `models-lite.json` from the **real** captured catalog using `scripts/filter_lite_catalog.py`. The filter preserves the original Terra/Luna records and removes every other model. GPT-5.6 Sol and GPT-6/Astra must not remain visible after restart.
 
-The new `agents.max_concurrent_threads_per_session` value is **1 for lite, 2 otherwise**, counting open children and excluding the root. Do not carry over the old root-plus-two value `3`.
+### x5, x20, x20-work
 
-For `lite`, preserve the user's current root model and effort; normal selection replaces the old Luna-only restriction. For `x5` and `x20-work`, installation defaults are Sol xhigh. For `x20`, they are Astra medium. A later manual model/effort selection is authoritative; routing must not switch it back.
+These profiles use the normal account/provider model catalog. Remove only a routing-owned `model_catalog_json` left by another profile. Preserve unrelated or managed catalogs and resolve conflicts explicitly.
 
-For `lite`, `x5`, `x20-work`, merge the two Luna memory model keys. These pin **memory models, not memory reasoning effort**. Internal memory jobs are distinct from task subagents. Do not enable memory collection or change retention/persistence as a side effect. For `x20`, remove only old routing-owned extraction/consolidation overrides and retain Codex/provider defaults and unrelated memory settings.
+## 4. Merge the destination config
 
-## 4. Synchronize native roles
+Merge `PROFILE/config.toml` into the existing file, updating keys in their existing tables. Do not append duplicate `[agents]` or `[memories]` tables. Place root-level model settings before table headers.
+
+Remove only obsolete settings introduced by an older routing profile, such as its routing-owned catalog line, legacy `features.multi_agent` / `features.multi_agent_v2` fields, or conflicting old agent defaults. Preserve unrelated feature settings.
+
+The current child-thread cap is **1 for lite, 2 for the other profiles**, counting open children and excluding the root.
+
+Root defaults:
+
+| Profile | Default root |
+|---|---|
+| lite | `gpt-5.6-terra` / `medium` |
+| x5 | `gpt-5.6-sol` / `xhigh` |
+| x20 | `gpt-6-astra` / `medium` |
+| x20-work | `gpt-5.6-sol` / `xhigh` |
+
+For `lite`, the `model_catalog_json` path must point to the generated `models-lite.json`. For the other profiles, no routing-owned custom catalog is used.
+
+For `lite`, `x5`, and `x20-work`, merge the two Luna memory-model keys from the profile template. These select memory models, not a memory reasoning effort. For `x20`, retain Codex/provider memory defaults and remove only old routing-owned extraction/consolidation overrides.
+
+## 5. Synchronize native roles
 
 Preview first, substituting the chosen profile:
 
@@ -52,17 +70,15 @@ python scripts/manage_roles.py install x20 --dry-run
 python scripts/manage_roles.py install x20
 ```
 
-For the first migration from the old repository files, add `--adopt-legacy` to both commands **after reviewing those files**. The helper accepts only known old blob hashes (or line-ending-only CRLF copies), archives their original bytes, and removes stale roles. Edited lookalikes are not adopted. For an explicitly separate home, append `--home "ACTUAL_CODEX_HOME"`.
+For the first migration from old repository-managed role files, add `--adopt-legacy` only after reviewing those files. Use `--home` for an explicitly separate Codex home.
 
-The helper owns the profile's native workers and three derived compatibility aliases: `default`, `worker`, `explorer`. Aliases use the default worker's same model/effort and instructions, not new specialties. Their files are named `routing-default.toml`, `routing-worker.toml`, `routing-explorer.toml`.
+The helper owns the profile's native workers and three compatibility aliases: `default`, `worker`, `explorer`. Aliases use the profile's default worker model/effort. Unknown collisions, modified/missing owned files, unsafe paths and stale locks stop the operation for review.
 
-Ownership and SHA-256 hashes are recorded in `routing-rules/roles-state.json` under the selected Codex home. Old owned files are archived under `routing-rules/backups/`. Unmanaged collisions, changed/missing owned files, symlinks/junctions and invalid ownership state stop the operation. Review them manually; do not delete unknown files to bypass the check.
+The helper manages roles only. It does not edit `config.toml`, `AGENTS.md`, model catalogs, credentials or memory data.
 
-The helper does not edit config or AGENTS, discover every project/plugin role, enforce account spending, or provide crash-atomic multi-file changes. Close Codex and avoid concurrent edits. A normal write failure triggers best-effort rollback; a process/OS failure may require the archived files and installation notes. Stale `roles.lock` must be reviewed, not blindly removed.
+## 6. Replace the routing instruction block
 
-## 5. Replace the routing instruction block
-
-In the real global `AGENTS.md`, replace the previous profile's routing/model restrictions with the marked block from the destination `agents-subset.md`:
+In the real global `AGENTS.md`, replace the previous routing block with the marked block from the destination `agents-subset.md`:
 
 ```text
 <!-- codex-routing-rules:begin -->
@@ -70,12 +86,12 @@ In the real global `AGENTS.md`, replace the previous profile's routing/model res
 <!-- codex-routing-rules:end -->
 ```
 
-On first migration, the old block is unmarked: identify it from the old file, remove its routing restrictions and authorization phrases, and preserve all unrelated instructions. Later switches replace exactly one marked block. Check project instructions for contradictory older routing rules; do not silently rewrite unrelated project policy.
+Preserve unrelated instructions. The lite file also contains its Russian communication, Git and workspace rules outside these markers; keep or merge them intentionally instead of deleting them with the routing block.
 
-The lite file also retains its original Russian communication, Git and workspace instructions **outside** the markers. Merge these only when intended and do not duplicate existing copies. Removal of routing must not remove those unrelated preferences. Do not install the research report or the Astra playbook into AGENTS.md.
+## 7. Restart and test a fresh thread
 
-## 6. Restart and test a fresh thread
+Fully restart the relevant client and begin a **new** thread. Verify the selector, current root and actual child model/effort using native metadata rather than a worker's self-description. Follow [verification.md](verification.md).
 
-Fully restart the relevant client and begin a **new** thread, not a resumed pre-migration thread. Verify the normal selector, current root and actual child model/effort using native metadata. Follow [verification.md](verification.md). A worker claiming its own model is not evidence.
+For `lite`, the selector must show **only Terra and Luna**, with Terra Medium as the initial root. For the other profiles, the normal catalog should remain available unless another legitimate configuration restricts it.
 
-If a project/config override, unsupported client, missing entitlement or full-history behavior prevents verified pinning, keep that task in the user-selected root without delegation. Record the limitation. Installation is not complete merely because the helper exited successfully.
+If effective configuration, account entitlement or client behavior prevents the required routing from being verified, do not silently substitute another model. Treat installation as incomplete and report the mismatch.
