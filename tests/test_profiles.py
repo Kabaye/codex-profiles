@@ -92,7 +92,7 @@ class ProfileTests(unittest.TestCase):
 
     def test_modified_owned_file_refuses_switch_and_removal(self):
         self.install()
-        target = self.home / "agents" / "astra-worker.toml"
+        target = self.home / "agents" / "sol-worker.toml"
         target.write_bytes(target.read_bytes() + b"# user edit\n")
         before = self.snapshot()
         for profile in (None, "lite"):
