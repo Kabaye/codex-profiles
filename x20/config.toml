@@ -1,11 +1,11 @@
 # Merge these keys; do not replace the complete user configuration.
 model = "gpt-6-astra"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 # No model_catalog_json: use the normal account/provider catalog.
 
 [agents]
 enabled = true
-max_concurrent_threads_per_session = 2
+max_concurrent_threads_per_session = 4
 default_subagent_model = "gpt-5.6-sol"
 default_subagent_reasoning_effort = "high"
 
