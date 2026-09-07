@@ -11,11 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {
     "lite": ("gpt-5.6-terra", "medium", "gpt-5.6-luna", "max", 1,
              {"luna_worker": ("gpt-5.6-luna", "max")}),
-    "x5": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 2,
+    "x5": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 4,
            {"luna_worker": ("gpt-5.6-luna", "max")}),
-    "x20": ("gpt-6-astra", "medium", "gpt-5.6-sol", "high", 2,
-            {"sol_worker": ("gpt-5.6-sol", "high"), "astra_worker": ("gpt-6-astra", "high")}),
-    "x20-work": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 2,
+    "x20": ("gpt-6-astra", "high", "gpt-5.6-sol", "high", 4,
+            {"sol_worker": ("gpt-5.6-sol", "high")}),
+    "x20-work": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 4,
                  {"luna_worker": ("gpt-5.6-luna", "max"), "sol_worker": ("gpt-5.6-sol", "high")}),
 }
 LITE_MODELS = {"gpt-5.6-terra", "gpt-5.6-luna"}
