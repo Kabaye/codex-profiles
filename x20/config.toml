@@ -9,5 +9,8 @@ max_concurrent_threads_per_session = 4
 default_subagent_model = "gpt-5.6-sol"
 default_subagent_reasoning_effort = "high"
 
+[features.context_management]
+experimental_mode = true
+
 # Retain Codex/provider memory defaults. Remove only old routing-profile
 # extract_model/consolidation_model overrides; preserve unrelated memory policy.
