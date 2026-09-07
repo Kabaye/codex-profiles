@@ -46,7 +46,7 @@ Merge `PROFILE/config.toml` into the existing file, updating keys in their exist
 
 Remove only obsolete settings introduced by an older routing profile, such as its routing-owned catalog line, legacy `features.multi_agent` / `features.multi_agent_v2` fields, or conflicting old agent defaults. Preserve unrelated feature settings.
 
-The current child-thread cap is **1 for lite, 2 for the other profiles**, counting open children and excluding the root.
+The child-thread cap is **1 for lite and 4 for x5/x20/x20-work**, counting open children and excluding the root. Four is a ceiling; normal routing should use zero to two children and reserve the third/fourth for genuinely independent work.
 
 Root defaults:
 
@@ -54,7 +54,7 @@ Root defaults:
 |---|---|
 | lite | `gpt-5.6-terra` / `medium` |
 | x5 | `gpt-5.6-sol` / `xhigh` |
-| x20 | `gpt-6-astra` / `medium` |
+| x20 | `gpt-6-astra` / `high` |
 | x20-work | `gpt-5.6-sol` / `xhigh` |
 
 For `lite`, the `model_catalog_json` path must point to the generated `models-lite.json`. For the other profiles, no routing-owned custom catalog is used.
