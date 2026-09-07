@@ -5,9 +5,9 @@ Four mutually exclusive local Codex routing presets. Reviewed on **2026-09-06**,
 | Profile | Initial root | Visible root models | Delegated work | Open child cap | Memory models |
 |---|---|---|---|---:|---|
 | [lite](lite/install-lite.md) | Terra medium | **Terra + Luna only** | Luna Max only | 1 | Luna / Luna |
-| [x5](x5/install-x5.md) | Sol xhigh | Normal account catalog | Luna Max only | 2 | Luna / Luna |
-| [x20](x20/install-x20.md) | Astra medium | Normal account catalog | Sol high; Astra high for justified difficult work | 2 | Codex/provider defaults |
-| [x20-work](x20-work/install-x20-work.md) | Sol xhigh; manual Astra root available | Normal account catalog | Luna Max by default; Sol high after explicit personal-task declaration | 2 | Luna / Luna |
+| [x5](x5/install-x5.md) | Sol xhigh | Normal account catalog | Luna Max only | 4 | Luna / Luna |
+| [x20](x20/install-x20.md) | Astra high | Normal account catalog | Sol high only | 4 | Codex/provider defaults |
+| [x20-work](x20-work/install-x20-work.md) | Sol xhigh; manual Astra root available | Normal account catalog | Luna Max by default; Sol high after explicit personal-task declaration | 4 | Luna / Luna |
 
 `lite` is intentionally restricted. Its installation generates `models-lite.json` by filtering the **real** Codex model metadata down to `gpt-5.6-terra` and `gpt-5.6-luna`; it does not manufacture capabilities. Terra Medium is the default root and Luna Max is the only child model. GPT-5.6 Sol and GPT-6/Astra must not be visible in this profile.
 
@@ -15,7 +15,9 @@ The other three profiles use the normal account/provider model catalog. The user
 
 `x20-work` has one explicit switch. Every unmarked objective uses Luna Max for delegation. If the user explicitly says that the current objective is personal (for example, `это личная задача`), Codex acknowledges that once and may use the pinned Sol High worker for that objective and its direct follow-ups. A new unrelated objective resets to Luna-first. The profile never infers personal mode from repository context, task difficulty, or the selected root model. Selecting Astra changes only the root and never activates Sol or Astra children automatically.
 
-`x20` is quality-first, not an always-Max tree. Astra handles reasoning and synthesis; coherent execution can use Sol. Hard debugging, state interactions or consequential independent verification can justify a bounded Astra High worker. A difficult end-to-end task may stay on Astra when splitting it would lose quality or cost more retries. These choices are an explicit starting policy, not a benchmark-proven universal optimum.
+`x20` is quality-first and intentionally simple: Astra High is the root for hard reasoning, architecture, difficult debugging, integration and final acceptance; Sol High is the only delegated worker for substantial implementation, exploration, ordinary debugging, tests/builds/logs and tool-heavy execution. There is no Astra child role. Astra xhigh/max remains a manual root escalation for unusually difficult sessions.
+
+For `x5`, `x20` and `x20-work`, the technical child cap is **4**, but normal routing should use zero to two. A third or fourth child is for genuinely independent workstreams with clear ownership and real parallel benefit, not for filling slots.
 
 ## Install, migrate, remove
 
