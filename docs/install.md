@@ -42,9 +42,18 @@ These profiles use the normal account/provider model catalog. Remove only a rout
 
 ## 4. Merge the destination config
 
-Merge `PROFILE/config.toml` into the existing file, updating keys in their existing tables. Do not append duplicate `[agents]` or `[memories]` tables. Place root-level model settings before table headers.
+Merge `PROFILE/config.toml` into the existing file, updating keys in their existing tables. Do not append duplicate `[agents]`, `[memories]` or `[features.context_management]` tables. Place root-level model settings before table headers.
 
 Remove only obsolete settings introduced by an older routing profile, such as its routing-owned catalog line, legacy `features.multi_agent` / `features.multi_agent_v2` fields, or conflicting old agent defaults. Preserve unrelated feature settings.
+
+All four profiles intentionally enable experimental Codex context management:
+
+```toml
+[features.context_management]
+experimental_mode = true
+```
+
+Merge this exact setting while preserving unrelated `[features]` keys. It is independent of model routing and Memories.
 
 The child-thread cap is **1 for lite and 4 for x5/x20/x20-work**, counting open children and excluding the root. Four is a ceiling; normal routing should use zero to two children and reserve the third/fourth for genuinely independent work.
 
@@ -90,8 +99,8 @@ Preserve unrelated instructions. The lite file also contains its Russian communi
 
 ## 7. Restart and test a fresh thread
 
-Fully restart the relevant client and begin a **new** thread. Verify the selector, current root and actual child model/effort using native metadata rather than a worker's self-description. Follow [verification.md](verification.md).
+Fully restart the relevant client and begin a **new** thread. Verify the selector, current root, effective context-management setting and actual child model/effort using native metadata rather than a worker's self-description. Follow [verification.md](verification.md).
 
 For `lite`, the selector must show **only Terra and Luna**, with Terra Medium as the initial root. For the other profiles, the normal catalog should remain available unless another legitimate configuration restricts it.
 
-If effective configuration, account entitlement or client behavior prevents the required routing from being verified, do not silently substitute another model. Treat installation as incomplete and report the mismatch.
+If effective configuration, account entitlement or client behavior prevents the required routing/context settings from being verified, do not silently substitute another model or claim the profile is complete. Report the mismatch.
