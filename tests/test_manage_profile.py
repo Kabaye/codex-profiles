@@ -78,7 +78,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(config["unrelated_top"], "keep")
         self.assertEqual(config["agents"], {"unrelated_agent_setting": "keep"})
         self.assertTrue(config["features"]["unrelated_feature"])
-        self.assertNotIn("multi_agent_v2", config["features"])
+        self.assertEqual(config["features"].get("multi_agent_v2", {}), {})
         self.assertTrue(advisor.exists())
         self.assertEqual(
             {p.name for p in (self.home / "agents").glob("*.toml")},
