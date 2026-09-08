@@ -55,21 +55,13 @@ If an old unmarked `AGENTS.md` routing section was manually edited, the manager 
 
 Likewise, a modified role file with a repository-owned filename is not deleted silently.
 
-## Backups
+## No persistent backups
 
-Before non-dry-run removal, affected top-level files are backed up under:
+Removal creates **no backup files or backup directories**.
 
-```text
-~/.codex/routing-rules/profile-backups/<timestamp>/
-```
+The process keeps the pre-operation bytes only in memory while it is running and attempts an immediate rollback if a write fails. Nothing is persisted under `profile-backups`, `backups`, or another backup location.
 
-Role/state backups are stored under:
-
-```text
-~/.codex/routing-rules/backups/<timestamp>/
-```
-
-Complete removal removes the profile-owned values rather than blindly restoring entire old files, because unrelated user configuration may have changed after installation. Use the timestamped backups if you intentionally want to restore an older personal value.
+Use `--dry-run` when you want to inspect exactly what will be removed before running the real operation.
 
 ## Switching is not remove + install
 
