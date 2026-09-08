@@ -8,6 +8,8 @@ from pathlib import Path
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
+BEGIN = "<!-- codex-routing-rules:begin -->"
+END = "<!-- codex-routing-rules:end -->"
 EXPECTED = {
     "lite": ("gpt-5.6-terra", "medium", "gpt-5.6-luna", "max", 1,
              {"luna_worker": ("gpt-5.6-luna", "max")}),
@@ -60,6 +62,8 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
         if not condition:
             errors.append(message)
 
+    check((root / "scripts" / "manage_profile.py").is_file(), "unified profile lifecycle manager missing")
+
     for p, (model, effort, child, child_eff, cap, roles) in EXPECTED.items():
         config = tomllib.loads((root / p / "config.toml").read_text(encoding="utf-8"))
         check(config.get("model") == model and config.get("model_reasoning_effort") == effort, f"{p}: root pin drift")
@@ -92,14 +96,20 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
             if profile is None or profile == p:
                 required.add(actual[name])
         check(actual == roles, f"{p}: unexpected/missing worker or effort")
+
         text = (root / p / "agents-subset.md").read_text(encoding="utf-8")
-        check(text.count("<!-- codex-routing-rules:begin -->") == 1 and
-              text.count("<!-- codex-routing-rules:end -->") == 1, f"{p}: routing marker drift")
+        stripped = text.strip()
+        check(text.count(BEGIN) == 1 and text.count(END) == 1, f"{p}: routing marker drift")
+        check(stripped.startswith(BEGIN) and stripped.endswith(END),
+              f"{p}: profile instructions exist outside the managed lifecycle block")
         check('fork_turns = "none"' in text, f"{p}: explicit bounded fork policy missing")
         check("SOL_XHIGH_AGENTS_EXPLICITLY_REQUESTED" not in text, f"{p}: stale authorization gate")
+
         for operation in ("install", "remove"):
-            text = (root / p / f"{operation}-{p}.md").read_text(encoding="utf-8")
-            check(f"../docs/{operation}.md" in text, f"{p}: {operation} procedure drift")
+            page = (root / p / f"{operation}-{p}.md").read_text(encoding="utf-8")
+            check(f"../docs/{operation}.md" in page, f"{p}: {operation} procedure drift")
+            check("scripts/manage_profile.py" in page, f"{p}: {operation} does not use unified profile lifecycle")
+            check("scripts/manage_roles.py" not in page, f"{p}: {operation} exposes obsolete roles-only lifecycle")
 
     if catalog is not None:
         errors.extend(_catalog_errors(catalog, required))
