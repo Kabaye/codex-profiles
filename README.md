@@ -1,6 +1,6 @@
 # Codex routing rules
 
-Four mutually exclusive local Codex routing presets. Reviewed on **2026-09-06**, against the **0.153.4** source/catalog and current official documentation. Account/client metadata and the live smoke test remain the authority for an installed machine.
+Four mutually exclusive local Codex routing presets. Reviewed on **2026-09-08**, against the **0.153.4** source/catalog plus current Multi-Agent V2 source/tests and documentation. Account/client metadata and the live smoke test remain the authority for an installed machine.
 
 | Profile | Initial root | Visible root models | Delegated work | Open child cap | Memory models |
 |---|---|---|---|---:|---|
