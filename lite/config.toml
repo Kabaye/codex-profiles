@@ -10,6 +10,11 @@ max_concurrent_threads_per_session = 1
 default_subagent_model = "gpt-5.6-luna"
 default_subagent_reasoning_effort = "max"
 
+# Keep delegation triggers under this profile's AGENTS.md policy instead of
+# Codex's effort-dependent built-in multi-agent mode developer message.
+[features.multi_agent_v2]
+multi_agent_mode_hint_text = ""
+
 [features.context_management]
 experimental_mode = true
 
