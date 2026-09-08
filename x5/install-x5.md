@@ -1,13 +1,23 @@
-# Install x5
+# Install `x5`
 
-Follow the shared [installation and migration procedure](../docs/install.md) with profile `x5`. It covers backups, model metadata validation, role cleanup, config merging and live smoke tests. Do not install by copying only AGENTS.md.
-
-Profile inputs: [config.toml](config.toml), [routing instructions](agents-subset.md), [worker files](agents).
-
-Role installation, after the preflight:
+Use the shared profile lifecycle. Installing `x5` automatically replaces older repository-owned routing state; do not manually remove another profile first.
 
 ```powershell
-python scripts/manage_roles.py install x5
+python scripts/manage_profile.py install x5 --dry-run
+python scripts/manage_profile.py install x5
 ```
 
-This command manages role files only; complete the shared config/AGENTS steps and restart Codex. It respects `CODEX_HOME`; use `--home` for an explicitly selected separate Codex home.
+Expected profile state:
+
+- default root: GPT-5.6 Sol / xhigh;
+- delegated model: GPT-5.6 Luna / max;
+- open child cap: 4;
+- normal account/provider model catalog;
+- empty Multi-Agent V2 mode hint;
+- experimental context management enabled.
+
+Unrelated config and unrelated native roles are preserved. Exact repository legacy artifacts are cleaned automatically; modified collisions stop for review.
+
+After installation, fully restart Codex and open a new thread.
+
+See the shared [installation/switching procedure](../docs/install.md) and [verification](../docs/verification.md).
