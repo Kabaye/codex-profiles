@@ -84,13 +84,19 @@ class ProfileTests(unittest.TestCase):
         before = self.snapshot()
         result = self.install()
         self.assertEqual(result["changed_roles"], [])
-        self.assertIsNone(result["backup"])
+        self.assertNotIn("backup", result)
         self.assertEqual(before, self.snapshot())
 
     def test_remove_idempotent(self):
         self.install()
         roles.manage(self.home, None)
         self.assertEqual(roles.manage(self.home, None)["changed_roles"], [])
+
+    def test_role_lifecycle_creates_no_backup_directories(self):
+        self.install("x20-work")
+        self.install("x20")
+        roles.manage(self.home, None)
+        self.assertFalse((self.home / "routing-rules" / "backups").exists())
 
     def test_dry_run_does_not_create_home(self):
         self.install(dry_run=True)
@@ -189,7 +195,7 @@ class ProfileTests(unittest.TestCase):
                 self.install("lite")
             result = self.install("lite", adopt_legacy=True)
             self.assertEqual(self.snapshot(), roles.desired_roles("lite"))
-            self.assertEqual((Path(result["backup"]) / "sol-worker.toml").read_bytes(), raw.replace(b"\n", b"\r\n"))
+            self.assertNotIn("backup", result)
             roles.manage(self.home, None)
             self.assertFalse((self.home / "agents" / "sol-worker.toml").exists())
 
@@ -219,6 +225,7 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(before, self.snapshot())
         self.assertEqual(state, (self.home / "routing-rules" / "roles-state.json").read_bytes())
         self.assertFalse((self.home / "routing-rules" / "roles.lock").exists())
+        self.assertFalse((self.home / "routing-rules" / "backups").exists())
 
     def test_synthetic_model_metadata_supported_and_missing_effort(self):
         catalog = {"models": [
