@@ -68,7 +68,7 @@ def atomic_write(path: Path, data: bytes) -> None:
 def desired_roles(profile: str, root: Path = ROOT) -> dict[str, bytes]:
     if profile not in PROFILES:
         raise ValueError(f"Unknown profile: {profile}")
-    result = {p.name: p.read_bytes() for p in sorted((root / profile / "agents").glob("*.toml"))}
+    result = {p.name: p.read_bytes().replace(b"\r\n", b"\n") for p in sorted((root / profile / "agents").glob("*.toml"))}
     base = result[f"{PROFILES[profile]}-worker.toml"].decode("utf-8")
     for name in ALIASES:
         alias, count = re.subn(r'^name = "[^"]+"$', f'name = "{name}"', base, count=1, flags=re.M)

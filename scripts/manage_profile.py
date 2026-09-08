@@ -251,6 +251,7 @@ def _git_history_blocks() -> list[str]:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=20,
         )
     except (OSError, subprocess.SubprocessError):
@@ -265,6 +266,7 @@ def _git_history_blocks() -> list[str]:
                     check=True,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
                     timeout=10,
                 ).stdout
             except (OSError, subprocess.SubprocessError):
