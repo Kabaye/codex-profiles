@@ -19,7 +19,10 @@ EXPECTED = {
                  {"luna_worker": ("gpt-5.6-luna", "max"), "sol_worker": ("gpt-5.6-sol", "high")}),
 }
 LITE_MODELS = {"gpt-5.6-terra", "gpt-5.6-luna"}
-EXPECTED_FEATURES = {"context_management": {"experimental_mode": True}}
+EXPECTED_FEATURES = {
+    "multi_agent_v2": {"multi_agent_mode_hint_text": ""},
+    "context_management": {"experimental_mode": True},
+}
 
 
 def _catalog_errors(catalog: dict, required: set[tuple[str, str]], exact_slugs: set[str] | None = None) -> list[str]:
@@ -66,7 +69,8 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
             check(normalized.endswith("/models-lite.json"), "lite: restricted models-lite.json catalog is required")
         else:
             check(catalog_path is None, f"{p}: custom catalog hides root choices")
-        check(config.get("features", {}) == EXPECTED_FEATURES, f"{p}: experimental context management drift")
+        check(config.get("features", {}) == EXPECTED_FEATURES,
+              f"{p}: routing-managed feature drift (empty multi-agent mode hint + experimental context management required)")
         agents = config.get("agents", {})
         check(agents == {"enabled": True, "max_concurrent_threads_per_session": cap,
                          "default_subagent_model": child, "default_subagent_reasoning_effort": child_eff},
