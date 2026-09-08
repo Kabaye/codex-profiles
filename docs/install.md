@@ -1,117 +1,193 @@
-# Installation and migration
+# Installation and switching
 
-Install one profile at a time. This procedure targets the reviewed **Codex 0.153.4** behavior. The supplied `config.toml` files are merge fragments, never replacements for the user's whole config. See [technical evidence](research-2026-09-06.md) and [smoke tests](verification.md).
+Use one lifecycle for all four profiles. Installing a profile means **switching the complete repository-owned routing setup** to that profile; do not layer one profile on top of another.
 
-## 1. Identify and preserve the real setup
-
-Close active Codex threads before changing role files. Run `codex --version` and `python --version`; the helpers require Python 3.11+. Do not automatically install software or update a managed work client.
-
-Resolve the actual Codex home: explicit `--home`, otherwise `CODEX_HOME`, otherwise the documented `~/.codex` default. Desktop/CLI/IDE environments can differ, so check the one you are actually changing.
-
-Make private, timestamped backups of the existing `config.toml`, `AGENTS.md` and affected role files. Record the original values of every key to be changed. Do not copy credentials, auth files, session history or entire databases. Do not commit these backups.
-
-Inspect active configuration layers, selected profiles, project `.codex/config.toml`, project agent files and any managed/plugin overrides. Do not remove organizational restrictions, permissions, sandbox policy or unrelated settings merely to make a preset work.
-
-## 2. Validate real model metadata
-
-If `model_catalog_json` currently points to a catalog created by an older version of this repository, back up the line and temporarily remove/comment it before running the model inspection. Do not clear an administrator's or unrelated custom catalog without understanding why it exists.
-
-Capture the actual model metadata from the installed account/client. When supported:
+The supported command surface is:
 
 ```powershell
-(codex debug models | Out-String) | Set-Content -Path PATH_TO_CAPTURED_MODELS_JSON -Encoding utf8
-python scripts/validate.py --profile x20 --models PATH_TO_CAPTURED_MODELS_JSON
+python scripts/manage_profile.py install PROFILE --dry-run
+python scripts/manage_profile.py install PROFILE
 ```
 
-Replace `x20` with the destination profile. The validator checks only the models/efforts required by that profile. An unrecognized metadata format is a stop; do not invent entries or rewrite capabilities to make validation pass.
+where `PROFILE` is one of:
 
-## 3. Catalog policy differs by profile
+- `lite`
+- `x5`
+- `x20`
+- `x20-work`
 
-### lite
+The helper requires Python 3.11+ and uses only the standard library.
 
-`lite` intentionally uses a **restricted catalog** containing only:
+## 1. Close Codex and identify the correct home
 
-- `gpt-5.6-terra` — default root at `medium`;
-- `gpt-5.6-luna` — only delegated model, pinned to `max`.
+Fully close the Codex client whose configuration you are changing.
 
-Follow [lite/install-lite.md](../lite/install-lite.md) to generate `models-lite.json` from the **real** captured catalog using `scripts/filter_lite_catalog.py`. The filter preserves the original Terra/Luna records and removes every other model. GPT-5.6 Sol and GPT-6/Astra must not remain visible after restart.
+The helper resolves Codex home in this order:
 
-### x5, x20, x20-work
+1. `--home PATH` when explicitly supplied;
+2. `CODEX_HOME`;
+3. `~/.codex`.
 
-These profiles use the normal account/provider model catalog. Remove only a routing-owned `model_catalog_json` left by another profile. Preserve unrelated or managed catalogs and resolve conflicts explicitly.
+Desktop, CLI and IDE installations can use different homes. Do not assume they are identical.
 
-## 4. Merge the destination config
+For a separate home:
 
-Merge `PROFILE/config.toml` into the existing file, updating keys in their existing tables. Do not append duplicate `[agents]`, `[memories]`, `[features.multi_agent_v2]` or `[features.context_management]` tables. Place root-level model settings before table headers.
+```powershell
+python scripts/manage_profile.py --home C:\path\to\.codex install x20-work --dry-run
+python scripts/manage_profile.py --home C:\path\to\.codex install x20-work
+```
 
-Remove only obsolete settings introduced by an older routing profile, such as its routing-owned catalog line, legacy scalar `features.multi_agent` / scalar `features.multi_agent_v2` flags, or conflicting old agent defaults. Preserve unrelated feature settings. The typed `features.multi_agent_v2.multi_agent_mode_hint_text` described below is current routing-owned state and must not be removed during a profile switch.
+## 2. Always preview first
 
-All four profiles intentionally configure an **empty custom Multi-Agent V2 mode hint**:
+Example:
+
+```powershell
+python scripts/manage_profile.py install x20-work --dry-run
+```
+
+The preview reports the profile, files and role filenames that would change.
+
+If the preflight reports an unknown or modified collision, stop and review it. The manager deliberately refuses to delete unknown files merely because their names resemble a routing role.
+
+## 3. Install or switch
+
+Example:
+
+```powershell
+python scripts/manage_profile.py install x20-work
+```
+
+This is both the **install** and **switch** operation. There is no separate migration sequence required between `lite`, `x5`, `x20`, and `x20-work`.
+
+The lifecycle performs these operations as one profile transition:
+
+### `config.toml`
+
+It removes/replaces routing-owned keys from an older profile and installs the destination values while preserving unrelated keys in the same TOML tables.
+
+Managed current keys include:
+
+- top-level `model` and `model_reasoning_effort`;
+- routing-owned `model_catalog_json` when entering/leaving `lite`;
+- `[agents]` defaults and open-child cap;
+- `[features.multi_agent_v2] multi_agent_mode_hint_text`;
+- `[features.context_management] experimental_mode`;
+- routing-owned `[memories]` model selectors.
+
+Known historical routing keys such as scalar `features.multi_agent`, scalar `features.multi_agent_v2`, old V2 `enabled`/thread-cap recipes, old worker defaults and old repository model catalogs are cleaned during migration.
+
+An unrelated custom `model_catalog_json` is **not** silently removed. If one is active and conflicts with a destination profile, installation stops for explicit review.
+
+All four current profiles set:
 
 ```toml
 [features.multi_agent_v2]
 multi_agent_mode_hint_text = ""
 ```
 
-This is deliberately narrow: the profiles do **not** set `enabled = true` merely to force Multi-Agent V2. The empty configured hint suppresses Codex's effort-dependent built-in `<multi_agent_mode>` developer message, including the default explicit-request-only guidance on ordinary non-Ultra efforts and the built-in proactive guidance on Ultra. That leaves the applicable `AGENTS.md` routing policy responsible for deciding when delegation is useful, which worker role to use and how many children to open.
+The profiles intentionally do not force `multi_agent_v2.enabled = true`. The empty custom hint suppresses Codex's effort-dependent built-in `<multi_agent_mode>` message so the active profile's `AGENTS.md` decides when to delegate.
 
-Existing threads can already contain an older generated multi-agent-mode developer message in their history. After changing this setting, fully restart the client and use a **new thread** before judging the profile.
-
-All four profiles also intentionally enable experimental Codex context management:
+All four also set:
 
 ```toml
 [features.context_management]
 experimental_mode = true
 ```
 
-Merge this exact setting while preserving unrelated `[features]` keys. It is independent of model routing and Memories.
+### `AGENTS.md`
 
-The child-thread cap is **1 for lite and 4 for x5/x20/x20-work**, counting open children and excluding the root. Four is a ceiling; normal routing should use zero to two children and reserve the third/fourth for genuinely independent work.
+The manager removes any existing marked routing block and installs exactly one destination block.
 
-Root defaults:
+It also scans the local Git history of this repository for exact older **unmarked** `agents-subset.md` versions and removes those exact historical routing blocks during migration. This is important for older installs made before the marker format existed.
 
-| Profile | Default root |
-|---|---|
-| lite | `gpt-5.6-terra` / `medium` |
-| x5 | `gpt-5.6-sol` / `xhigh` |
-| x20 | `gpt-6-astra` / `high` |
-| x20-work | `gpt-5.6-sol` / `xhigh` |
+If an old unmarked block was manually edited and no longer exactly matches repository history, the manager stops instead of guessing how much user text to delete. Remove/reconcile that modified legacy section once, then rerun the command.
 
-For `lite`, the `model_catalog_json` path must point to the generated `models-lite.json`. For the other profiles, no routing-owned custom catalog is used.
-
-For `lite`, `x5`, and `x20-work`, merge the two Luna memory-model keys from the profile template. These select memory models, not a memory reasoning effort. For `x20`, retain Codex/provider memory defaults and remove only old routing-owned extraction/consolidation overrides.
-
-## 5. Synchronize native roles
-
-Preview first, substituting the chosen profile:
-
-```powershell
-python scripts/manage_roles.py install x20 --dry-run
-python scripts/manage_roles.py install x20
-```
-
-For the first migration from old repository-managed role files, add `--adopt-legacy` only after reviewing those files. Use `--home` for an explicitly separate Codex home.
-
-The helper owns the profile's native workers and three compatibility aliases: `default`, `worker`, `explorer`. Aliases use the profile's default worker model/effort. Unknown collisions, modified/missing owned files, unsafe paths and stale locks stop the operation for review.
-
-The helper manages roles only. It does not edit `config.toml`, `AGENTS.md`, model catalogs, credentials or memory data.
-
-## 6. Replace the routing instruction block
-
-In the real global `AGENTS.md`, replace the previous routing block with the marked block from the destination `agents-subset.md`:
+All current profile instructions are fully profile-owned inside:
 
 ```text
 <!-- codex-routing-rules:begin -->
-...destination routing block...
+...
 <!-- codex-routing-rules:end -->
 ```
 
-Preserve unrelated instructions. The lite file also contains its Russian communication, Git and workspace rules outside these markers; keep or merge them intentionally instead of deleting them with the routing block.
+That includes the full `lite` instruction set, so switching away from `lite` no longer leaves its communication/workspace rules behind.
 
-## 7. Restart and test a fresh thread
+### Native roles
 
-Fully restart the relevant client and begin a **new** thread. Verify the selector, current root, effective empty `features.multi_agent_v2.multi_agent_mode_hint_text`, effective context-management setting and actual child model/effort using native metadata rather than a worker's self-description. Follow [verification.md](verification.md).
+The manager calls the role lifecycle with exact-legacy adoption enabled.
 
-For `lite`, the selector must show **only Terra and Luna**, with Terra Medium as the initial root. For the other profiles, the normal catalog should remain available unless another legitimate configuration restricts it.
+It removes/replaces repository-owned:
 
-If effective configuration, account entitlement or client behavior prevents the required routing/context settings from being verified, do not silently substitute another model or claim the profile is complete. Report the mismatch.
+- `luna-worker.toml`;
+- `sol-worker.toml`;
+- historical `astra-worker.toml`;
+- generated `routing-default.toml`;
+- generated `routing-worker.toml`;
+- generated `routing-explorer.toml`.
+
+Exact historical worker blobs shipped by this repository can be migrated automatically. Modified lookalikes are not silently deleted.
+
+Unrelated role files, for example `sol-advisor.toml`, remain untouched unless they collide by a reserved routing role name.
+
+### `lite` model catalog
+
+When installing `lite`, the manager captures:
+
+```powershell
+codex debug models
+```
+
+and creates `~/.codex/models-lite.json` containing only the **real** Terra and Luna records. It refuses to manufacture missing models or efforts.
+
+For offline/testing installation, provide previously captured metadata:
+
+```powershell
+python scripts/manage_profile.py install lite --models PATH_TO_CAPTURED_MODELS_JSON
+```
+
+Switching away from `lite` removes the repository-specific `models-lite.json` and its routing-owned config reference.
+
+## 4. Backups
+
+Before a non-dry-run profile transition, the lifecycle backs up existing affected top-level files under:
+
+```text
+~/.codex/routing-rules/profile-backups/<timestamp>/
+```
+
+The role manager additionally stores role/state backups under:
+
+```text
+~/.codex/routing-rules/backups/<timestamp>/
+```
+
+These backups are local and must not be committed.
+
+## 5. Restart and verify
+
+After any install or switch:
+
+1. fully restart Codex;
+2. open a **new thread**;
+3. run:
+
+```powershell
+python scripts/manage_profile.py status
+python scripts/validate.py
+python -m unittest discover -s tests -v
+```
+
+Then perform the relevant live smoke tests from [verification.md](verification.md).
+
+Existing threads may retain old developer/context instructions, so they are not valid evidence that a newly installed profile is broken.
+
+## Profile expectations
+
+| Profile | Default root | Delegated model | Open child cap | Catalog |
+|---|---|---|---:|---|
+| `lite` | Terra medium | Luna max | 1 | Terra + Luna only |
+| `x5` | Sol xhigh | Luna max | 4 | Normal account catalog |
+| `x20` | Astra high | Sol high | 4 | Normal account catalog |
+| `x20-work` | Sol xhigh | Luna max default; Sol high in explicit personal mode | 4 | Normal account catalog |
+
+If the effective local configuration, account entitlement, organizational policy or client behavior prevents these expectations from being verified, treat the installation as incomplete rather than silently substituting another model or routing policy.
