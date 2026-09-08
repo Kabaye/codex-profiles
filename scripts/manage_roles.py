@@ -137,7 +137,7 @@ def manage(home: Path, profile: str | None, *, adopt_legacy: bool = False, dry_r
         # Recognize line-ending-only Windows copies without accepting content edits.
         canonical_blob = git_blob(data.replace(b"\r\n", b"\n"))
         known = bool({old_blob, canonical_blob} & LEGACY.get(p.name, set()))
-        if known and adopt_legacy and profile:
+        if known and adopt_legacy:
             current[p.name] = data
             continue
         role = tomllib.loads(data.decode("utf-8-sig"))
