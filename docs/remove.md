@@ -1,38 +1,98 @@
 # Removal and rollback
 
-For a **profile switch**, follow the destination [installation procedure](install.md): it synchronizes roles, defaults, catalog policy, memory keys, the empty Multi-Agent V2 mode hint, experimental context management and the single routing block. Do not stack profiles.
+Use the same lifecycle manager for complete removal that is used for installation and switching.
 
-For complete removal, close active Codex sessions, inspect the installation notes/backups and preview:
+## Preview removal
+
+Fully close Codex, then run:
 
 ```powershell
-python scripts/manage_roles.py remove --dry-run
-python scripts/manage_roles.py remove
+python scripts/manage_profile.py remove --dry-run
 ```
 
-Use `--home` for a separate home, or let the helper honor `CODEX_HOME`. It removes only the role files owned by the current manifest and only when their hashes still match. Unrelated native roles and backups remain.
+For a separate Codex home:
 
-Delete only the marked routing block in global `AGENTS.md`. Preserve all unrelated instructions, including the lite Russian/Git/workspace preface.
+```powershell
+python scripts/manage_profile.py --home C:\path\to\.codex remove --dry-run
+```
 
-Review these keys against the recorded pre-install state:
+The preview shows the repository-owned files/roles that would change.
 
-| Location | Routing-owned keys to restore/remove when still owned |
-|---|---|
-| Top level | `model`, `model_reasoning_effort`; for lite also `model_catalog_json` |
-| `[agents]` | `enabled`, `max_concurrent_threads_per_session`, `default_subagent_model`, `default_subagent_reasoning_effort` |
-| `[features.multi_agent_v2]` | `multi_agent_mode_hint_text` only; these profiles do not own `enabled` |
-| `[features.context_management]` | `experimental_mode` |
-| `[memories]` | `extract_model`, `consolidation_model` when the profile set them |
+## Remove the routing profile
 
-All four profiles currently set `features.multi_agent_v2.multi_agent_mode_hint_text = ""`. Profile switches keep the empty override because every destination profile requires `AGENTS.md` to own the delegation policy instead of Codex's effort-dependent built-in mode message. On complete removal, restore the pre-install value or remove the still-owned key if there was no prior value. Do **not** remove or alter an unrelated/managed `enabled` value in the same table.
+```powershell
+python scripts/manage_profile.py remove
+```
 
-All four profiles also set `features.context_management.experimental_mode = true`. Profile switches keep it enabled because every destination profile requires it. On complete removal, restore the pre-install value or remove the still-owned setting if there was no prior value. Preserve unrelated feature keys.
+This removes repository-owned routing state from the selected Codex home in one lifecycle.
 
-Do not overwrite later user edits. Restore a previous value only when it is the intended non-routing baseline; otherwise remove the still-owned override.
+It cleans:
 
-## Extra lite cleanup
+- routing-owned `model` / `model_reasoning_effort` values;
+- routing-owned `model_catalog_json` from `lite` or historical repository catalogs;
+- routing-owned `[agents]` defaults/caps;
+- the empty `[features.multi_agent_v2] multi_agent_mode_hint_text` override;
+- `[features.context_management] experimental_mode` installed by the profiles;
+- routing-owned memory model selectors;
+- the marked `AGENTS.md` profile block;
+- exact historical unmarked routing blocks when they can be identified from repository Git history;
+- all managed worker/compatibility role files;
+- exact known legacy Luna/Sol/Astra worker files;
+- the repository-specific `models-lite.json` file.
 
-`lite` creates a restricted `models-lite.json` containing only Terra and Luna. After confirming that `config.toml` no longer points to it, that **specific profile-generated file** may be removed. Do not delete an unrelated custom catalog or generic `models.json` merely because it exists.
+Unrelated settings and unrelated role files are preserved.
 
-Switching away from `lite` should also remove its routing-owned `model_catalog_json` so the destination profile can use the normal account/provider catalog.
+For example, a custom `sol-advisor.toml` remains untouched unless it deliberately collides with a reserved routing role name.
 
-Restart Codex and open a new thread. After complete removal, Codex's own model catalog/defaults, built-in multi-agent mode behavior and any remaining user-managed feature settings apply unless another configuration intentionally overrides them.
+## Modified legacy state
+
+The manager intentionally distinguishes between:
+
+- **exact repository-owned legacy artifacts** — safe to migrate/remove automatically;
+- **modified or unknown lookalikes** — stop for review.
+
+If an old unmarked `AGENTS.md` routing section was manually edited, the manager does not guess where user-authored content ends. Reconcile/remove that old section once, then rerun removal.
+
+Likewise, a modified role file with a repository-owned filename is not deleted silently.
+
+## Backups
+
+Before non-dry-run removal, affected top-level files are backed up under:
+
+```text
+~/.codex/routing-rules/profile-backups/<timestamp>/
+```
+
+Role/state backups are stored under:
+
+```text
+~/.codex/routing-rules/backups/<timestamp>/
+```
+
+Complete removal removes the profile-owned values rather than blindly restoring entire old files, because unrelated user configuration may have changed after installation. Use the timestamped backups if you intentionally want to restore an older personal value.
+
+## Switching is not remove + install
+
+To change profile, do **not** run a separate manual removal first. Simply run:
+
+```powershell
+python scripts/manage_profile.py install x20
+```
+
+or another destination profile.
+
+`install PROFILE` is a complete switch: it cleans older repository-owned routing state and replaces it with the destination profile while preserving unrelated configuration.
+
+## Finish
+
+After removal:
+
+1. fully restart Codex;
+2. start a new thread;
+3. run:
+
+```powershell
+python scripts/manage_profile.py status
+```
+
+The managed profile should be `null`/absent. Codex's own defaults, normal model catalog, built-in multi-agent mode behavior and remaining user-managed settings then apply.
