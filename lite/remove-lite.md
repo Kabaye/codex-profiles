@@ -1,24 +1,20 @@
-# Remove lite
+# Remove `lite`
 
-Follow the shared [removal procedure](../docs/remove.md). Preserve unrelated instructions, credentials, catalogs and memory data.
-
-Remove the managed worker roles:
+Complete removal uses the same lifecycle manager as every other profile:
 
 ```powershell
-python scripts/manage_roles.py remove --dry-run
-python scripts/manage_roles.py remove
+python scripts/manage_profile.py remove --dry-run
+python scripts/manage_profile.py remove
 ```
 
-In `config.toml`, restore/remove the `lite`-owned values only if they still belong to this profile:
+This removes the active repository-owned profile state, including the full managed `lite` AGENTS block, Luna worker/compatibility roles, routing-owned config keys and the repository-specific `models-lite.json` catalog. Unrelated configuration and unrelated role files are preserved.
 
-```toml
-model = "gpt-5.6-terra"
-model_reasoning_effort = "medium"
-model_catalog_json = ".../models-lite.json"
+To switch from `lite` to another profile, do **not** remove first. Run the destination install directly, for example:
+
+```powershell
+python scripts/manage_profile.py install x20-work
 ```
 
-Also restore/remove the `lite` values in `[agents]` and `[memories]` according to your pre-install backup. Delete only the marked routing block from `AGENTS.md`; keep the unrelated Russian communication/Git/workspace instructions.
+The switch removes the restricted lite catalog/reference and restores the destination profile's normal catalog policy automatically.
 
-After confirming that `model_catalog_json` no longer points to the lite catalog, you may remove the profile-generated `models-lite.json`. Do not delete another custom catalog or a generic `models.json` by name.
-
-Restart Codex and open a new thread. The normal model catalog should return unless another user/project/managed configuration intentionally restricts it.
+See the shared [removal procedure](../docs/remove.md).
