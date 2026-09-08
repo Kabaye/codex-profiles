@@ -10,7 +10,6 @@ from pathlib import Path
 import re
 import tempfile
 import tomllib
-from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILES = {"lite": "luna", "x5": "luna", "x20": "sol", "x20-work": "luna"}
@@ -105,15 +104,16 @@ def load_state(path: Path) -> dict | None:
 
 def manage(home: Path, profile: str | None, *, adopt_legacy: bool = False, dry_run: bool = False,
            root: Path = ROOT) -> dict:
-    """Preflight before writes; archive previous roles and roll back ordinary I/O failures.
+    """Preflight before writes and roll back ordinary I/O failures in-process.
 
-    Not a security boundary or crash-atomic multi-file transaction. Close Codex and
-    stop concurrent config edits first. The manifest never owns config/AGENTS/data.
+    No persistent backups are created. This is not a security boundary or a
+    crash-atomic multi-file transaction. Close Codex and stop concurrent config
+    edits first. The manifest never owns config/AGENTS/data.
     """
     home = Path(os.path.abspath(home.expanduser()))
     agents, control = home / "agents", home / "routing-rules"
     manifest, lock = control / "roles-state.json", control / "roles.lock"
-    for p in (home, agents, control, control / "backups", lock):
+    for p in (home, agents, control, lock):
         directory(p)
     if lock.exists():
         raise ValueError("Another role operation may be active; review roles.lock before retrying")
@@ -150,7 +150,7 @@ def manage(home: Path, profile: str | None, *, adopt_legacy: bool = False, dry_r
                               "owned": {n: digest(d) for n, d in sorted(target.items())}},
                              indent=2) + "\n").encode() if profile else None
     old_state = manifest.read_bytes() if manifest.exists() else None
-    report = {"profile": profile, "changed_roles": changes, "dry_run": dry_run, "backup": None}
+    report = {"profile": profile, "changed_roles": changes, "dry_run": dry_run}
     if dry_run or (not changes and old_state == state_bytes):
         return report
     control.mkdir(parents=True, exist_ok=True)
@@ -168,17 +168,6 @@ def manage(home: Path, profile: str | None, *, adopt_legacy: bool = False, dry_r
             if (agents / name).exists():
                 raise ValueError(f"Role appeared during preflight: {name}")
         agents.mkdir(parents=True, exist_ok=True)
-        if current or old_state:
-            backup_root = control / "backups"
-            backup_root.mkdir(exist_ok=True)
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-            backup = backup_root / stamp
-            backup.mkdir()
-            for name, data in current.items():
-                (backup / name).write_bytes(data)
-            if old_state:
-                (backup / "roles-state.json").write_bytes(old_state)
-            report["backup"] = str(backup)
         try:
             for name in changes:
                 if name in target:
@@ -190,7 +179,7 @@ def manage(home: Path, profile: str | None, *, adopt_legacy: bool = False, dry_r
             elif manifest.exists():
                 manifest.unlink()
         except OSError:
-            # Preserve the original bytes, including line endings.
+            # Restore the original bytes immediately; do not create persistent backups.
             for name in changes:
                 if name in current:
                     atomic_write(agents / name, current[name])
