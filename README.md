@@ -9,7 +9,9 @@ Four mutually exclusive local Codex routing presets. Reviewed on **2026-09-06**,
 | [x20](x20/install-x20.md) | Astra high | Normal account catalog | Sol high only | 4 | Codex/provider defaults |
 | [x20-work](x20-work/install-x20-work.md) | Sol xhigh; manual Astra root available | Normal account catalog | Luna Max by default; Sol high after explicit personal-task declaration | 4 | Luna / Luna |
 
-All four profiles explicitly enable Codex experimental context management with `[features.context_management] experimental_mode = true`. This is an intentional experimental setting and is separate from Memories/model routing.
+All four profiles set `[features.multi_agent_v2] multi_agent_mode_hint_text = ""`. The empty custom hint suppresses Codex's effort-dependent built-in `<multi_agent_mode>` developer message, so the applicable `AGENTS.md` profile decides when delegation is useful instead of non-Ultra efforts silently becoming explicit-request-only or Ultra silently changing to a separate built-in proactive policy. The profiles do not set `multi_agent_v2.enabled = true` merely to force a backend version.
+
+All four profiles also explicitly enable Codex experimental context management with `[features.context_management] experimental_mode = true`. This is an intentional experimental setting and is separate from Memories/model routing.
 
 `lite` is intentionally restricted. Its installation generates `models-lite.json` by filtering the **real** Codex model metadata down to `gpt-5.6-terra` and `gpt-5.6-luna`; it does not manufacture capabilities. Terra Medium is the default root and Luna Max is the only child model. GPT-5.6 Sol and GPT-6/Astra must not be visible in this profile.
 
@@ -42,6 +44,6 @@ python -m unittest discover -s tests -v
 
 For `lite`, also validate the generated restricted catalog as shown in `lite/install-lite.md`.
 
-**Limits:** role pins and a filtered catalog are stronger than prompting, but this is not a security or spending firewall. Configuration precedence, separate Codex processes, unsupported clients, or organizational policy can change effective behavior. Verify the selector, context-management setting and actual child model/effort in native session/config metadata. If the expected restrictions cannot be established, do not treat the profile as successfully installed.
+**Limits:** role pins and a filtered catalog are stronger than prompting, but this is not a security or spending firewall. Configuration precedence, separate Codex processes, unsupported clients, organizational policy, or a client that ignores the empty mode-hint override can change effective behavior. Verify the selector, effective empty multi-agent mode hint, context-management setting and actual child model/effort in native session/config metadata. If the expected restrictions cannot be established, do not treat the profile as successfully installed.
 
 The separate local Astra history/Skills playbook is not part of this routing repository.
