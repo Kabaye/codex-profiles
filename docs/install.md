@@ -42,11 +42,22 @@ These profiles use the normal account/provider model catalog. Remove only a rout
 
 ## 4. Merge the destination config
 
-Merge `PROFILE/config.toml` into the existing file, updating keys in their existing tables. Do not append duplicate `[agents]`, `[memories]` or `[features.context_management]` tables. Place root-level model settings before table headers.
+Merge `PROFILE/config.toml` into the existing file, updating keys in their existing tables. Do not append duplicate `[agents]`, `[memories]`, `[features.multi_agent_v2]` or `[features.context_management]` tables. Place root-level model settings before table headers.
 
-Remove only obsolete settings introduced by an older routing profile, such as its routing-owned catalog line, legacy `features.multi_agent` / `features.multi_agent_v2` fields, or conflicting old agent defaults. Preserve unrelated feature settings.
+Remove only obsolete settings introduced by an older routing profile, such as its routing-owned catalog line, legacy scalar `features.multi_agent` / scalar `features.multi_agent_v2` flags, or conflicting old agent defaults. Preserve unrelated feature settings. The typed `features.multi_agent_v2.multi_agent_mode_hint_text` described below is current routing-owned state and must not be removed during a profile switch.
 
-All four profiles intentionally enable experimental Codex context management:
+All four profiles intentionally configure an **empty custom Multi-Agent V2 mode hint**:
+
+```toml
+[features.multi_agent_v2]
+multi_agent_mode_hint_text = ""
+```
+
+This is deliberately narrow: the profiles do **not** set `enabled = true` merely to force Multi-Agent V2. The empty configured hint suppresses Codex's effort-dependent built-in `<multi_agent_mode>` developer message, including the default explicit-request-only guidance on ordinary non-Ultra efforts and the built-in proactive guidance on Ultra. That leaves the applicable `AGENTS.md` routing policy responsible for deciding when delegation is useful, which worker role to use and how many children to open.
+
+Existing threads can already contain an older generated multi-agent-mode developer message in their history. After changing this setting, fully restart the client and use a **new thread** before judging the profile.
+
+All four profiles also intentionally enable experimental Codex context management:
 
 ```toml
 [features.context_management]
@@ -99,7 +110,7 @@ Preserve unrelated instructions. The lite file also contains its Russian communi
 
 ## 7. Restart and test a fresh thread
 
-Fully restart the relevant client and begin a **new** thread. Verify the selector, current root, effective context-management setting and actual child model/effort using native metadata rather than a worker's self-description. Follow [verification.md](verification.md).
+Fully restart the relevant client and begin a **new** thread. Verify the selector, current root, effective empty `features.multi_agent_v2.multi_agent_mode_hint_text`, effective context-management setting and actual child model/effort using native metadata rather than a worker's self-description. Follow [verification.md](verification.md).
 
 For `lite`, the selector must show **only Terra and Luna**, with Terra Medium as the initial root. For the other profiles, the normal catalog should remain available unless another legitimate configuration restricts it.
 
