@@ -4,6 +4,7 @@ from __future__ import annotations
 import itertools
 import json
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import tomllib
@@ -29,6 +30,35 @@ class ProfileTests(unittest.TestCase):
 
     def test_static_profiles(self):
         self.assertEqual(presets.validate(), [])
+
+    def test_profiles_suppress_builtin_multi_agent_mode_without_forcing_v2(self):
+        for profile in roles.PROFILES:
+            with self.subTest(profile=profile):
+                config = tomllib.loads(
+                    (presets.ROOT / profile / "config.toml").read_text(encoding="utf-8")
+                )
+                multi_agent_v2 = config["features"]["multi_agent_v2"]
+                self.assertEqual(multi_agent_v2, {"multi_agent_mode_hint_text": ""})
+                self.assertNotIn("enabled", multi_agent_v2)
+
+    def test_validator_rejects_multi_agent_mode_hint_drift(self):
+        root = Path(self.tmp.name) / "repo"
+        shutil.copytree(
+            presets.ROOT,
+            root,
+            ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+        )
+        target = root / "x20-work" / "config.toml"
+        text = target.read_text(encoding="utf-8")
+        target.write_text(
+            text.replace('multi_agent_mode_hint_text = ""',
+                         'multi_agent_mode_hint_text = "explicit-only"', 1),
+            encoding="utf-8",
+        )
+        self.assertTrue(any(
+            error.startswith("x20-work: routing-managed feature drift")
+            for error in presets.validate(root=root)
+        ))
 
     def test_all_twelve_directed_switches_remove_stale_roles(self):
         for before, after in itertools.permutations(roles.PROFILES, 2):
