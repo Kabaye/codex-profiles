@@ -2,7 +2,7 @@
 
 ## Static test status
 
-The repository's Python tests and validator now cover both routing policy and the **unified profile lifecycle**: profile switching, config replacement, AGENTS replacement, role pins, exact-legacy role removal, preservation of unrelated state, nested-agent disabling, collision handling, rollback, model metadata, catalog rules, the required empty Multi-Agent V2 mode hint and experimental context management.
+The repository's Python tests and validator now cover both routing policy and the **unified profile lifecycle**: profile switching, config replacement, AGENTS replacement, role pins, exact-legacy role removal, preservation of unrelated state, no persistent backups, nested-agent disabling, collision handling, in-process rollback, model metadata, catalog rules, the required empty Multi-Agent V2 mode hint and experimental context management.
 
 A previous baseline passed on 2026-09-06 before the latest routing/lifecycle changes. This environment still cannot execute a fresh authenticated checkout of the repository, so the current revision requires a local rerun:
 
@@ -20,6 +20,7 @@ python -m unittest discover -s tests -v
 | Switching from `lite` leaves its non-routing communication/workspace rules | The complete current `lite` instruction file is now inside the managed profile markers | Very old manually modified lite text may require one manual reconciliation |
 | Switching profiles leaves old config values | Unified lifecycle removes/replaces routing-owned model, agent, memory, context and Multi-Agent V2 keys before applying the destination fragment | Unrelated custom `model_catalog_json` is not deleted silently; conflicting custom catalogs stop for review |
 | Switching away from `lite` leaves the restricted catalog active | Lifecycle removes the routing-owned catalog reference and repository-specific `models-lite.json` | Effective higher-priority config still needs live inspection |
+| Lifecycle creates unwanted backups | Profile and role managers create no persistent backup files/directories; tests assert `profile-backups` and `backups` are absent | Rollback is best-effort and only uses bytes held in the current process |
 | Unrelated native roles are destroyed during cleanup | Only owned/reserved exact-legacy artifacts are migrated; unrelated roles such as `sol-advisor.toml` remain | A custom role deliberately using a reserved routing role name is a collision and stops |
 | Codex injects an effort-dependent `<multi_agent_mode>` that blocks or changes profile delegation | Every profile requires `features.multi_agent_v2.multi_agent_mode_hint_text = ""`; validator/tests reject missing or non-empty hints and reject profile-owned `enabled` forcing | Effective config precedence and fresh-thread runtime behavior must still be checked |
 | Experimental context management is missing in one profile | Validator requires `features.context_management.experimental_mode = true` in all four configs | Effective local config precedence must still be checked |
@@ -49,7 +50,7 @@ python scripts/manage_profile.py remove
 python scripts/manage_profile.py status
 ```
 
-Before the first install, add one unrelated test role and unrelated TOML/AGENTS text. After the switch and removal, confirm those unrelated values remain while the old profile's managed rules/roles do not.
+Before the first install, add one unrelated test role and unrelated TOML/AGENTS text. After the switch and removal, confirm those unrelated values remain while the old profile's managed rules/roles do not. Also confirm no `~/.codex/routing-rules/profile-backups/` or `~/.codex/routing-rules/backups/` directory was created.
 
 The repository's synthetic test `tests/test_manage_profile.py` covers this exact lifecycle without touching the real Codex home.
 
