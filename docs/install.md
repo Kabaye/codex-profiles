@@ -147,21 +147,13 @@ python scripts/manage_profile.py install lite --models PATH_TO_CAPTURED_MODELS_J
 
 Switching away from `lite` removes the repository-specific `models-lite.json` and its routing-owned config reference.
 
-## 4. Backups
+## 4. No persistent backups
 
-Before a non-dry-run profile transition, the lifecycle backs up existing affected top-level files under:
+The lifecycle intentionally creates **no backup files or backup directories**.
 
-```text
-~/.codex/routing-rules/profile-backups/<timestamp>/
-```
+If a write fails during the current process, it keeps the pre-operation bytes only in memory and attempts an immediate rollback. Nothing is written under `profile-backups`, `backups`, or another persistent backup location.
 
-The role manager additionally stores role/state backups under:
-
-```text
-~/.codex/routing-rules/backups/<timestamp>/
-```
-
-These backups are local and must not be committed.
+This is deliberate. Use `--dry-run` before changing a profile if you want to inspect the transition first.
 
 ## 5. Restart and verify
 
