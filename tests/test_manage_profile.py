@@ -38,6 +38,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
 
         first = lifecycle.apply(self.home, "x20-work")
         self.assertEqual(first["profile"], "x20-work")
+        self.assertNotIn("backup", first)
         config = tomllib.loads((self.home / "config.toml").read_text(encoding="utf-8"))
         self.assertEqual(config["model"], "gpt-5.6-sol")
         self.assertEqual(config["model_reasoning_effort"], "xhigh")
@@ -52,6 +53,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
 
         second = lifecycle.apply(self.home, "x20")
         self.assertEqual(second["profile"], "x20")
+        self.assertNotIn("backup", second)
         config = tomllib.loads((self.home / "config.toml").read_text(encoding="utf-8"))
         self.assertEqual(config["model"], "gpt-6-astra")
         self.assertEqual(config["model_reasoning_effort"], "high")
@@ -72,6 +74,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
 
         removed = lifecycle.apply(self.home, None)
         self.assertIsNone(removed["profile"])
+        self.assertNotIn("backup", removed)
         config = tomllib.loads((self.home / "config.toml").read_text(encoding="utf-8"))
         self.assertNotIn("model", config)
         self.assertNotIn("model_reasoning_effort", config)
@@ -88,6 +91,17 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             (self.home / "AGENTS.md").read_text(encoding="utf-8"),
             "# My unrelated instructions\n",
         )
+        self.assertFalse((self.home / "routing-rules" / "profile-backups").exists())
+        self.assertFalse((self.home / "routing-rules" / "backups").exists())
+
+    def test_empty_remove_does_not_create_empty_config_or_agents_files(self):
+        removed = lifecycle.apply(self.home, None)
+        self.assertEqual(removed["files"], [])
+        self.assertEqual(removed["roles"], [])
+        self.assertFalse((self.home / "config.toml").exists())
+        self.assertFalse((self.home / "AGENTS.md").exists())
+        self.assertFalse((self.home / "routing-rules" / "profile-backups").exists())
+        self.assertFalse((self.home / "routing-rules" / "backups").exists())
 
     def test_legacy_config_is_replaced_not_stacked(self):
         legacy = '''model = "gpt-5.6-sol"
@@ -146,6 +160,7 @@ unrelated = "keep"
         with patch.dict(roles.LEGACY, {"sol-worker.toml": {roles.git_blob(raw)}}):
             result = roles.manage(self.home, None, adopt_legacy=True)
         self.assertIn("sol-worker.toml", result["changed_roles"])
+        self.assertNotIn("backup", result)
         self.assertFalse(target.exists())
 
     def test_lite_entire_instruction_file_is_profile_owned(self):
