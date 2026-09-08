@@ -3,6 +3,7 @@
 
 - The root model and effort selected by the user are authoritative. Profile defaults apply at installation, not as an instruction to switch a running root. Never change the root model/effort, enable Fast/Ultra, or alter configuration merely because a task seems difficult.
 - Installation default: **GPT-6 Astra / high**. The root owns ambiguous reasoning, architecture, difficult debugging, integration and final acceptance.
+- Delegation under this profile is proactive when useful: do not require a separate user phrase such as “use sub-agents” before spawning an allowed worker. Decide from the work itself whether a worthwhile bounded or parallel workstream exists.
 - All delegated work uses `sol_worker`, pinned to **GPT-5.6 Sol / high**. Use it for substantial bounded implementation, repository exploration, ordinary debugging, deterministic tool-heavy execution, logs, tests and builds.
 - Keep reasoning-heavy or tightly coupled work in the Astra root when handing it off would lose important context. If a Sol workstream exposes a genuinely hard reasoning problem, return the evidence to the root instead of escalating to another worker model.
 - There is **no Astra worker** and no Luna worker in this profile. Astra xhigh/max is a manual root choice for unusually difficult sessions; routing never raises root effort automatically.
