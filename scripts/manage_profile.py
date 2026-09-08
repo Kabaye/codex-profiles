@@ -11,7 +11,6 @@ import shutil
 import subprocess
 import tempfile
 import tomllib
-from datetime import datetime, timezone
 
 import manage_roles
 
@@ -402,16 +401,11 @@ def _prepare_legacy_role_adoption(home: Path) -> None:
         manage_roles.LEGACY.setdefault(path.name, set()).add(manage_roles.git_blob(data))
 
 
-def _backup(home: Path, files: list[Path]) -> Path:
-    root = home / "routing-rules" / "profile-backups"
-    root.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    target = root / stamp
-    target.mkdir()
-    for path in files:
-        if path.exists():
-            (target / path.name).write_bytes(path.read_bytes())
-    return target
+def _apply_text(path: Path, text: str) -> None:
+    if text.strip():
+        _atomic_write(path, text.encode("utf-8"))
+    elif path.exists():
+        path.unlink()
 
 
 def apply(
@@ -444,10 +438,15 @@ def apply(
         root=ROOT,
     )
 
+    current_config = config_path.read_bytes() if config_path.exists() else None
+    desired_config = new_config.encode("utf-8") if new_config.strip() else None
+    current_agents = agents_path.read_bytes() if agents_path.exists() else None
+    desired_agents = new_agents.encode("utf-8") if new_agents.strip() else None
+
     changes = []
-    if new_config.encode("utf-8") != (config_path.read_bytes() if config_path.exists() else b""):
+    if desired_config != current_config:
         changes.append("config.toml")
-    if new_agents.encode("utf-8") != (agents_path.read_bytes() if agents_path.exists() else b""):
+    if desired_agents != current_agents:
         changes.append("AGENTS.md")
     if profile == "lite" and catalog_bytes != (catalog_path.read_bytes() if catalog_path.exists() else None):
         changes.append("models-lite.json")
@@ -459,25 +458,19 @@ def apply(
         "dry_run": dry_run,
         "files": changes,
         "roles": role_plan["changed_roles"],
-        "backup": None,
     }
     if dry_run:
         return report
 
-    backup_targets = [config_path, agents_path]
-    if catalog_path.exists():
-        backup_targets.append(catalog_path)
-    backup = _backup(home, backup_targets)
-    report["backup"] = str(backup)
-
+    # Keep only an in-process rollback snapshot. Nothing is persisted as a backup.
     old = {
-        config_path: config_path.read_bytes() if config_path.exists() else None,
-        agents_path: agents_path.read_bytes() if agents_path.exists() else None,
+        config_path: current_config,
+        agents_path: current_agents,
         catalog_path: catalog_path.read_bytes() if catalog_path.exists() else None,
     }
     try:
-        _atomic_write(config_path, new_config.encode("utf-8"))
-        _atomic_write(agents_path, new_agents.encode("utf-8"))
+        _apply_text(config_path, new_config)
+        _apply_text(agents_path, new_agents)
         if profile == "lite":
             assert catalog_bytes is not None
             _atomic_write(catalog_path, catalog_bytes)
