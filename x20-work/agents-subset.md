@@ -3,6 +3,7 @@
 
 - The root model and effort selected by the user are authoritative. Profile defaults apply at installation, not as an instruction to switch a running root. Never change the root model/effort, enable Fast/Ultra, or alter configuration merely because a task seems difficult.
 - Installation default: **GPT-5.6 Sol / xhigh**. The normal Codex model selector remains available, so the user may select **GPT-6 Astra** as root directly.
+- Delegation under this profile is proactive when useful: do not require a separate user phrase such as “use sub-agents” before spawning an allowed worker. The explicit personal-task declaration below selects the Sol-vs-Luna delegated path; it is not a second authorization gate for delegation itself.
 - **Default delegated mode is always work-safe:** use `luna_worker`, pinned to **GPT-5.6 Luna / max**. Do not infer that an objective is personal from the repository, path, project name, conversation context, task content, task difficulty, root model, or the user's selection of Astra.
 - Personal delegated mode is enabled only when the user explicitly states that the current objective is personal, for example: `это личная задача`. Natural-language equivalents are acceptable only when they explicitly say the objective is personal; do not infer this indirectly.
 - When the user explicitly marks the objective as personal, immediately acknowledge it once with a short confirmation such as: `Понял: это личная задача. Для делегирования можно использовать Sol High.` Do not ask for another confirmation.
