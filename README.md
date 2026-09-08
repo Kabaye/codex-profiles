@@ -56,7 +56,7 @@ Replace `x20-work` with `lite`, `x5`, or `x20` as needed. `lite` automatically c
 
 Unrelated configuration and unrelated roles such as a custom `sol-advisor.toml` are preserved. A modified/unknown file that collides with a repository-owned role or a modified legacy AGENTS section is a **stop for review**, not something the manager deletes heuristically.
 
-Every non-dry-run lifecycle operation backs up the affected `config.toml`, `AGENTS.md`, and lite catalog under `~/.codex/routing-rules/profile-backups/`; role migrations keep their own backups under `~/.codex/routing-rules/backups/`.
+The lifecycle intentionally creates **no persistent backups**. It keeps only an in-process snapshot for best-effort rollback if a write fails during the current operation; no `profile-backups` or role `backups` directories are created.
 
 After install/switch/remove, **fully restart Codex and start a new thread**. Old threads may retain old developer/context instructions.
 
