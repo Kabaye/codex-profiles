@@ -13,6 +13,15 @@ This matrix is the **chosen repository policy**, not an experimentally proven op
 
 `R` means the **current user-selected root at its current effort**. `L` = Luna Max. `S` = Sol High. Explicit role files pin both model and effort. Tiny tasks should not create a worker in any profile.
 
+All four profiles set:
+
+```toml
+[features.multi_agent_v2]
+multi_agent_mode_hint_text = ""
+```
+
+The empty configured hint is intentional. Current Codex can otherwise inject an effort-dependent `<multi_agent_mode>` developer message: ordinary non-Ultra reasoning may become explicit-request-only, while Ultra may receive built-in proactive guidance. These presets instead keep the delegation trigger under the applicable `AGENTS.md` policy so changing root effort does not silently change routing semantics. The profiles do **not** set `features.multi_agent_v2.enabled = true` merely to force a V2 backend; the override controls mode guidance only.
+
 For `lite`, the root selector is intentionally restricted to **Terra and Luna**. Terra Medium is the installation default. Sol 5.6 and GPT-6/Astra are absent from the profile and must not be used. Every delegated task is Luna Max.
 
 For `x20-work`, `L` is always the default delegated path. Personal mode is entered only when the user explicitly states that the current objective is personal, for example `это личная задача`. Codex acknowledges that once; then `S` is preferred for substantial delegated work for that objective and its direct follow-ups. A new unrelated objective resets to `L`. Repository context, paths, task content, difficulty, and selecting Astra do not activate personal mode.
@@ -38,7 +47,7 @@ For `x5`, `x20` and `x20-work`, **4 is a ceiling, not a target**. Normal routing
 | Release/deployment | Authorized runbook only; Terra/Luna | Authorized L operations, R acceptance | Authorized S operations, R acceptance | Authorized operations only; default L, explicit personal mode may use S. |
 | Extreme reasoning problem | Terra root; user may manually raise Terra effort | Current R; manual root choice | Astra root; user may manually raise to xhigh/max | User chooses root; no automatic root switch. |
 
-These are default assignments, not a requirement to delegate every task in a row. A dependent serial task can stay in `R` when handing it off would add more cost or context loss than it removes.
+These are default assignments, not a requirement to delegate every task in a row. A dependent serial task can stay in `R` when handing it off would add more cost or context loss than it removes. Conversely, the user should not need to add a second phrase such as “use agents” when the applicable profile itself says delegation is useful; the empty mode hint prevents Codex's built-in effort policy from silently imposing that extra gate.
 
 ## Why Sol High workers instead of Sol xhigh
 
