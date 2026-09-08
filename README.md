@@ -23,13 +23,44 @@ The other three profiles use the normal account/provider model catalog. The user
 
 For `x5`, `x20` and `x20-work`, the technical child cap is **4**, but normal routing should use zero to two. A third or fourth child is for genuinely independent workstreams with clear ownership and real parallel benefit, not for filling slots.
 
-## Install, migrate, remove
+## One profile lifecycle
 
-Read [installation and migration](docs/install.md) before choosing a profile. `lite` additionally requires its [profile-specific catalog step](lite/install-lite.md). Python **3.11+**, standard library only, is required for the role helper, catalog filter and validation. No package installation is performed by these scripts.
+Use **one command surface for every profile**. Installing a profile means switching the whole routing setup to that profile; do not manually stack profiles.
 
-The role helper installs native roles plus pinned `default`/`worker`/`explorer` compatibility aliases. It removes stale **owned** roles on a profile switch and refuses collisions or unreviewed edits. Config and AGENTS.md remain explicit, reviewable manual merges. The lite file retains its existing Russian communication/Git/workspace rules outside the routing markers.
+```powershell
+# Preview a switch
+python scripts/manage_profile.py install x20-work --dry-run
 
-Use [removal](docs/remove.md) to undo the active profile without deleting unrelated configuration or custom catalogs. The four profile-specific install/remove pages point to the same procedure, preventing drift.
+# Install or switch to a profile
+python scripts/manage_profile.py install x20-work
+
+# Show the active managed profile
+python scripts/manage_profile.py status
+
+# Preview complete removal
+python scripts/manage_profile.py remove --dry-run
+
+# Remove all repository-owned profile artifacts
+python scripts/manage_profile.py remove
+```
+
+Replace `x20-work` with `lite`, `x5`, or `x20` as needed. `lite` automatically captures `codex debug models` and builds the restricted Terra+Luna catalog; for offline/testing use `--models PATH_TO_CAPTURED_MODELS_JSON`.
+
+`install PROFILE` first removes/replaces older **repository-owned routing state** and then installs the destination profile. It manages:
+
+- routing-owned `config.toml` keys;
+- the managed `AGENTS.md` profile block, including exact legacy unmarked blocks when Git history is available;
+- native worker roles and generated `default` / `worker` / `explorer` aliases;
+- stale historical Luna/Sol/Astra worker files that exactly match versions shipped by this repository;
+- `models-lite.json` when entering or leaving `lite`.
+
+Unrelated configuration and unrelated roles such as a custom `sol-advisor.toml` are preserved. A modified/unknown file that collides with a repository-owned role or a modified legacy AGENTS section is a **stop for review**, not something the manager deletes heuristically.
+
+Every non-dry-run lifecycle operation backs up the affected `config.toml`, `AGENTS.md`, and lite catalog under `~/.codex/routing-rules/profile-backups/`; role migrations keep their own backups under `~/.codex/routing-rules/backups/`.
+
+After install/switch/remove, **fully restart Codex and start a new thread**. Old threads may retain old developer/context instructions.
+
+Detailed behavior: [installation and switching](docs/install.md), [removal](docs/remove.md).
 
 ## Policy, evidence and validation
 
@@ -41,8 +72,6 @@ Use [removal](docs/remove.md) to undo the active profile without deleting unrela
 python scripts/validate.py
 python -m unittest discover -s tests -v
 ```
-
-For `lite`, also validate the generated restricted catalog as shown in `lite/install-lite.md`.
 
 **Limits:** role pins and a filtered catalog are stronger than prompting, but this is not a security or spending firewall. Configuration precedence, separate Codex processes, unsupported clients, organizational policy, or a client that ignores the empty mode-hint override can change effective behavior. Verify the selector, effective empty multi-agent mode hint, context-management setting and actual child model/effort in native session/config metadata. If the expected restrictions cannot be established, do not treat the profile as successfully installed.
 
