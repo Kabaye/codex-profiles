@@ -36,8 +36,8 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         (self.home / "AGENTS.md").write_text("# My unrelated instructions\n", encoding="utf-8")
 
-        first = lifecycle.apply(self.home, "x20-work")
-        self.assertEqual(first["profile"], "x20-work")
+        first = lifecycle.apply(self.home, "work")
+        self.assertEqual(first["profile"], "work")
         self.assertNotIn("backup", first)
         config = tomllib.loads((self.home / "config.toml").read_text(encoding="utf-8"))
         self.assertEqual(config["model"], "gpt-5.6-sol")
@@ -51,8 +51,8 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertTrue(advisor.exists())
 
-        second = lifecycle.apply(self.home, "x20")
-        self.assertEqual(second["profile"], "x20")
+        second = lifecycle.apply(self.home, "private")
+        self.assertEqual(second["profile"], "private")
         self.assertNotIn("backup", second)
         config = tomllib.loads((self.home / "config.toml").read_text(encoding="utf-8"))
         self.assertEqual(config["model"], "gpt-6-astra")
@@ -63,13 +63,13 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertTrue(advisor.exists())
         self.assertEqual(
             {p.name for p in (self.home / "agents").glob("*.toml")},
-            set(roles.desired_roles("x20")) | {"sol-advisor.toml"},
+            set(roles.desired_roles("private")) | {"sol-advisor.toml"},
         )
         agents_text = (self.home / "AGENTS.md").read_text(encoding="utf-8")
         self.assertEqual(agents_text.count(lifecycle.BEGIN), 1)
         self.assertEqual(agents_text.count(lifecycle.END), 1)
-        self.assertIn("Agent routing — x20", agents_text)
-        self.assertNotIn("Agent routing — x20-work", agents_text)
+        self.assertIn("Agent routing — private", agents_text)
+        self.assertNotIn("Agent routing — work", agents_text)
         self.assertIn("# My unrelated instructions", agents_text)
 
         removed = lifecycle.apply(self.home, None)
@@ -91,8 +91,8 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             (self.home / "AGENTS.md").read_text(encoding="utf-8"),
             "# My unrelated instructions\n",
         )
-        self.assertFalse((self.home / "routing-rules" / "profile-backups").exists())
-        self.assertFalse((self.home / "routing-rules" / "backups").exists())
+        self.assertFalse((self.home / "profiles" / "profile-backups").exists())
+        self.assertFalse((self.home / "profiles" / "backups").exists())
 
     def test_empty_remove_does_not_create_empty_config_or_agents_files(self):
         removed = lifecycle.apply(self.home, None)
@@ -100,11 +100,12 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(removed["roles"], [])
         self.assertFalse((self.home / "config.toml").exists())
         self.assertFalse((self.home / "AGENTS.md").exists())
-        self.assertFalse((self.home / "routing-rules" / "profile-backups").exists())
-        self.assertFalse((self.home / "routing-rules" / "backups").exists())
+        self.assertFalse((self.home / "profiles" / "profile-backups").exists())
+        self.assertFalse((self.home / "profiles" / "backups").exists())
 
     def test_legacy_config_is_replaced_not_stacked(self):
-        legacy = '''model = "gpt-5.6-sol"
+        legacy = '''# codex-routing-rules: managed profile keys
+model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 model_catalog_json = "C:/Users/test/.codex/models.json"
 
@@ -131,7 +132,7 @@ consolidation_model = "gpt-5.6-luna"
 unrelated = "keep"
 '''
         home = Path("C:/Users/test/.codex")
-        result = lifecycle.build_config(legacy, "x20-work", home)
+        result = lifecycle.build_config(legacy, "work", home)
         parsed = tomllib.loads(result)
         self.assertEqual(parsed["model"], "gpt-5.6-sol")
         self.assertEqual(parsed["model_reasoning_effort"], "xhigh")
@@ -143,12 +144,31 @@ unrelated = "keep"
         self.assertEqual(parsed["features"]["multi_agent_v2"]["tool_namespace"], "keep")
         self.assertEqual(parsed["agents"]["unrelated"], "keep")
         self.assertEqual(parsed["memories"]["unrelated"], "keep")
+        self.assertNotIn("codex-routing-rules", result)
+
+    def test_legacy_agents_marker_is_replaced_by_canonical_profile_marker(self):
+        legacy = f'''# Keep this instruction
+
+{lifecycle.LEGACY_BEGIN}
+## Agent routing — x20-work
+
+- old profile text
+{lifecycle.LEGACY_END}
+'''
+        result = lifecycle.build_agents(legacy, "work")
+        self.assertIn("# Keep this instruction", result)
+        self.assertNotIn(lifecycle.LEGACY_BEGIN, result)
+        self.assertNotIn(lifecycle.LEGACY_END, result)
+        self.assertNotIn("Agent routing — x20-work", result)
+        self.assertEqual(result.count(lifecycle.BEGIN), 1)
+        self.assertEqual(result.count(lifecycle.END), 1)
+        self.assertIn("Agent routing — work", result)
 
     def test_unrelated_custom_catalog_is_not_deleted_as_legacy(self):
         with self.assertRaisesRegex(ValueError, "Unrelated model_catalog_json"):
             lifecycle.build_config(
                 'model_catalog_json = "D:/company/custom-models.json"\n',
-                "x20",
+                "private",
                 self.home,
             )
 

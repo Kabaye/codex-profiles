@@ -1,5 +1,5 @@
-<!-- codex-routing-rules:begin -->
-## Agent routing — x20-work
+<!-- codex-profiles:begin -->
+## Agent routing — work
 
 - The root model and effort selected by the user are authoritative. Profile defaults apply at installation, not as an instruction to switch a running root. Never change the root model/effort, enable Fast/Ultra, or alter configuration merely because a task seems difficult.
 - Installation default: **GPT-5.6 Sol / xhigh**. The normal Codex model selector remains available, so the user may select **GPT-6 Astra** as root directly.
@@ -24,4 +24,4 @@
 - Production writes, pushes, migrations and deployments require the user's existing authorization or an applicable approved runbook. These routing rules never grant permissions or weaken sandbox/approval policies.
 - The root inspects actual diffs and decisive acceptance evidence, reruns the highest-risk checks as appropriate, and reports unresolved gaps. Do not blindly repeat every passing command.
 
-<!-- codex-routing-rules:end -->
+<!-- codex-profiles:end -->

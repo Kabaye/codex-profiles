@@ -12,9 +12,9 @@ python scripts/manage_profile.py install PROFILE
 where `PROFILE` is one of:
 
 - `lite`
-- `x5`
-- `x20`
-- `x20-work`
+- `strict-common`
+- `private`
+- `work`
 
 The helper requires Python 3.11+ and uses only the standard library.
 
@@ -33,8 +33,8 @@ Desktop, CLI and IDE installations can use different homes. Do not assume they a
 For a separate home:
 
 ```powershell
-python scripts/manage_profile.py --home C:\path\to\.codex install x20-work --dry-run
-python scripts/manage_profile.py --home C:\path\to\.codex install x20-work
+python scripts/manage_profile.py --home C:\path\to\.codex install work --dry-run
+python scripts/manage_profile.py --home C:\path\to\.codex install work
 ```
 
 ## 2. Always preview first
@@ -42,7 +42,7 @@ python scripts/manage_profile.py --home C:\path\to\.codex install x20-work
 Example:
 
 ```powershell
-python scripts/manage_profile.py install x20-work --dry-run
+python scripts/manage_profile.py install work --dry-run
 ```
 
 The preview reports the profile, files and role filenames that would change.
@@ -54,25 +54,27 @@ If the preflight reports an unknown or modified collision, stop and review it. T
 Example:
 
 ```powershell
-python scripts/manage_profile.py install x20-work
+python scripts/manage_profile.py install work
 ```
 
-This is both the **install** and **switch** operation. There is no separate migration sequence required between `lite`, `x5`, `x20`, and `x20-work`.
+This is both the **install** and **switch** operation. There is no separate migration sequence required between `lite`, `strict-common`, `private`, and `work`.
+
+The active ownership manifest is stored at `~/.codex/profiles/roles-state.json`, and generated compatibility aliases use the `profile-*.toml` prefix. A valid prior-generation manifest, marker block, profile identifier or alias filename is normalized during the same transition. Those legacy identifiers are migration inputs only, never supported `install PROFILE` values. If current and legacy manifests both exist, the manager stops for review instead of guessing which state owns the files.
 
 The lifecycle performs these operations as one profile transition:
 
 ### `config.toml`
 
-It removes/replaces routing-owned keys from an older profile and installs the destination values while preserving unrelated keys in the same TOML tables.
+It removes/replaces profile-owned keys from an older profile and installs the destination values while preserving unrelated keys in the same TOML tables.
 
 Managed current keys include:
 
 - top-level `model` and `model_reasoning_effort`;
-- routing-owned `model_catalog_json` when entering/leaving `lite`;
+- profile-owned `model_catalog_json` when entering/leaving `lite`;
 - `[agents]` defaults and open-child cap;
 - `[features.multi_agent_v2] multi_agent_mode_hint_text`;
 - `[features.context_management] experimental_mode`;
-- routing-owned `[memories]` model selectors.
+- profile-owned `[memories]` model selectors.
 
 Known historical routing keys such as scalar `features.multi_agent`, scalar `features.multi_agent_v2`, old V2 `enabled`/thread-cap recipes, old worker defaults and old repository model catalogs are cleaned during migration.
 
@@ -105,9 +107,9 @@ If an old unmarked block was manually edited and no longer exactly matches repos
 All current profile instructions are fully profile-owned inside:
 
 ```text
-<!-- codex-routing-rules:begin -->
+<!-- codex-profiles:begin -->
 ...
-<!-- codex-routing-rules:end -->
+<!-- codex-profiles:end -->
 ```
 
 That includes the full `lite` instruction set, so switching away from `lite` no longer leaves its communication/workspace rules behind.
@@ -121,9 +123,9 @@ It removes/replaces repository-owned:
 - `luna-worker.toml`;
 - `sol-worker.toml`;
 - historical `astra-worker.toml`;
-- generated `routing-default.toml`;
-- generated `routing-worker.toml`;
-- generated `routing-explorer.toml`.
+- generated `profile-default.toml`;
+- generated `profile-worker.toml`;
+- generated `profile-explorer.toml`.
 
 Exact historical worker blobs shipped by this repository can be migrated automatically. Modified lookalikes are not silently deleted.
 
@@ -145,7 +147,7 @@ For offline/testing installation, provide previously captured metadata:
 python scripts/manage_profile.py install lite --models PATH_TO_CAPTURED_MODELS_JSON
 ```
 
-Switching away from `lite` removes the repository-specific `models-lite.json` and its routing-owned config reference.
+Switching away from `lite` removes the repository-specific `models-lite.json` and its profile-owned config reference.
 
 ## 4. No persistent backups
 
@@ -178,8 +180,8 @@ Existing threads may retain old developer/context instructions, so they are not 
 | Profile | Default root | Delegated model | Open child cap | Catalog |
 |---|---|---|---:|---|
 | `lite` | Terra medium | Luna max | 1 | Terra + Luna only |
-| `x5` | Sol xhigh | Luna max | 4 | Normal account catalog |
-| `x20` | Astra high | Sol high | 4 | Normal account catalog |
-| `x20-work` | Sol xhigh | Luna max default; Sol high in explicit personal mode | 4 | Normal account catalog |
+| `strict-common` | Sol xhigh | Luna max | 4 | Normal account catalog |
+| `private` | Astra high | Sol high | 4 | Normal account catalog |
+| `work` | Sol xhigh | Luna max default; Sol high in explicit personal mode | 4 | Normal account catalog |
 
 If the effective local configuration, account entitlement, organizational policy or client behavior prevents these expectations from being verified, treat the installation as incomplete rather than silently substituting another model or routing policy.

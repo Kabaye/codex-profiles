@@ -1,6 +1,6 @@
 # Install `lite`
 
-Use the shared profile lifecycle. Do not manually stack or merge this profile over another routing profile.
+Use the shared profile lifecycle. Do not manually stack or merge this profile over another Codex profile.
 
 ```powershell
 python scripts/manage_profile.py install lite --dry-run

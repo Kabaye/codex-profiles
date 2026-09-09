@@ -7,17 +7,19 @@ import json
 from pathlib import Path
 import tomllib
 
+import manage_roles
+
 ROOT = Path(__file__).resolve().parents[1]
-BEGIN = "<!-- codex-routing-rules:begin -->"
-END = "<!-- codex-routing-rules:end -->"
+BEGIN = "<!-- codex-profiles:begin -->"
+END = "<!-- codex-profiles:end -->"
 EXPECTED = {
     "lite": ("gpt-5.6-terra", "medium", "gpt-5.6-luna", "max", 1,
              {"luna_worker": ("gpt-5.6-luna", "max")}),
-    "x5": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 4,
+    "strict-common": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 4,
            {"luna_worker": ("gpt-5.6-luna", "max")}),
-    "x20": ("gpt-6-astra", "high", "gpt-5.6-sol", "high", 4,
+    "private": ("gpt-6-astra", "high", "gpt-5.6-sol", "high", 4,
             {"sol_worker": ("gpt-5.6-sol", "high")}),
-    "x20-work": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 4,
+    "work": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 4,
                  {"luna_worker": ("gpt-5.6-luna", "max"), "sol_worker": ("gpt-5.6-sol", "high")}),
 }
 LITE_MODELS = {"gpt-5.6-terra", "gpt-5.6-luna"}
@@ -25,6 +27,7 @@ EXPECTED_FEATURES = {
     "multi_agent_v2": {"multi_agent_mode_hint_text": ""},
     "context_management": {"experimental_mode": True},
 }
+CANONICAL_ALIASES = {f"profile-{name}.toml" for name in manage_roles.ALIASES}
 
 
 def _catalog_errors(catalog: dict, required: set[tuple[str, str]], exact_slugs: set[str] | None = None) -> list[str]:
@@ -63,6 +66,9 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
             errors.append(message)
 
     check((root / "scripts" / "manage_profile.py").is_file(), "unified profile lifecycle manager missing")
+    check(set(EXPECTED) == set(manage_roles.PROFILES), "public profile registry drift")
+    for legacy_profile in manage_roles.LEGACY_PROFILES:
+        check(not (root / legacy_profile).exists(), f"legacy public profile directory remains: {legacy_profile}")
 
     for p, (model, effort, child, child_eff, cap, roles) in EXPECTED.items():
         config = tomllib.loads((root / p / "config.toml").read_text(encoding="utf-8"))
@@ -74,12 +80,12 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
         else:
             check(catalog_path is None, f"{p}: custom catalog hides root choices")
         check(config.get("features", {}) == EXPECTED_FEATURES,
-              f"{p}: routing-managed feature drift (empty multi-agent mode hint + experimental context management required)")
+              f"{p}: profile-managed feature drift (empty multi-agent mode hint + experimental context management required)")
         agents = config.get("agents", {})
         check(agents == {"enabled": True, "max_concurrent_threads_per_session": cap,
                          "default_subagent_model": child, "default_subagent_reasoning_effort": child_eff},
               f"{p}: agent defaults/cap drift")
-        check(config.get("memories", {}) == ({} if p == "x20" else {
+        check(config.get("memories", {}) == ({} if p == "private" else {
             "extract_model": "gpt-5.6-luna", "consolidation_model": "gpt-5.6-luna"}),
               f"{p}: memory routing drift")
         if profile is None or profile == p:
@@ -96,6 +102,10 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
             if profile is None or profile == p:
                 required.add(actual[name])
         check(actual == roles, f"{p}: unexpected/missing worker or effort")
+        generated = set(manage_roles.desired_roles(p, root))
+        check(CANONICAL_ALIASES.issubset(generated), f"{p}: canonical compatibility aliases missing")
+        check(not any(name.startswith("routing-") for name in generated),
+              f"{p}: legacy alias exposed as a new install target")
 
         text = (root / p / "agents-subset.md").read_text(encoding="utf-8")
         stripped = text.strip()

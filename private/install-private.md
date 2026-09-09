@@ -1,10 +1,10 @@
-# Install `x20`
+# Install `private`
 
-Use the shared profile lifecycle. Installing `x20` automatically replaces older repository-owned routing state; do not manually remove another profile first.
+Use the shared profile lifecycle. Installing `private` automatically replaces older repository-owned profile state; do not manually remove another profile first.
 
 ```powershell
-python scripts/manage_profile.py install x20 --dry-run
-python scripts/manage_profile.py install x20
+python scripts/manage_profile.py install private --dry-run
+python scripts/manage_profile.py install private
 ```
 
 Expected profile state:

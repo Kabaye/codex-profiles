@@ -5,6 +5,7 @@ import itertools
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -13,6 +14,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import manage_roles as roles
+import manage_profile as lifecycle
 import validate as presets
 
 
@@ -22,14 +24,46 @@ class ProfileTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.home = Path(self.tmp.name) / "codex-home"
 
-    def install(self, profile="x20", **kwargs):
+    def install(self, profile="private", **kwargs):
         return roles.manage(self.home, profile, **kwargs)
 
     def snapshot(self):
         return {p.name: p.read_bytes() for p in (self.home / "agents").glob("*.toml")}
 
+    def seed_legacy_state(self, home: Path, legacy_profile: str) -> str:
+        canonical = roles.LEGACY_PROFILES[legacy_profile]
+        agents = home / "agents"
+        agents.mkdir(parents=True)
+        owned = {}
+        for filename, data in roles.desired_roles(canonical).items():
+            old_name = filename.replace("profile-", "routing-", 1)
+            (agents / old_name).write_bytes(data)
+            owned[old_name] = roles.digest(data)
+        control = home / "routing-rules"
+        control.mkdir()
+        (control / "roles-state.json").write_text(
+            json.dumps({"version": 1, "profile": legacy_profile, "owned": owned}),
+            encoding="utf-8",
+        )
+        return canonical
+
     def test_static_profiles(self):
         self.assertEqual(presets.validate(), [])
+
+    def test_only_canonical_profiles_and_aliases_are_install_targets(self):
+        self.assertEqual(set(roles.PROFILES), {"lite", "strict-common", "private", "work"})
+        for profile in roles.PROFILES:
+            filenames = set(roles.desired_roles(profile))
+            self.assertFalse(any(name.startswith("routing-") for name in filenames))
+            self.assertTrue({
+                "profile-default.toml",
+                "profile-worker.toml",
+                "profile-explorer.toml",
+            }.issubset(filenames))
+        for legacy_profile in roles.LEGACY_PROFILES:
+            with self.subTest(legacy_profile=legacy_profile):
+                with self.assertRaisesRegex(ValueError, "Unknown profile"):
+                    roles.desired_roles(legacy_profile)
 
     def test_profiles_suppress_builtin_multi_agent_mode_without_forcing_v2(self):
         for profile in roles.PROFILES:
@@ -48,7 +82,7 @@ class ProfileTests(unittest.TestCase):
             root,
             ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
         )
-        target = root / "x20-work" / "config.toml"
+        target = root / "work" / "config.toml"
         text = target.read_text(encoding="utf-8")
         target.write_text(
             text.replace('multi_agent_mode_hint_text = ""',
@@ -56,7 +90,7 @@ class ProfileTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertTrue(any(
-            error.startswith("x20-work: routing-managed feature drift")
+            error.startswith("work: profile-managed feature drift")
             for error in presets.validate(root=root)
         ))
 
@@ -76,8 +110,85 @@ class ProfileTests(unittest.TestCase):
                 for filename, data in roles.desired_roles(profile).items():
                     role = tomllib.loads(data.decode())
                     self.assertFalse(role["agents"]["enabled"])
-                    if filename.startswith("routing-"):
+                    if filename.startswith("profile-"):
                         self.assertEqual((role["model"], role["model_reasoning_effort"]), expected[2:4])
+
+    def test_all_legacy_profile_states_migrate_to_canonical_state_and_aliases(self):
+        for legacy_profile in roles.LEGACY_PROFILES:
+            with self.subTest(legacy_profile=legacy_profile), tempfile.TemporaryDirectory() as tmp:
+                home = Path(tmp) / "codex-home"
+                canonical = self.seed_legacy_state(home, legacy_profile)
+                result = roles.manage(home, canonical)
+                self.assertTrue(result["migrated_legacy_state"])
+                self.assertEqual(
+                    {p.name: p.read_bytes() for p in (home / "agents").glob("*.toml")},
+                    roles.desired_roles(canonical),
+                )
+                state = json.loads((home / "profiles" / "roles-state.json").read_text())
+                self.assertEqual(state["profile"], canonical)
+                self.assertFalse((home / "routing-rules").exists())
+
+    def test_legacy_profile_state_can_be_removed_without_reinstall(self):
+        canonical = self.seed_legacy_state(self.home, "x20-work")
+        self.assertEqual(canonical, "work")
+        result = roles.manage(self.home, None)
+        self.assertTrue(result["migrated_legacy_state"])
+        self.assertEqual(self.snapshot(), {})
+        self.assertFalse((self.home / "routing-rules").exists())
+        self.assertFalse((self.home / "profiles").exists())
+
+    def test_static_alias_allowlist_covers_and_adopts_every_historical_worker_blob(self):
+        objects = subprocess.run(
+            ["git", "-C", str(roles.ROOT), "rev-list", "--objects", "--all"],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        ).stdout.splitlines()
+        historical_workers = {
+            line.split(" ", 1)[0]
+            for line in objects
+            if " " in line
+            and line.split(" ", 1)[1].replace("\\", "/").endswith(
+                ("/agents/luna-worker.toml", "/agents/sol-worker.toml", "/agents/astra-worker.toml")
+            )
+        }
+        self.assertTrue(historical_workers)
+        known_worker_blobs = set().union(
+            *(roles.LEGACY.get(filename, set()) for filename in roles.ROLE_FILES),
+            *(lifecycle.KNOWN_ROLE_BLOBS.get(filename, set()) for filename in roles.ROLE_FILES),
+        )
+        self.assertLessEqual(historical_workers, known_worker_blobs)
+        for worker_blob in historical_workers:
+            base = subprocess.run(
+                ["git", "-C", str(roles.ROOT), "cat-file", "blob", worker_blob],
+                check=True,
+                capture_output=True,
+            ).stdout
+            for alias_name in roles.ALIASES:
+                with self.subTest(worker_blob=worker_blob, alias=alias_name), tempfile.TemporaryDirectory() as tmp:
+                    alias = roles.alias_bytes(base, alias_name)
+                    legacy_name = f"routing-{alias_name}.toml"
+                    self.assertIn(
+                        roles.git_blob(alias),
+                        roles.HISTORICAL_ALIAS_BLOBS[legacy_name],
+                    )
+                    home = Path(tmp) / "codex-home"
+                    agents = home / "agents"
+                    agents.mkdir(parents=True)
+                    target = agents / legacy_name
+                    target.write_bytes(alias)
+                    result = roles.manage(home, None, adopt_legacy=True)
+                    self.assertIn(target.name, result["changed_roles"])
+                    self.assertFalse(target.exists())
+
+    def test_current_and_legacy_manifests_together_stop_for_review(self):
+        self.seed_legacy_state(self.home, "x20")
+        current = self.home / "profiles"
+        current.mkdir()
+        (current / "roles-state.json").write_text("{}", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Both current and legacy"):
+            self.install()
 
     def test_install_idempotent(self):
         self.install()
@@ -93,10 +204,10 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(roles.manage(self.home, None)["changed_roles"], [])
 
     def test_role_lifecycle_creates_no_backup_directories(self):
-        self.install("x20-work")
-        self.install("x20")
+        self.install("work")
+        self.install("private")
         roles.manage(self.home, None)
-        self.assertFalse((self.home / "routing-rules" / "backups").exists())
+        self.assertFalse((self.home / "profiles" / "backups").exists())
 
     def test_dry_run_does_not_create_home(self):
         self.install(dry_run=True)
@@ -143,23 +254,23 @@ class ProfileTests(unittest.TestCase):
             self.install("lite")
 
     def test_unsafe_manifest_filename_refused(self):
-        control = self.home / "routing-rules"
+        control = self.home / "profiles"
         control.mkdir(parents=True)
         (control / "roles-state.json").write_text(json.dumps({
-            "version": 1, "profile": "x20", "owned": {"../config.toml": "0" * 64}}))
+            "version": 1, "profile": "private", "owned": {"../config.toml": "0" * 64}}))
         with self.assertRaisesRegex(ValueError, "Unsafe"):
             self.install()
 
     def test_bad_state_types_refused(self):
-        control = self.home / "routing-rules"
+        control = self.home / "profiles"
         control.mkdir(parents=True)
-        for state in ([], {}, {"version": 1, "profile": "x20", "owned": []}):
+        for state in ([], {}, {"version": 1, "profile": "private", "owned": []}):
             (control / "roles-state.json").write_text(json.dumps(state))
             with self.assertRaises(ValueError):
                 self.install()
 
     def test_active_lock_refused(self):
-        (self.home / "routing-rules" / "roles.lock").mkdir(parents=True)
+        (self.home / "profiles" / "roles.lock").mkdir(parents=True)
         with self.assertRaisesRegex(ValueError, "active"):
             self.install()
 
@@ -205,10 +316,17 @@ class ProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "collision"):
             self.install("lite", adopt_legacy=True)
 
+    def test_modified_legacy_alias_is_not_adopted(self):
+        (self.home / "agents").mkdir(parents=True)
+        data = roles.desired_roles("private")["profile-default.toml"] + b"# edited\n"
+        (self.home / "agents" / "routing-default.toml").write_bytes(data)
+        with self.assertRaisesRegex(ValueError, "collision"):
+            self.install("lite", adopt_legacy=True)
+
     def test_ordinary_write_failure_rolls_back(self):
-        self.install("x20")
+        self.install("private")
         before = self.snapshot()
-        state = (self.home / "routing-rules" / "roles-state.json").read_bytes()
+        state = (self.home / "profiles" / "roles-state.json").read_bytes()
         real_write = roles.atomic_write
         calls = 0
 
@@ -223,9 +341,9 @@ class ProfileTests(unittest.TestCase):
             with self.assertRaisesRegex(OSError, "injected"):
                 self.install("lite")
         self.assertEqual(before, self.snapshot())
-        self.assertEqual(state, (self.home / "routing-rules" / "roles-state.json").read_bytes())
-        self.assertFalse((self.home / "routing-rules" / "roles.lock").exists())
-        self.assertFalse((self.home / "routing-rules" / "backups").exists())
+        self.assertEqual(state, (self.home / "profiles" / "roles-state.json").read_bytes())
+        self.assertFalse((self.home / "profiles" / "roles.lock").exists())
+        self.assertFalse((self.home / "profiles" / "backups").exists())
 
     def test_synthetic_model_metadata_supported_and_missing_effort(self):
         catalog = {"models": [
@@ -249,7 +367,7 @@ class ProfileTests(unittest.TestCase):
             {"slug": "gpt-5.6-sol", "supported_reasoning_levels": [{"effort": "high"}]}
         ]}
         self.assertTrue(presets.validate_lite_catalog(with_sol))
-        self.assertTrue(presets.validate(catalog=catalog, profile="x20"))
+        self.assertTrue(presets.validate(catalog=catalog, profile="private"))
 
     def test_malformed_metadata_rejected(self):
         for catalog in ({}, {"models": [{}]}, {"models": "not a list"}, []):

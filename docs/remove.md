@@ -18,7 +18,7 @@ python scripts/manage_profile.py --home C:\path\to\.codex remove --dry-run
 
 The preview shows the repository-owned files/roles that would change.
 
-## Remove the routing profile
+## Remove the Codex profile
 
 ```powershell
 python scripts/manage_profile.py remove
@@ -28,16 +28,17 @@ This removes repository-owned routing state from the selected Codex home in one 
 
 It cleans:
 
-- routing-owned `model` / `model_reasoning_effort` values;
-- routing-owned `model_catalog_json` from `lite` or historical repository catalogs;
-- routing-owned `[agents]` defaults/caps;
+- profile-owned `model` / `model_reasoning_effort` values;
+- profile-owned `model_catalog_json` from `lite` or historical repository catalogs;
+- profile-owned `[agents]` defaults/caps;
 - the empty `[features.multi_agent_v2] multi_agent_mode_hint_text` override;
 - `[features.context_management] experimental_mode` installed by the profiles;
-- routing-owned memory model selectors;
+- profile-owned memory model selectors;
 - the marked `AGENTS.md` profile block;
 - exact historical unmarked routing blocks when they can be identified from repository Git history;
 - all managed worker/compatibility role files;
 - exact known legacy Luna/Sol/Astra worker files;
+- the profile ownership manifest, including a valid prior-generation manifest after its owned files are verified;
 - the repository-specific `models-lite.json` file.
 
 Unrelated settings and unrelated role files are preserved.
@@ -55,6 +56,8 @@ If an old unmarked `AGENTS.md` routing section was manually edited, the manager 
 
 Likewise, a modified role file with a repository-owned filename is not deleted silently.
 
+If both current and prior-generation ownership manifests exist, removal stops for review. This prevents an ambiguous manifest from claiming or deleting another manifest's files.
+
 ## No persistent backups
 
 Removal creates **no backup files or backup directories**.
@@ -68,7 +71,7 @@ Use `--dry-run` when you want to inspect exactly what will be removed before run
 To change profile, do **not** run a separate manual removal first. Simply run:
 
 ```powershell
-python scripts/manage_profile.py install x20
+python scripts/manage_profile.py install private
 ```
 
 or another destination profile.

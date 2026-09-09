@@ -17,5 +17,5 @@ multi_agent_mode_hint_text = ""
 [features.context_management]
 experimental_mode = true
 
-# Retain Codex/provider memory defaults. Remove only old routing-profile
+# Retain Codex/provider memory defaults. Remove only old profile-managed
 # extract_model/consolidation_model overrides; preserve unrelated memory policy.

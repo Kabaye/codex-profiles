@@ -1,10 +1,10 @@
-# Install `x5`
+# Install `strict-common`
 
-Use the shared profile lifecycle. Installing `x5` automatically replaces older repository-owned routing state; do not manually remove another profile first.
+Use the shared profile lifecycle. Installing `strict-common` automatically replaces older repository-owned profile state; do not manually remove another profile first.
 
 ```powershell
-python scripts/manage_profile.py install x5 --dry-run
-python scripts/manage_profile.py install x5
+python scripts/manage_profile.py install strict-common --dry-run
+python scripts/manage_profile.py install strict-common
 ```
 
 Expected profile state:

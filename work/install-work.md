@@ -1,10 +1,10 @@
-# Install `x20-work`
+# Install `work`
 
-Use the shared profile lifecycle. Installing `x20-work` automatically replaces older repository-owned routing state; do not manually remove another profile first.
+Use the shared profile lifecycle. Installing `work` automatically replaces older repository-owned profile state; do not manually remove another profile first.
 
 ```powershell
-python scripts/manage_profile.py install x20-work --dry-run
-python scripts/manage_profile.py install x20-work
+python scripts/manage_profile.py install work --dry-run
+python scripts/manage_profile.py install work
 ```
 
 Expected profile state:

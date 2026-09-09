@@ -7,9 +7,9 @@ This matrix is the **chosen repository policy**, not an experimentally proven op
 | Profile | Installation root | Visible models | Worker roles | Open children |
 |---|---|---|---|---:|
 | lite | Terra medium | Terra + Luna only | Luna Max only | 1 |
-| x5 | Sol xhigh | Normal catalog | Luna Max only | 4 |
-| x20 | Astra high | Normal catalog | Sol high only | 4 |
-| x20-work | Sol xhigh; manual Astra root available | Normal catalog | Luna Max by default; Sol high after explicit personal-task declaration | 4 |
+| strict-common | Sol xhigh | Normal catalog | Luna Max only | 4 |
+| private | Astra high | Normal catalog | Sol high only | 4 |
+| work | Sol xhigh; manual Astra root available | Normal catalog | Luna Max by default; Sol high after explicit personal-task declaration | 4 |
 
 `R` means the **current user-selected root at its current effort**. `L` = Luna Max. `S` = Sol High. Explicit role files pin both model and effort. Tiny tasks should not create a worker in any profile.
 
@@ -24,13 +24,13 @@ The empty configured hint is intentional. Current Codex can otherwise inject an 
 
 For `lite`, the root selector is intentionally restricted to **Terra and Luna**. Terra Medium is the installation default. Sol 5.6 and GPT-6/Astra are absent from the profile and must not be used. Every delegated task is Luna Max.
 
-For `x20-work`, `L` is always the default delegated path. Personal mode is entered only when the user explicitly states that the current objective is personal, for example `это личная задача`. Codex acknowledges that once; then `S` is preferred for substantial delegated work for that objective and its direct follow-ups. A new unrelated objective resets to `L`. Repository context, paths, task content, difficulty, and selecting Astra do not activate personal mode.
+For `work`, `L` is always the default delegated path. Personal mode is entered only when the user explicitly states that the current objective is personal, for example `это личная задача`. Codex acknowledges that once; then `S` is preferred for substantial delegated work for that objective and its direct follow-ups. A new unrelated objective resets to `L`. Repository context, paths, task content, difficulty, and selecting Astra do not activate personal mode.
 
-For `x5`, `x20` and `x20-work`, **4 is a ceiling, not a target**. Normal routing uses zero to two children. A third or fourth child is justified only for genuinely independent workstreams with clear ownership and real parallel value.
+For `strict-common`, `private` and `work`, **4 is a ceiling, not a target**. Normal routing uses zero to two children. A third or fourth child is justified only for genuinely independent workstreams with clear ownership and real parallel value.
 
 ## Decision matrix
 
-| Task | lite | x5 | x20 | x20-work |
+| Task | lite | strict-common | private | work |
 |---|---|---|---|---|
 | Simple question | R (normally Terra Medium) | R | R | R |
 | Tiny edit | R | R | R | R |
@@ -53,7 +53,7 @@ These are default assignments, not a requirement to delegate every task in a row
 
 Workers receive **bounded, well-scoped assignments**: implementation, repository exploration, ordinary debugging, tests, logs, or tool-heavy execution. They are not supposed to redo the root's architecture and decomposition. For that shape of work, High is the default because it preserves strong reasoning while avoiding the extra latency/usage of xhigh on every delegated task.
 
-Use xhigh at the **root** when the whole objective needs deeper reasoning. In `x20`, difficult reasoning stays with Astra High and the user can manually raise the Astra root to xhigh/max. In `x20-work`, Sol xhigh is already the installation root, so hard reasoning can stay there while Sol High workers execute bounded pieces. This keeps role separation clear: stronger root reasoning, efficient strong workers.
+Use xhigh at the **root** when the whole objective needs deeper reasoning. In `private`, difficult reasoning stays with Astra High and the user can manually raise the Astra root to xhigh/max. In `work`, Sol xhigh is already the installation root, so hard reasoning can stay there while Sol High workers execute bounded pieces. This keeps role separation clear: stronger root reasoning, efficient strong workers.
 
 This is a routing policy, not a claim that Sol xhigh can never outperform High. If repeated real tasks show a bounded worker category that materially benefits from xhigh, add evidence before creating another permanent role.
 
@@ -61,7 +61,7 @@ This is a routing policy, not a claim that Sol xhigh can never outperform High. 
 
 Terra Medium is both the bundled 0.153.4 default for Terra and the chosen `lite` startup setting. `lite` preserves Terra's real supported reasoning levels in its filtered catalog, so the user may manually raise Terra effort for an unusually hard task without gaining access to Sol or Astra.
 
-`x5` and `x20-work` use Sol xhigh as their installation root. `x20` uses Astra High as its quality-first default. Astra xhigh/max is a manual escalation for unusually difficult sessions; routing never raises the active root effort automatically.
+`strict-common` and `work` use Sol xhigh as their installation root. `private` uses Astra High as its quality-first default. Astra xhigh/max is a manual escalation for unusually difficult sessions; routing never raises the active root effort automatically.
 
 No profile automatically creates Max/xhigh workers.
 
@@ -71,8 +71,8 @@ Use a named native role and explicit `fork_turns = "none"`, with a self-containe
 
 In `lite`, the filtered catalog is part of the usage policy: Terra handles the root task and Luna handles all delegated execution. There is no hidden escalation path to Sol or Astra.
 
-In `x20`, Astra High owns the hard reasoning path and Sol High owns delegated execution. There is no Astra child role. Avoid creating multiple Sol workers for dependent phases of one workstream; reuse the same owner through its fix/test loop.
+In `private`, Astra High owns the hard reasoning path and Sol High owns delegated execution. There is no Astra child role. Avoid creating multiple Sol workers for dependent phases of one workstream; reuse the same owner through its fix/test loop.
 
-In `x20-work`, do not bounce the same personal workstream between Luna and Sol after the explicit personal declaration; Sol owns the quality-critical delegated path until that objective ends. A new unrelated objective resets to Luna-first unless the user explicitly marks it personal too.
+In `work`, do not bounce the same personal workstream between Luna and Sol after the explicit personal declaration; Sol owns the quality-critical delegated path until that objective ends. A new unrelated objective resets to Luna-first unless the user explicitly marks it personal too.
 
 API prices and benchmark dollar equivalents are **not subscription quota multipliers**. Exact relative quota consumption is not established here. Measure accepted completed work, retries, user corrections, elapsed time and observed usage rather than assuming a universal multiplier.
