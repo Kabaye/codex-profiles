@@ -2,9 +2,9 @@
 
 ## Static test status
 
-The repository's Python tests and validator now cover both routing policy and the **unified profile lifecycle**: canonical profile/alias naming, profile switching, config replacement, AGENTS replacement, role pins, exact-legacy role removal, prior-manifest migration, ambiguous-manifest refusal, preservation of unrelated state, no persistent backups, nested-agent disabling, collision handling, in-process rollback, model metadata, catalog rules, the required empty Multi-Agent V2 mode hint and experimental context management.
+The repository's Python tests and validator cover both routing policy and the **unified profile lifecycle**: canonical profile/alias naming, profile switching, config replacement, AGENTS replacement, role pins, manifest validation, preservation of unrelated state, no persistent backups, nested-agent disabling, collision handling, in-process rollback, model metadata, catalog rules, the required empty Multi-Agent V2 mode hint and experimental context management.
 
-On 2026-09-09, the current revision passed the static validator and all 40 synthetic lifecycle tests on disposable Codex homes:
+On 2026-09-09, the current revision passed the static validator and all 31 synthetic lifecycle tests on disposable Codex homes:
 
 ```text
 python scripts/validate.py
@@ -15,23 +15,22 @@ python -m unittest discover -s tests -v
 
 | Failure case | Design response | Boundary |
 |---|---|---|
-| Installing a new profile leaves old routing rules in `AGENTS.md` | `manage_profile.py install PROFILE` removes the existing marked block and exact historical unmarked blocks before installing exactly one destination block | A manually modified old unmarked block stops for review rather than being deleted heuristically |
-| Installing a new profile leaves old workers/aliases | Unified lifecycle uses ownership synchronization plus exact legacy adoption; historical Luna/Sol/Astra workers and generated compatibility aliases are replaced/removed | Unknown or modified collisions stop for review |
-| A previous repository install becomes unreadable after the public rename | Legacy manifests/profile identifiers/markers/aliases are accepted only as migration inputs and rewritten to canonical `profiles` / `profile-*` ownership | Concurrent current and legacy manifests stop for review |
-| Switching from `lite` leaves its non-routing communication/workspace rules | The complete current `lite` instruction file is now inside the managed profile markers | Very old manually modified lite text may require one manual reconciliation |
+| Switching profiles leaves the current profile block in `AGENTS.md` | `manage_profile.py install PROFILE` replaces the existing `codex-profiles` block with exactly one destination block | Unmarked user-authored instructions remain outside lifecycle ownership |
+| Switching profiles leaves the current workers/aliases | The ownership manifest drives exact role synchronization to the destination worker and generated `profile-*` aliases | Unknown or modified collisions stop for review |
+| Switching from `lite` leaves its non-routing communication/workspace rules | The complete `lite` instruction file is inside the managed profile markers | Unmarked user-authored instructions remain outside lifecycle ownership |
 | Switching profiles leaves old config values | Unified lifecycle removes/replaces profile-owned model, agent, memory, context and Multi-Agent V2 keys before applying the destination fragment | Unrelated custom `model_catalog_json` is not deleted silently; conflicting custom catalogs stop for review |
 | Switching away from `lite` leaves the restricted catalog active | Lifecycle removes the profile-owned catalog reference and repository-specific `models-lite.json` | Effective higher-priority config still needs live inspection |
 | Lifecycle creates unwanted backups | Profile and role managers create no persistent backup files/directories; tests assert `profile-backups` and `backups` are absent | Rollback is best-effort and only uses bytes held in the current process |
-| Unrelated native roles are destroyed during cleanup | Only owned/reserved exact-legacy artifacts are migrated; unrelated roles such as `sol-advisor.toml` remain | A custom role deliberately using a reserved profile role name is a collision and stops |
+| Unrelated native roles are destroyed during cleanup | Only manifest-owned files are removed; unrelated roles such as `sol-advisor.toml` remain | A custom role deliberately using a reserved profile role name is a collision and stops |
 | Codex injects an effort-dependent `<multi_agent_mode>` that blocks or changes profile delegation | Every profile requires `features.multi_agent_v2.multi_agent_mode_hint_text = ""`; validator/tests reject missing or non-empty hints and reject profile-owned `enabled` forcing | Effective config precedence and fresh-thread runtime behavior must still be checked |
 | Experimental context management is missing in one profile | Validator requires `features.context_management.experimental_mode = true` in all four configs | Effective local config precedence must still be checked |
 | lite still exposes Sol or Astra | `models-lite.json` is built from real metadata and validated to contain exactly Terra + Luna | Configuration precedence must be checked live |
 | lite starts on Luna or another root | Config pins Terra Medium as the initial root | User can manually select Luna or another Terra effort inside the restricted catalog |
-| lite delegates to Terra/Sol/Astra | Native/default compatibility roles remain pinned to Luna Max; routing forbids other child models | Verify actual child metadata in a live thread |
+| lite delegates to Terra/Sol/Astra | Native and generated alias roles remain pinned to Luna Max; routing forbids other child models | Verify actual child metadata in a live thread |
 | Worker model pin keeps an incompatible inherited effort | Every native role pins both model and effort | Backend/account acceptance needs live verification |
 | Full-history spawn silently inherits root | Omitted/`all` forks are forbidden; named role required | Behavioral rule, not a tool-schema restriction |
 | private burns xhigh/max on trivial work | Astra High is the default; xhigh/max remain manual root choices | User may manually choose a higher effort |
-| private recreates an Astra child | Only the Sol High role is installed in private; exact legacy Astra worker is removable by lifecycle migration | Verify stale role cleanup on a real migrated home |
+| private creates an Astra child | Only the Sol High role is part of the private profile | Verify the installed role set on a disposable home |
 | work guesses that a task is personal | Personal mode requires an explicit user declaration | Behavioral rule; verify live |
 | work ignores `это личная задача` | Rules require one acknowledgement and prefer Sol High for substantial delegated work | Requires live behavior verification |
 | A new unrelated objective accidentally stays personal | Personal mode is scoped to the current objective/direct follow-ups | Objective boundaries are behavioral |
@@ -51,7 +50,7 @@ python scripts/manage_profile.py remove
 python scripts/manage_profile.py status
 ```
 
-Before the first install, add one unrelated test role and unrelated TOML/AGENTS text. After the switch and removal, confirm those unrelated values remain while the old profile's managed rules/roles do not. Also confirm no `~/.codex/profiles/profile-backups/` or `~/.codex/profiles/backups/` directory was created.
+Before the first install, add one unrelated test role and unrelated TOML/AGENTS text. After the switch and removal, confirm those unrelated values remain while the previously active profile's managed rules/roles do not. Also confirm no `~/.codex/profiles/profile-backups/` or `~/.codex/profiles/backups/` directory was created.
 
 The repository's synthetic test `tests/test_manage_profile.py` covers this exact lifecycle without touching the real Codex home.
 

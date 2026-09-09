@@ -27,7 +27,7 @@ EXPECTED_FEATURES = {
     "multi_agent_v2": {"multi_agent_mode_hint_text": ""},
     "context_management": {"experimental_mode": True},
 }
-CANONICAL_ALIASES = {f"profile-{name}.toml" for name in manage_roles.ALIASES}
+PROFILE_ALIASES = {f"profile-{name}.toml" for name in manage_roles.ALIASES}
 
 
 def _catalog_errors(catalog: dict, required: set[tuple[str, str]], exact_slugs: set[str] | None = None) -> list[str]:
@@ -67,8 +67,6 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
 
     check((root / "scripts" / "manage_profile.py").is_file(), "unified profile lifecycle manager missing")
     check(set(EXPECTED) == set(manage_roles.PROFILES), "public profile registry drift")
-    for legacy_profile in manage_roles.LEGACY_PROFILES:
-        check(not (root / legacy_profile).exists(), f"legacy public profile directory remains: {legacy_profile}")
 
     for p, (model, effort, child, child_eff, cap, roles) in EXPECTED.items():
         config = tomllib.loads((root / p / "config.toml").read_text(encoding="utf-8"))
@@ -103,9 +101,7 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
                 required.add(actual[name])
         check(actual == roles, f"{p}: unexpected/missing worker or effort")
         generated = set(manage_roles.desired_roles(p, root))
-        check(CANONICAL_ALIASES.issubset(generated), f"{p}: canonical compatibility aliases missing")
-        check(not any(name.startswith("routing-") for name in generated),
-              f"{p}: legacy alias exposed as a new install target")
+        check(PROFILE_ALIASES.issubset(generated), f"{p}: profile aliases missing")
 
         text = (root / p / "agents-subset.md").read_text(encoding="utf-8")
         stripped = text.strip()

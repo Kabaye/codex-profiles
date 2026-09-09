@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import functools
 import json
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import tempfile
 import tomllib
@@ -19,10 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILES = tuple(sorted(manage_roles.PROFILES))
 BEGIN = "<!-- codex-profiles:begin -->"
 END = "<!-- codex-profiles:end -->"
-LEGACY_BEGIN = "<!-- codex-routing-rules:begin -->"
-LEGACY_END = "<!-- codex-routing-rules:end -->"
 MANAGED_COMMENT = "# codex-profiles: managed profile keys"
-LEGACY_MANAGED_COMMENT = "# codex-routing-rules: managed profile keys"
 SECTION_RE = re.compile(r"^\s*\[([^\[\]]+)\]\s*(?:#.*)?$")
 ASSIGN_RE = re.compile(r"^\s*([A-Za-z0-9_-]+)\s*=")
 
@@ -38,56 +33,15 @@ OWNED_KEYS = {
     "features.multi_agent_v2": {"multi_agent_mode_hint_text"},
     "memories": {"extract_model", "consolidation_model"},
 }
-LEGACY_KEYS = {
-    "features": {"multi_agent", "multi_agent_v2"},
-    "features.multi_agent_v2": {
-        "enabled",
-        "max_concurrent_threads_per_session",
-    },
-}
-KNOWN_ROLE_BLOBS = {
-    "luna-worker.toml": {
-        "c960e0e34ffbc1ee40fdbf73cc6635af1dab60fb",
-        "5dcea4f991890b0103b4f5446395eb80d61df477",
-        "6a65f3b4b2d5fc13f05273cf2cb86240fcdac19d",
-        "c6c010c844e362bd436eada5e2daaaf11f292b70",
-        "f509242e8aa93a38cf5b69a6f33ee148b3c53acd",
-    },
-    "sol-worker.toml": {
-        "46bca9c72b0c4e5817e3a6de4c8c70121e158bb8",
-        "4c3154ffc6e748219c2a229f924bf07c1714c846",
-        "7a9e47d62df4c4990f1ab6158abb9273a7129bf3",
-        "a14cbe6178b2d959a4a93e74fa215680d81371b6",
-    },
-    "astra-worker.toml": {
-        "a41a60779a1e8b912bd9367d8ac395f2252fbd5c",
-    },
-}
 PROFILE_HEADINGS = (
-    "## Scope routing",
     "## Agent routing — lite",
     "## Agent routing — strict-common",
     "## Agent routing — private",
     "## Agent routing — work",
-    "## Agent routing — x5",
-    "## Agent routing — x20",
-    "## Agent routing — x20-work",
     "## Маршрутизация агентов — lite",
     "## Маршрутизация агентов — strict-common",
     "## Маршрутизация агентов — private",
     "## Маршрутизация агентов — work",
-    "## Маршрутизация агентов — x5",
-    "## Маршрутизация агентов — x20",
-    "## Маршрутизация агентов — x20-work",
-)
-HISTORICAL_PROFILE_PATHS = (
-    ("lite", "lite/agents-subset.md"),
-    ("strict-common", "strict-common/agents-subset.md"),
-    ("private", "private/agents-subset.md"),
-    ("work", "work/agents-subset.md"),
-    ("strict-common", "x5/agents-subset.md"),
-    ("private", "x20/agents-subset.md"),
-    ("work", "x20-work/agents-subset.md"),
 )
 
 
@@ -137,14 +91,10 @@ def _flatten(data: dict) -> dict[str, dict[str, object]]:
     return result
 
 
-def _remove_managed_assignments(text: str, *, include_legacy: bool, remove_catalog: bool) -> str:
+def _remove_managed_assignments(text: str, *, remove_catalog: bool) -> str:
     remove = {section: set(keys) for section, keys in OWNED_KEYS.items()}
     if remove_catalog:
         remove.setdefault("", set()).add("model_catalog_json")
-    if include_legacy:
-        for section, keys in LEGACY_KEYS.items():
-            remove.setdefault(section, set()).update(keys)
-
     current = ""
     out: list[str] = []
     for line in _normalize(text).splitlines():
@@ -153,7 +103,7 @@ def _remove_managed_assignments(text: str, *, include_legacy: bool, remove_catal
             current = match.group(1).strip()
             out.append(line)
             continue
-        if line.strip() in {MANAGED_COMMENT, LEGACY_MANAGED_COMMENT}:
+        if line.strip() == MANAGED_COMMENT:
             continue
         assignment = ASSIGN_RE.match(line)
         if assignment and assignment.group(1) in remove.get(current, set()):
@@ -217,10 +167,7 @@ def _profile_catalog(value: object, home: Path) -> bool:
     normalized = value.replace("\\", "/")
     home_norm = home.as_posix().rstrip("/").lower()
     lowered = normalized.lower()
-    return (
-        lowered.endswith("/models-lite.json")
-        or (lowered.endswith("/models.json") and lowered.startswith(home_norm))
-    )
+    return lowered == f"{home_norm}/models-lite.json"
 
 
 def build_config(text: str, profile: str | None, home: Path, *, previous_profile: str | None = None) -> str:
@@ -231,7 +178,7 @@ def build_config(text: str, profile: str | None, home: Path, *, previous_profile
         if profile is not None:
             raise ValueError(
                 "Unrelated model_catalog_json is active. Resolve that catalog explicitly before "
-                "installing a Codex profile; it will not be deleted as legacy state."
+                "installing a Codex profile; it will not be deleted as profile-owned state."
             )
         remove_catalog = False
     else:
@@ -239,7 +186,6 @@ def build_config(text: str, profile: str | None, home: Path, *, previous_profile
 
     cleaned = _remove_managed_assignments(
         text,
-        include_legacy=True,
         remove_catalog=remove_catalog or profile == "lite",
     )
     if profile is None:
@@ -249,98 +195,31 @@ def build_config(text: str, profile: str | None, home: Path, *, previous_profile
     return _insert_managed_assignments(cleaned, _desired_config(profile, home))
 
 
-def _extract_marked(text: str, begin: str = BEGIN, end: str = END) -> str:
+def _extract_marked(text: str) -> str:
     normalized = _normalize(text)
-    start = normalized.find(begin)
-    stop = normalized.find(end)
+    start = normalized.find(BEGIN)
+    stop = normalized.find(END)
     if start < 0 or stop < start:
         raise ValueError("Profile routing file has no single managed marker block")
-    stop += len(end)
-    if normalized.find(begin, start + len(begin)) >= 0 or normalized.find(end, stop) >= 0:
+    stop += len(END)
+    if normalized.find(BEGIN, start + len(BEGIN)) >= 0 or normalized.find(END, stop) >= 0:
         raise ValueError("Profile routing file has duplicate marker blocks")
     return normalized[start:stop].strip()
 
 
-@functools.lru_cache(maxsize=1)
-def _git_history_blocks() -> list[str]:
-    if not (ROOT / ".git").exists() or shutil.which("git") is None:
-        return []
-    paths = list(dict.fromkeys(path for _, path in HISTORICAL_PROFILE_PATHS))
-    try:
-        proc = subprocess.run(
-            ["git", "-C", str(ROOT), "log", "--all", "--format=%H", "--", *paths],
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=20,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return []
-    commits = list(dict.fromkeys(line.strip() for line in proc.stdout.splitlines() if line.strip()))
-    blocks: list[str] = []
-    for commit in commits:
-        for profile, path in HISTORICAL_PROFILE_PATHS:
-            try:
-                shown = subprocess.run(
-                    ["git", "-C", str(ROOT), "show", f"{commit}:{path}"],
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    timeout=10,
-                ).stdout
-            except (OSError, subprocess.SubprocessError):
-                continue
-            normalized = _normalize(shown).strip()
-            if not normalized:
-                continue
-            found_markers = False
-            for begin, end in ((BEGIN, END), (LEGACY_BEGIN, LEGACY_END)):
-                if begin in normalized and end in normalized:
-                    found_markers = True
-                    try:
-                        blocks.append(_extract_marked(normalized, begin, end))
-                    except ValueError:
-                        pass
-                    break
-            if found_markers:
-                continue
-            if profile == "lite":
-                lines = normalized.splitlines()
-                index = next(
-                    (
-                        i
-                        for i, line in enumerate(lines)
-                        if line.startswith("## ")
-                        and ("routing" in line.lower() or "маршрутизац" in line.lower())
-                    ),
-                    None,
-                )
-                if index is not None:
-                    blocks.append("\n".join(lines[index:]).strip())
-            else:
-                blocks.append(normalized)
-    return list(dict.fromkeys(blocks))
-
-
 def build_agents(text: str, profile: str | None) -> str:
     normalized = _normalize(text)
-    for begin, end in ((BEGIN, END), (LEGACY_BEGIN, LEGACY_END)):
-        marked = re.compile(
-            rf"(?:^|\n)[ \t]*{re.escape(begin)}.*?{re.escape(end)}[ \t]*(?=\n|$)",
-            re.S,
-        )
-        normalized = marked.sub("\n", normalized)
-
-    for block in sorted(_git_history_blocks(), key=len, reverse=True):
-        normalized = normalized.replace(block, "")
+    marked = re.compile(
+        rf"(?:^|\n)[ \t]*{re.escape(BEGIN)}.*?{re.escape(END)}[ \t]*(?=\n|$)",
+        re.S,
+    )
+    normalized = marked.sub("\n", normalized)
 
     for heading in PROFILE_HEADINGS:
         if heading in normalized:
             raise ValueError(
-                f"Modified legacy routing section remains in AGENTS.md ({heading!r}); "
-                "review/remove that old repository-owned block once, then retry"
+                f"Unmarked profile routing section remains in AGENTS.md ({heading!r}); "
+                "review/remove that unmanaged block, then retry"
             )
 
     normalized = re.sub(r"\n{3,}", "\n\n", normalized).strip()
@@ -401,11 +280,6 @@ def _lite_catalog(models: Path | None) -> bytes:
     return _filter_lite_catalog(json.loads(proc.stdout))
 
 
-def _prepare_legacy_role_adoption() -> None:
-    for filename, blobs in KNOWN_ROLE_BLOBS.items():
-        manage_roles.LEGACY.setdefault(filename, set()).update(blobs)
-
-
 def _apply_text(path: Path, text: str) -> None:
     if text.strip():
         _atomic_write(path, text.encode("utf-8"))
@@ -426,18 +300,17 @@ def apply(
     config_text = config_path.read_text(encoding="utf-8-sig") if config_path.exists() else ""
     agents_text = agents_path.read_text(encoding="utf-8-sig") if agents_path.exists() else ""
 
-    _, role_state, _ = manage_roles.discover_state(home)
+    manifest = home / "profiles" / "roles-state.json"
+    role_state = manage_roles.load_state(manifest)
     previous_profile = role_state.get("profile") if role_state else None
     new_config = build_config(config_text, profile, home, previous_profile=previous_profile)
     new_agents = build_agents(agents_text, profile)
     catalog_bytes = _lite_catalog(models) if profile == "lite" else None
     catalog_path = home / "models-lite.json"
 
-    _prepare_legacy_role_adoption()
     role_plan = manage_roles.manage(
         home,
         profile,
-        adopt_legacy=True,
         dry_run=True,
         root=ROOT,
     )
@@ -483,7 +356,6 @@ def apply(
         manage_roles.manage(
             home,
             profile,
-            adopt_legacy=True,
             dry_run=False,
             root=ROOT,
         )
@@ -524,7 +396,9 @@ def main() -> int:
 
     try:
         if args.command == "status":
-            _, state, _ = manage_roles.discover_state(args.home.expanduser())
+            state = manage_roles.load_state(
+                args.home.expanduser() / "profiles" / "roles-state.json"
+            )
             print(json.dumps({"profile": state.get("profile") if state else None}, indent=2))
             return 0
         profile = args.profile if args.command == "install" else None
@@ -535,7 +409,7 @@ def main() -> int:
             models=getattr(args, "models", None),
         )
     except (OSError, ValueError, KeyError, UnicodeError, json.JSONDecodeError) as exc:
-        parser.exit(1, f"No successful profile migration: {exc}\n")
+        parser.exit(1, f"No successful profile update: {exc}\n")
 
     print(json.dumps(result, indent=2))
     if not args.dry_run:

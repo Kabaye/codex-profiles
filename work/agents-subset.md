@@ -11,7 +11,7 @@
 - Personal mode applies to the current coherent objective and its direct follow-ups. A new unrelated objective returns to the default Luna-first mode unless the user explicitly marks that new objective as personal too.
 - Selecting Astra as root changes only the root. It does not activate personal mode and does not automatically turn children into Astra or Sol. This profile intentionally installs no Astra worker; stronger reasoning stays in the user-selected root.
 - At most **four open subagent threads**. Usually use zero to two. Use a third or fourth only for genuinely independent workstreams with clear ownership and real parallel value. In ordinary mode those are Luna Max; in explicit personal mode substantial delegated work may use Sol High.
-- Default/worker/explorer compatibility aliases remain pinned to Luna Max, so accidental unnamed/default delegation stays economical. In personal mode deliberately request `sol_worker`; otherwise deliberately request `luna_worker`. If the requested model pin cannot be verified, keep that work in the current root rather than silently substituting another worker.
+- The generated `default` / `worker` / `explorer` aliases remain pinned to Luna Max, so accidental unnamed/default delegation stays economical. In personal mode deliberately request `sol_worker`; otherwise deliberately request `luna_worker`. If the requested model pin cannot be verified, keep that work in the current root rather than silently substituting another worker.
 
 ## Ownership and coordination
 

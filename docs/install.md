@@ -57,9 +57,9 @@ Example:
 python scripts/manage_profile.py install work
 ```
 
-This is both the **install** and **switch** operation. There is no separate migration sequence required between `lite`, `strict-common`, `private`, and `work`.
+This is both the **install** and **switch** operation between `lite`, `strict-common`, `private`, and `work`.
 
-The active ownership manifest is stored at `~/.codex/profiles/roles-state.json`, and generated compatibility aliases use the `profile-*.toml` prefix. A valid prior-generation manifest, marker block, profile identifier or alias filename is normalized during the same transition. Those legacy identifiers are migration inputs only, never supported `install PROFILE` values. If current and legacy manifests both exist, the manager stops for review instead of guessing which state owns the files.
+The active ownership manifest is stored at `~/.codex/profiles/roles-state.json`, and generated aliases use the `profile-*.toml` prefix. The lifecycle accepts only the four profile identifiers listed above, the `codex-profiles` managed marker namespace, and this manifest and alias layout.
 
 The lifecycle performs these operations as one profile transition:
 
@@ -75,8 +75,6 @@ Managed current keys include:
 - `[features.multi_agent_v2] multi_agent_mode_hint_text`;
 - `[features.context_management] experimental_mode`;
 - profile-owned `[memories]` model selectors.
-
-Known historical routing keys such as scalar `features.multi_agent`, scalar `features.multi_agent_v2`, old V2 `enabled`/thread-cap recipes, old worker defaults and old repository model catalogs are cleaned during migration.
 
 An unrelated custom `model_catalog_json` is **not** silently removed. If one is active and conflicts with a destination profile, installation stops for explicit review.
 
@@ -98,11 +96,7 @@ experimental_mode = true
 
 ### `AGENTS.md`
 
-The manager removes any existing marked routing block and installs exactly one destination block.
-
-It also scans the local Git history of this repository for exact older **unmarked** `agents-subset.md` versions and removes those exact historical routing blocks during migration. This is important for older installs made before the marker format existed.
-
-If an old unmarked block was manually edited and no longer exactly matches repository history, the manager stops instead of guessing how much user text to delete. Remove/reconcile that modified legacy section once, then rerun the command.
+The manager removes the existing `codex-profiles` marked block and installs exactly one destination block.
 
 All current profile instructions are fully profile-owned inside:
 
@@ -116,18 +110,15 @@ That includes the full `lite` instruction set, so switching away from `lite` no 
 
 ### Native roles
 
-The manager calls the role lifecycle with exact-legacy adoption enabled.
-
 It removes/replaces repository-owned:
 
 - `luna-worker.toml`;
 - `sol-worker.toml`;
-- historical `astra-worker.toml`;
 - generated `profile-default.toml`;
 - generated `profile-worker.toml`;
 - generated `profile-explorer.toml`.
 
-Exact historical worker blobs shipped by this repository can be migrated automatically. Modified lookalikes are not silently deleted.
+Unmanaged files that use a profile-owned filename or reserved role name stop installation for review; they are not silently deleted.
 
 Unrelated role files, for example `sol-advisor.toml`, remain untouched unless they collide by a reserved routing role name.
 

@@ -8,7 +8,7 @@
 - Delegate substantial, well-scoped implementation, exploration and tool-heavy execution when the handoff is worthwhile. Keep simple questions, tiny edits and tightly coupled reasoning in the root. Do not force every implementation through a worker.
 - Luna executes the complete scoped workstream and its tests. Reasoning beyond Luna's assignment returns to the existing root; complexity does not authorize a more expensive child.
 - At most **four open subagent threads**. Usually use zero to two. Use a third or fourth only for genuinely independent workstreams with clear ownership and real parallel value; never fill slots for their own sake. A verification job uses the same Luna pin in a fresh read-only assignment.
-- Default/worker/explorer compatibility aliases are pinned to Luna Max, but deliberately request `luna_worker`. If the pin cannot be verified, keep the work in the selected root instead of spawning an unpinned agent.
+- The generated `default` / `worker` / `explorer` aliases are pinned to Luna Max, but deliberately request `luna_worker`. If the pin cannot be verified, keep the work in the selected root instead of spawning an unpinned agent.
 
 ## Ownership and coordination
 

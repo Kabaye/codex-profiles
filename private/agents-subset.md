@@ -9,7 +9,7 @@
 - There is **no Astra worker** and no Luna worker in this profile. Astra xhigh/max is a manual root choice for unusually difficult sessions; routing never raises root effort automatically.
 - Independent verification normally uses the Astra root or a fresh read-only Sol High assignment for a named risk. Do not create a second full implementation just to obtain agreement.
 - At most **four open subagent threads**. Usually use zero to two. Use a third or fourth only for genuinely independent workstreams with clear ownership and real parallel value; never fill slots for their own sake.
-- Default/worker/explorer compatibility aliases are pinned to Sol High; deliberately use `sol_worker`. If the required pin is unavailable, continue in the existing root and report the limitation rather than changing models silently.
+- The generated `default` / `worker` / `explorer` aliases are pinned to Sol High; deliberately use `sol_worker`. If the required pin is unavailable, continue in the existing root and report the limitation rather than changing models silently.
 
 ## Ownership and coordination
 

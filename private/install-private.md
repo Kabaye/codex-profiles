@@ -1,6 +1,6 @@
 # Install `private`
 
-Use the shared profile lifecycle. Installing `private` automatically replaces older repository-owned profile state; do not manually remove another profile first.
+Use the shared profile lifecycle. Installing `private` automatically replaces the currently managed profile state; do not manually remove another profile first.
 
 ```powershell
 python scripts/manage_profile.py install private --dry-run
@@ -18,7 +18,7 @@ Expected profile state:
 - experimental context management enabled;
 - provider/Codex memory defaults retained.
 
-Unrelated config and unrelated native roles are preserved. Exact repository legacy artifacts are cleaned automatically; modified collisions stop for review.
+Unrelated config and unrelated native roles are preserved. Unmanaged role collisions stop for review.
 
 After installation, fully restart Codex and open a new thread.
 

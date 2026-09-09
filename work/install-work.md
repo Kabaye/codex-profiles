@@ -1,6 +1,6 @@
 # Install `work`
 
-Use the shared profile lifecycle. Installing `work` automatically replaces older repository-owned profile state; do not manually remove another profile first.
+Use the shared profile lifecycle. Installing `work` automatically replaces the currently managed profile state; do not manually remove another profile first.
 
 ```powershell
 python scripts/manage_profile.py install work --dry-run
@@ -20,7 +20,7 @@ Expected profile state:
 
 The personal declaration selects the Sol-vs-Luna delegated path; it is not a second permission gate for whether agents may be spawned at all.
 
-Unrelated config and unrelated native roles such as `sol-advisor.toml` are preserved. Exact repository legacy artifacts are cleaned automatically; modified collisions stop for review.
+Unrelated config and unrelated native roles such as `sol-advisor.toml` are preserved. Unmanaged role collisions stop for review.
 
 After installation, fully restart Codex and open a new thread.
 

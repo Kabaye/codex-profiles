@@ -9,9 +9,9 @@ python scripts/manage_profile.py install lite
 
 The manager automatically:
 
-- removes/replaces older repository-owned profile state;
+- replaces the currently managed profile state;
 - installs the full managed `lite` AGENTS block;
-- installs Luna Max worker/compatibility roles;
+- installs Luna Max worker and generated alias roles;
 - sets Terra Medium as the default root;
 - enables the profile's empty Multi-Agent V2 mode hint and experimental context management;
 - runs `codex debug models` and builds `~/.codex/models-lite.json` containing only the real Terra and Luna records.

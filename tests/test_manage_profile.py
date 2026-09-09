@@ -6,7 +6,6 @@ import sys
 import tempfile
 import tomllib
 import unittest
-from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import manage_profile as lifecycle
@@ -103,27 +102,23 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertFalse((self.home / "profiles" / "profile-backups").exists())
         self.assertFalse((self.home / "profiles" / "backups").exists())
 
-    def test_legacy_config_is_replaced_not_stacked(self):
-        legacy = '''# codex-routing-rules: managed profile keys
+    def test_current_config_is_replaced_not_stacked(self):
+        current = '''# codex-profiles: managed profile keys
 model = "gpt-5.6-sol"
-model_reasoning_effort = "high"
-model_catalog_json = "C:/Users/test/.codex/models.json"
+model_reasoning_effort = "xhigh"
 
 [agents]
 enabled = true
-max_concurrent_threads_per_session = 2
+max_concurrent_threads_per_session = 4
 default_subagent_model = "gpt-5.6-luna"
 default_subagent_reasoning_effort = "max"
 unrelated = "keep"
 
 [features]
-multi_agent = true
 unrelated = true
 
 [features.multi_agent_v2]
-enabled = true
-max_concurrent_threads_per_session = 2
-multi_agent_mode_hint_text = "old"
+multi_agent_mode_hint_text = ""
 tool_namespace = "keep"
 
 [memories]
@@ -132,56 +127,23 @@ consolidation_model = "gpt-5.6-luna"
 unrelated = "keep"
 '''
         home = Path("C:/Users/test/.codex")
-        result = lifecycle.build_config(legacy, "work", home)
+        result = lifecycle.build_config(current, "private", home)
         parsed = tomllib.loads(result)
-        self.assertEqual(parsed["model"], "gpt-5.6-sol")
-        self.assertEqual(parsed["model_reasoning_effort"], "xhigh")
+        self.assertEqual(parsed["model"], "gpt-6-astra")
+        self.assertEqual(parsed["model_reasoning_effort"], "high")
         self.assertNotIn("model_catalog_json", parsed)
-        self.assertNotIn("multi_agent", parsed["features"])
-        self.assertNotIn("enabled", parsed["features"]["multi_agent_v2"])
-        self.assertNotIn("max_concurrent_threads_per_session", parsed["features"]["multi_agent_v2"])
         self.assertEqual(parsed["features"]["multi_agent_v2"]["multi_agent_mode_hint_text"], "")
         self.assertEqual(parsed["features"]["multi_agent_v2"]["tool_namespace"], "keep")
         self.assertEqual(parsed["agents"]["unrelated"], "keep")
         self.assertEqual(parsed["memories"]["unrelated"], "keep")
-        self.assertNotIn("codex-routing-rules", result)
 
-    def test_legacy_agents_marker_is_replaced_by_canonical_profile_marker(self):
-        legacy = f'''# Keep this instruction
-
-{lifecycle.LEGACY_BEGIN}
-## Agent routing — x20-work
-
-- old profile text
-{lifecycle.LEGACY_END}
-'''
-        result = lifecycle.build_agents(legacy, "work")
-        self.assertIn("# Keep this instruction", result)
-        self.assertNotIn(lifecycle.LEGACY_BEGIN, result)
-        self.assertNotIn(lifecycle.LEGACY_END, result)
-        self.assertNotIn("Agent routing — x20-work", result)
-        self.assertEqual(result.count(lifecycle.BEGIN), 1)
-        self.assertEqual(result.count(lifecycle.END), 1)
-        self.assertIn("Agent routing — work", result)
-
-    def test_unrelated_custom_catalog_is_not_deleted_as_legacy(self):
+    def test_unrelated_custom_catalog_is_preserved(self):
         with self.assertRaisesRegex(ValueError, "Unrelated model_catalog_json"):
             lifecycle.build_config(
                 'model_catalog_json = "D:/company/custom-models.json"\n',
                 "private",
                 self.home,
             )
-
-    def test_exact_legacy_role_can_be_removed_without_an_install_manifest(self):
-        raw = b'name = "sol_worker"\nmodel = "legacy-fixture"\n'
-        (self.home / "agents").mkdir()
-        target = self.home / "agents" / "sol-worker.toml"
-        target.write_bytes(raw)
-        with patch.dict(roles.LEGACY, {"sol-worker.toml": {roles.git_blob(raw)}}):
-            result = roles.manage(self.home, None, adopt_legacy=True)
-        self.assertIn("sol-worker.toml", result["changed_roles"])
-        self.assertNotIn("backup", result)
-        self.assertFalse(target.exists())
 
     def test_lite_entire_instruction_file_is_profile_owned(self):
         text = (lifecycle.ROOT / "lite" / "agents-subset.md").read_text(encoding="utf-8").strip()

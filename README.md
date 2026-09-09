@@ -46,16 +46,15 @@ python scripts/manage_profile.py remove
 
 Replace `work` with `lite`, `strict-common`, or `private` as needed. `lite` automatically captures `codex debug models` and builds the restricted Terra+Luna catalog; for offline/testing use `--models PATH_TO_CAPTURED_MODELS_JSON`.
 
-`install PROFILE` first removes/replaces older **repository-owned routing state** and then installs the destination profile. It manages:
+`install PROFILE` replaces the currently managed profile state and installs the destination profile. It manages:
 
 - profile-owned `config.toml` keys;
-- the managed `AGENTS.md` profile block, including exact legacy unmarked blocks when Git history is available;
+- the managed `AGENTS.md` profile block;
 - native worker roles and generated `default` / `worker` / `explorer` aliases;
 - the ownership manifest under `profiles/roles-state.json` and canonical `profile-*.toml` alias filenames;
-- stale historical Luna/Sol/Astra worker files that exactly match versions shipped by this repository;
 - `models-lite.json` when entering or leaving `lite`.
 
-Unrelated configuration and unrelated roles such as a custom `sol-advisor.toml` are preserved. Prior repository markers, manifests, profile identifiers and alias filenames are recognized only for safe migration/removal; they are not accepted as install targets. A modified/unknown file that collides with a repository-owned role or a modified legacy AGENTS section is a **stop for review**, not something the manager deletes heuristically.
+Unrelated configuration and unrelated roles such as a custom `sol-advisor.toml` are preserved. The only supported profile identifiers are `lite`, `strict-common`, `private`, and `work`; the only managed marker namespace is `codex-profiles`; the ownership manifest is `profiles/roles-state.json`; and generated aliases use the `profile-*.toml` prefix. An unmanaged file that collides with a profile-owned role is a **stop for review**, not something the manager deletes heuristically.
 
 The lifecycle intentionally creates **no persistent backups**. It keeps only an in-process snapshot for best-effort rollback if a write fails during the current operation; no `profile-backups` or role `backups` directories are created.
 
