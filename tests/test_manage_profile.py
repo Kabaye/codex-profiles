@@ -89,6 +89,32 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 self.assertFalse(extra.exists())
                 self.assert_exact_profile(home, after)
 
+    def test_reinstall_is_a_byte_exact_noop(self):
+        self.install(self.home, "work")
+        paths = (
+            self.home / "config.toml",
+            self.home / "AGENTS.md",
+            self.home / "profiles" / "roles-state.json",
+        )
+        before = {path: path.read_bytes() for path in paths}
+        before_roles = {
+            path.name: path.read_bytes()
+            for path in (self.home / "agents").glob("*.toml")
+        }
+
+        result = self.install(self.home, "work")
+
+        self.assertEqual(result["files"], [])
+        self.assertEqual(result["roles"], [])
+        self.assertEqual(before, {path: path.read_bytes() for path in paths})
+        self.assertEqual(
+            before_roles,
+            {
+                path.name: path.read_bytes()
+                for path in (self.home / "agents").glob("*.toml")
+            },
+        )
+
     def test_leaving_lite_reports_and_deletes_its_catalog(self):
         self.install(self.home, "lite")
         catalog = self.home / "models-lite.json"

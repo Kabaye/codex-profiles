@@ -163,7 +163,7 @@ def _insert_managed_assignments(text: str, desired: dict[str, dict[str, object]]
         insertion = end
         while insertion > header_index + 1 and lines[insertion - 1] == "":
             insertion -= 1
-        lines[insertion:insertion] = [*additions, ""]
+        lines[insertion:end] = [*additions, ""]
 
     result = "\n".join(lines).rstrip() + "\n"
     tomllib.loads(result)
