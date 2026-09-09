@@ -7,6 +7,8 @@ python scripts/manage_profile.py install private --dry-run
 python scripts/manage_profile.py install private
 ```
 
+**Destructive role reset:** in the selected Codex home, installation deletes every existing top-level `agents/*.toml` file, including unrelated and custom roles, and writes no backup copy. It then writes only the `private` roles. The scope is non-recursive; nested directories and non-TOML files are not deleted.
+
 Expected profile state:
 
 - default root: GPT-6 Astra / high;
@@ -18,7 +20,7 @@ Expected profile state:
 - experimental context management enabled;
 - provider/Codex memory defaults retained.
 
-Unrelated config and unrelated native roles are preserved. Unmanaged role collisions stop for review.
+Unrelated configuration outside this role-file scope is preserved. After installation, the selected home's top-level `agents/*.toml` set must equal exactly the `private` role set.
 
 After installation, fully restart Codex and open a new thread.
 

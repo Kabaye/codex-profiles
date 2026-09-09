@@ -46,15 +46,19 @@ python scripts/manage_profile.py remove
 
 Replace `work` with `lite`, `strict-common`, or `private` as needed. `lite` automatically captures `codex debug models` and builds the restricted Terra+Luna catalog; for offline/testing use `--models PATH_TO_CAPTURED_MODELS_JSON`.
 
-`install PROFILE` replaces the currently managed profile state and installs the destination profile. It manages:
+`install PROFILE` replaces the currently managed profile state and installs the destination profile. For the selected Codex home, every existing top-level `agents/*.toml` file is deleted before the destination roles are written. This includes unrelated and custom roles; the deletion is intentional and non-recursive, and no backup copy is written. The lifecycle also manages:
 
 - profile-owned `config.toml` keys;
 - the managed `AGENTS.md` profile block;
-- native worker roles and generated `default` / `worker` / `explorer` aliases;
+- the destination native worker roles and generated `default` / `worker` / `explorer` aliases;
 - the ownership manifest under `profiles/roles-state.json` and canonical `profile-*.toml` alias filenames;
 - `models-lite.json` when entering or leaving `lite`.
 
-Unrelated configuration and unrelated roles such as a custom `sol-advisor.toml` are preserved. The only supported profile identifiers are `lite`, `strict-common`, `private`, and `work`; the only managed marker namespace is `codex-profiles`; the ownership manifest is `profiles/roles-state.json`; and generated aliases use the `profile-*.toml` prefix. An unmanaged file that collides with a profile-owned role is a **stop for review**, not something the manager deletes heuristically.
+Unrelated configuration outside this role-file scope is preserved. The only supported profile identifiers are `lite`, `strict-common`, `private`, and `work`; the only managed marker namespace is `codex-profiles`; the ownership manifest is `profiles/roles-state.json`; and generated aliases use the `profile-*.toml` prefix. After installation, the selected home's top-level `agents` directory contains only the destination profile's TOML roles.
+
+Install does not preserve or stop on modified/missing old role files or a malformed old role manifest; those are replaced. Link, non-regular-file, concurrent-operation, and ambiguous instruction-boundary safety checks remain fail-closed. The separate `remove` command still validates its ownership manifest before deleting roles.
+
+The same install also removes historical `x5`/`x20`/`x20-work` marked instruction blocks and config keys, the old `routing-rules/` state and backup directory, and an old profile-owned `models.json`. Thus a legacy profile cannot remain stacked under a current one.
 
 The lifecycle intentionally creates **no persistent backups**. It keeps only an in-process snapshot for best-effort rollback if a write fails during the current operation; no `profile-backups` or role `backups` directories are created.
 

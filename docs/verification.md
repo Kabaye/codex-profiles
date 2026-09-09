@@ -2,9 +2,9 @@
 
 ## Static test status
 
-The repository's Python tests and validator cover both routing policy and the **unified profile lifecycle**: canonical profile/alias naming, profile switching, config replacement, AGENTS replacement, role pins, manifest validation, preservation of unrelated state, no persistent backups, nested-agent disabling, collision handling, in-process rollback, model metadata, catalog rules, the required empty Multi-Agent V2 mode hint and experimental context management.
+The repository's Python tests and validator cover both routing policy and the **unified profile lifecycle**: canonical profile/alias naming, profile switching, destructive top-level role reset, config replacement, AGENTS replacement, role pins, manifest validation, preservation of unrelated non-role state, no persistent backups, nested-agent disabling, in-process rollback, model metadata, catalog rules, the required empty Multi-Agent V2 mode hint and experimental context management.
 
-On 2026-09-09, the current revision passed the static validator and all 31 synthetic lifecycle tests on disposable Codex homes:
+Run the static validator and complete synthetic lifecycle suite on disposable Codex homes:
 
 ```text
 python scripts/validate.py
@@ -16,12 +16,13 @@ python -m unittest discover -s tests -v
 | Failure case | Design response | Boundary |
 |---|---|---|
 | Switching profiles leaves the current profile block in `AGENTS.md` | `manage_profile.py install PROFILE` replaces the existing `codex-profiles` block with exactly one destination block | Unmarked user-authored instructions remain outside lifecycle ownership |
-| Switching profiles leaves the current workers/aliases | The ownership manifest drives exact role synchronization to the destination worker and generated `profile-*` aliases | Unknown or modified collisions stop for review |
+| Switching profiles leaves any previous/custom TOML role | Install deletes every top-level `<selected-home>/agents/*.toml` file before writing the destination worker and generated `profile-*` aliases | This is intentionally destructive; nested directories and non-TOML files are outside scope |
 | Switching from `lite` leaves its non-routing communication/workspace rules | The complete `lite` instruction file is inside the managed profile markers | Unmarked user-authored instructions remain outside lifecycle ownership |
 | Switching profiles leaves old config values | Unified lifecycle removes/replaces profile-owned model, agent, memory, context and Multi-Agent V2 keys before applying the destination fragment | Unrelated custom `model_catalog_json` is not deleted silently; conflicting custom catalogs stop for review |
 | Switching away from `lite` leaves the restricted catalog active | Lifecycle removes the profile-owned catalog reference and repository-specific `models-lite.json` | Effective higher-priority config still needs live inspection |
+| A historical `x5`/`x20`/`x20-work` install remains stacked | Install removes its marked routing block, old feature keys, every top-level role TOML, `routing-rules/` state/backups, and an active old profile-owned `models.json` | Unmatched markers/unmarked headings stop before writes to protect unrelated instructions |
 | Lifecycle creates unwanted backups | Profile and role managers create no persistent backup files/directories; tests assert `profile-backups` and `backups` are absent | Rollback is best-effort and only uses bytes held in the current process |
-| Unrelated native roles are destroyed during cleanup | Only manifest-owned files are removed; unrelated roles such as `sol-advisor.toml` remain | A custom role deliberately using a reserved profile role name is a collision and stops |
+| An unrelated/custom role survives install | Destructive role reset removes it before destination roles are written | No backup copy is written; verify the selected Codex home before install |
 | Codex injects an effort-dependent `<multi_agent_mode>` that blocks or changes profile delegation | Every profile requires `features.multi_agent_v2.multi_agent_mode_hint_text = ""`; validator/tests reject missing or non-empty hints and reject profile-owned `enabled` forcing | Effective config precedence and fresh-thread runtime behavior must still be checked |
 | Experimental context management is missing in one profile | Validator requires `features.context_management.experimental_mode = true` in all four configs | Effective local config precedence must still be checked |
 | lite still exposes Sol or Astra | `models-lite.json` is built from real metadata and validated to contain exactly Terra + Luna | Configuration precedence must be checked live |
@@ -50,7 +51,7 @@ python scripts/manage_profile.py remove
 python scripts/manage_profile.py status
 ```
 
-Before the first install, add one unrelated test role and unrelated TOML/AGENTS text. After the switch and removal, confirm those unrelated values remain while the previously active profile's managed rules/roles do not. Also confirm no `~/.codex/profiles/profile-backups/` or `~/.codex/profiles/backups/` directory was created.
+Before the first install, add an unrelated top-level `agents/custom-role.toml` plus unrelated `config.toml` and `AGENTS.md` text in a disposable selected home. After each install/switch, confirm the custom role is gone and the top-level `agents/*.toml` set equals exactly the destination profile roles, while unrelated config and AGENTS text remain. After removal, confirm the active manifest-owned roles are gone. Also confirm no `<selected-home>/profiles/profile-backups/` or `<selected-home>/profiles/backups/` directory was created.
 
 The repository's synthetic test `tests/test_manage_profile.py` covers this exact lifecycle without touching the real Codex home.
 

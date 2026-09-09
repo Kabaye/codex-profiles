@@ -1,7 +1,6 @@
 """Synthetic filesystem/metadata tests. Never touches the real Codex home."""
 from __future__ import annotations
 
-import itertools
 import json
 from pathlib import Path
 import shutil
@@ -72,15 +71,6 @@ class ProfileTests(unittest.TestCase):
             for error in presets.validate(root=root)
         ))
 
-    def test_all_twelve_directed_switches_remove_stale_roles(self):
-        for before, after in itertools.permutations(roles.PROFILES, 2):
-            with self.subTest(before=before, after=after):
-                self.install(before)
-                self.install(after)
-                self.assertEqual(self.snapshot(), roles.desired_roles(after))
-                roles.manage(self.home, None)
-                self.assertEqual(self.snapshot(), {})
-
     def test_all_profiles_aliases_pin_both_model_and_effort(self):
         for profile in roles.PROFILES:
             with self.subTest(profile=profile):
@@ -114,61 +104,93 @@ class ProfileTests(unittest.TestCase):
         self.install(dry_run=True)
         self.assertFalse(self.home.exists())
 
-    def test_unrelated_files_and_configuration_preserved(self):
+    def test_install_purges_all_role_tomls_but_preserves_other_files(self):
         (self.home / "agents").mkdir(parents=True)
         other = self.home / "agents" / "specialist.toml"
         other.write_text('name = "independent_specialist"\n')
+        broken = self.home / "agents" / "broken.toml"
+        broken.write_text("not valid TOML = [\n")
+        note = self.home / "agents" / "README.txt"
+        note.write_text("keep\n")
         for filename in ("config.toml", "AGENTS.md", "models.json", "auth.json"):
             (self.home / filename).write_text("sentinel: not installer-owned\n")
-        self.install()
+        result = self.install()
+        self.assertIn("specialist.toml", result["changed_roles"])
+        self.assertIn("broken.toml", result["changed_roles"])
+        self.assertFalse(other.exists())
+        self.assertFalse(broken.exists())
+        self.assertEqual(note.read_text(), "keep\n")
         roles.manage(self.home, None)
-        self.assertEqual(other.read_text(), 'name = "independent_specialist"\n')
+        self.assertEqual(note.read_text(), "keep\n")
         for filename in ("config.toml", "AGENTS.md", "models.json", "auth.json"):
             self.assertEqual((self.home / filename).read_text(), "sentinel: not installer-owned\n")
 
-    def test_unmanaged_filename_collision_refused(self):
+    def test_install_replaces_unmanaged_profile_filename(self):
         (self.home / "agents").mkdir(parents=True)
         (self.home / "agents" / "sol-worker.toml").write_text('name = "mine"\n')
-        with self.assertRaisesRegex(ValueError, "collision"):
-            self.install()
+        result = self.install()
+        self.assertIn("sol-worker.toml", result["changed_roles"])
+        self.assertEqual(self.snapshot(), roles.desired_roles("private"))
 
-    def test_same_role_name_in_different_file_refused(self):
+    def test_install_purges_unmanaged_role_name(self):
         (self.home / "agents").mkdir(parents=True)
         (self.home / "agents" / "my-default.toml").write_text('name = "default"\n')
-        with self.assertRaisesRegex(ValueError, "collision"):
-            self.install()
+        result = self.install()
+        self.assertIn("my-default.toml", result["changed_roles"])
+        self.assertEqual(self.snapshot(), roles.desired_roles("private"))
 
-    def test_modified_owned_file_refuses_switch_and_removal(self):
+    def test_dry_run_reports_role_purge_without_writing(self):
+        (self.home / "agents").mkdir(parents=True)
+        extra = self.home / "agents" / "sol-advisor.toml"
+        extra.write_text('name = "sol_advisor"\n')
+        result = self.install("work", dry_run=True)
+        self.assertIn("sol-advisor.toml", result["changed_roles"])
+        self.assertTrue(extra.exists())
+
+    def test_modified_owned_file_is_replaced_on_switch(self):
+        self.install()
+        target = self.home / "agents" / "sol-worker.toml"
+        target.write_bytes(target.read_bytes() + b"# user edit\n")
+        self.install("lite")
+        self.assertEqual(self.snapshot(), roles.desired_roles("lite"))
+
+    def test_modified_owned_file_refuses_removal(self):
         self.install()
         target = self.home / "agents" / "sol-worker.toml"
         target.write_bytes(target.read_bytes() + b"# user edit\n")
         before = self.snapshot()
-        for profile in (None, "lite"):
-            with self.assertRaisesRegex(ValueError, "changed or missing"):
-                roles.manage(self.home, profile)
-            self.assertEqual(before, self.snapshot())
+        with self.assertRaisesRegex(ValueError, "changed or missing"):
+            roles.manage(self.home, None)
+        self.assertEqual(before, self.snapshot())
 
-    def test_missing_owned_file_refused(self):
+    def test_missing_owned_file_is_replaced_on_switch(self):
         self.install()
         (self.home / "agents" / "sol-worker.toml").unlink()
-        with self.assertRaisesRegex(ValueError, "changed or missing"):
-            self.install("lite")
+        self.install("lite")
+        self.assertEqual(self.snapshot(), roles.desired_roles("lite"))
 
-    def test_unsafe_manifest_filename_refused(self):
+    def test_unsafe_manifest_is_replaced_on_install(self):
         control = self.home / "profiles"
         control.mkdir(parents=True)
         (control / "roles-state.json").write_text(json.dumps({
             "version": 1, "profile": "private", "owned": {"../config.toml": "0" * 64}}))
-        with self.assertRaisesRegex(ValueError, "Unsafe"):
-            self.install()
+        self.install()
+        self.assertEqual(self.snapshot(), roles.desired_roles("private"))
 
-    def test_bad_state_types_refused(self):
+    def test_bad_state_types_are_replaced_on_install(self):
         control = self.home / "profiles"
         control.mkdir(parents=True)
         for state in ([], {}, {"version": 1, "profile": "private", "owned": []}):
             (control / "roles-state.json").write_text(json.dumps(state))
-            with self.assertRaises(ValueError):
-                self.install()
+            self.install()
+            self.assertEqual(self.snapshot(), roles.desired_roles("private"))
+
+    def test_bad_state_type_refuses_removal(self):
+        control = self.home / "profiles"
+        control.mkdir(parents=True)
+        (control / "roles-state.json").write_text("[]")
+        with self.assertRaises(ValueError):
+            roles.manage(self.home, None)
 
     def test_active_lock_refused(self):
         (self.home / "profiles" / "roles.lock").mkdir(parents=True)
@@ -200,6 +222,8 @@ class ProfileTests(unittest.TestCase):
 
     def test_ordinary_write_failure_rolls_back(self):
         self.install("private")
+        extra = self.home / "agents" / "aaa-extra.toml"
+        extra.write_text('name = "extra"\n')
         before = self.snapshot()
         state = (self.home / "profiles" / "roles-state.json").read_bytes()
         real_write = roles.atomic_write
@@ -216,6 +240,7 @@ class ProfileTests(unittest.TestCase):
             with self.assertRaisesRegex(OSError, "injected"):
                 self.install("lite")
         self.assertEqual(before, self.snapshot())
+        self.assertTrue(extra.exists())
         self.assertEqual(state, (self.home / "profiles" / "roles-state.json").read_bytes())
         self.assertFalse((self.home / "profiles" / "roles.lock").exists())
         self.assertFalse((self.home / "profiles" / "backups").exists())

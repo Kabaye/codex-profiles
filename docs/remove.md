@@ -18,6 +18,8 @@ python scripts/manage_profile.py --home C:\path\to\.codex remove --dry-run
 
 The preview shows the repository-owned files/roles that would change.
 
+Unlike `install PROFILE`, removal does not reset every top-level role file. It removes the roles owned by the active profile manifest. Any unmanaged role created after installation remains outside removal ownership.
+
 ## Remove the Codex profile
 
 ```powershell
@@ -39,9 +41,7 @@ It cleans:
 - the `profiles/roles-state.json` ownership manifest after its owned files are verified;
 - the repository-specific `models-lite.json` file.
 
-Unrelated settings and unrelated role files are preserved.
-
-For example, a custom `sol-advisor.toml` remains untouched unless it deliberately collides with a reserved routing role name.
+Unrelated settings are preserved. Unmanaged role files created after installation are also preserved by `remove`; note that `install PROFILE` would already have deleted any role files that existed before that installation.
 
 ## Modified managed state
 
@@ -66,6 +66,8 @@ python scripts/manage_profile.py install private
 or another destination profile.
 
 `install PROFILE` is a complete switch: it replaces the current managed profile state with the destination profile while preserving unrelated configuration.
+
+The switch is destructive for roles: it deletes every existing top-level `agents/*.toml` file in the selected Codex home, writes no backup copy, then writes only the destination profile roles.
 
 ## Finish
 

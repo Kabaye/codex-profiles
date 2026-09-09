@@ -45,9 +45,7 @@ Example:
 python scripts/manage_profile.py install work --dry-run
 ```
 
-The preview reports the profile, files and role filenames that would change.
-
-If the preflight reports an unknown or modified collision, stop and review it. The manager deliberately refuses to delete unknown files merely because their names resemble a routing role.
+The preview reports the profile, files and role filenames that would change. Review the selected Codex home carefully: installation deletes every existing top-level `agents/*.toml` file there, including unrelated and custom roles.
 
 ## 3. Install or switch
 
@@ -59,7 +57,9 @@ python scripts/manage_profile.py install work
 
 This is both the **install** and **switch** operation between `lite`, `strict-common`, `private`, and `work`.
 
-The active ownership manifest is stored at `~/.codex/profiles/roles-state.json`, and generated aliases use the `profile-*.toml` prefix. The lifecycle accepts only the four profile identifiers listed above, the `codex-profiles` managed marker namespace, and this manifest and alias layout.
+The active ownership manifest is stored at `<selected-home>/profiles/roles-state.json`, and generated aliases use the `profile-*.toml` prefix. The lifecycle accepts only the four profile identifiers listed above, the `codex-profiles` managed marker namespace, and this manifest and alias layout.
+
+The role reset applies to the **selected Codex home** resolved in step 1. It is non-recursive and covers exactly the TOML files directly under `<selected-home>/agents/`. Nested directories and non-TOML files are outside this deletion scope.
 
 The lifecycle performs these operations as one profile transition:
 
@@ -110,7 +110,9 @@ That includes the full `lite` instruction set, so switching away from `lite` no 
 
 ### Native roles
 
-It removes/replaces repository-owned:
+Installation first deletes every existing top-level `<selected-home>/agents/*.toml` file. This includes profile-owned, unmanaged, unrelated, and custom role files such as `sol-advisor.toml`. It does not preserve or adopt any existing role file.
+
+It then writes only the destination profile's required roles from this set:
 
 - `luna-worker.toml`;
 - `sol-worker.toml`;
@@ -118,9 +120,11 @@ It removes/replaces repository-owned:
 - generated `profile-worker.toml`;
 - generated `profile-explorer.toml`.
 
-Unmanaged files that use a profile-owned filename or reserved role name stop installation for review; they are not silently deleted.
+After a successful install, the selected home's top-level `agents` directory contains only the destination profile roles. The ownership manifest records that final set.
 
-Unrelated role files, for example `sol-advisor.toml`, remain untouched unless they collide by a reserved routing role name.
+Modified or missing roles from the previous installation and a malformed previous `profiles/roles-state.json` do not block `install PROFILE`; installation treats them as disposable old profile artifacts and replaces the manifest. Unsafe links, non-regular files, and an active operation lock still stop the operation. The separate `remove` command remains manifest-validated and fail-closed.
+
+Installation also deletes artifacts left by the historical `x5`, `x20`, and `x20-work` layouts: the marked `codex-routing-rules` instruction block (including its old routing heading), old profile-only feature keys, the top-level `routing-rules/` state/backups directory, and `models.json` when the active catalog reference identifies it as the old profile-owned catalog. An unmarked routing heading or unmatched marker remains a pre-write safety stop because it has no reliable boundary from unrelated instructions.
 
 ### `lite` model catalog
 
@@ -130,7 +134,7 @@ When installing `lite`, the manager captures:
 codex debug models
 ```
 
-and creates `~/.codex/models-lite.json` containing only the **real** Terra and Luna records. It refuses to manufacture missing models or efforts.
+and creates `<selected-home>/models-lite.json` containing only the **real** Terra and Luna records. It refuses to manufacture missing models or efforts.
 
 For offline/testing installation, provide previously captured metadata:
 
@@ -142,11 +146,11 @@ Switching away from `lite` removes the repository-specific `models-lite.json` an
 
 ## 4. No persistent backups
 
-The lifecycle intentionally creates **no backup files or backup directories**.
+The lifecycle intentionally creates **no backup files or backup directories**, including for custom roles deleted from the selected home's top-level `agents` directory. No backup copy is written anywhere.
 
 If a write fails during the current process, it keeps the pre-operation bytes only in memory and attempts an immediate rollback. Nothing is written under `profile-backups`, `backups`, or another persistent backup location.
 
-This is deliberate. Use `--dry-run` before changing a profile if you want to inspect the transition first.
+This is deliberate. Use `--dry-run` before changing a profile to inspect the destructive role reset. If an existing custom role is needed elsewhere, move or recreate it outside this install operation before proceeding; the lifecycle does not retain a copy.
 
 ## 5. Restart and verify
 

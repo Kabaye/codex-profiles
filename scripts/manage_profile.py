@@ -17,7 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILES = tuple(sorted(manage_roles.PROFILES))
 BEGIN = "<!-- codex-profiles:begin -->"
 END = "<!-- codex-profiles:end -->"
+LEGACY_BEGIN = "<!-- codex-routing-rules:begin -->"
+LEGACY_END = "<!-- codex-routing-rules:end -->"
 MANAGED_COMMENT = "# codex-profiles: managed profile keys"
+LEGACY_MANAGED_COMMENT = "# codex-routing-rules: managed profile keys"
 SECTION_RE = re.compile(r"^\s*\[([^\[\]]+)\]\s*(?:#.*)?$")
 ASSIGN_RE = re.compile(r"^\s*([A-Za-z0-9_-]+)\s*=")
 
@@ -33,15 +36,26 @@ OWNED_KEYS = {
     "features.multi_agent_v2": {"multi_agent_mode_hint_text"},
     "memories": {"extract_model", "consolidation_model"},
 }
+LEGACY_KEYS = {
+    "features": {"multi_agent", "multi_agent_v2"},
+    "features.multi_agent_v2": {"enabled", "max_concurrent_threads_per_session"},
+}
 PROFILE_HEADINGS = (
+    "## Scope routing",
     "## Agent routing — lite",
     "## Agent routing — strict-common",
     "## Agent routing — private",
     "## Agent routing — work",
+    "## Agent routing — x5",
+    "## Agent routing — x20",
+    "## Agent routing — x20-work",
     "## Маршрутизация агентов — lite",
     "## Маршрутизация агентов — strict-common",
     "## Маршрутизация агентов — private",
     "## Маршрутизация агентов — work",
+    "## Маршрутизация агентов — x5",
+    "## Маршрутизация агентов — x20",
+    "## Маршрутизация агентов — x20-work",
 )
 
 
@@ -93,6 +107,8 @@ def _flatten(data: dict) -> dict[str, dict[str, object]]:
 
 def _remove_managed_assignments(text: str, *, remove_catalog: bool) -> str:
     remove = {section: set(keys) for section, keys in OWNED_KEYS.items()}
+    for section, keys in LEGACY_KEYS.items():
+        remove.setdefault(section, set()).update(keys)
     if remove_catalog:
         remove.setdefault("", set()).add("model_catalog_json")
     current = ""
@@ -103,7 +119,7 @@ def _remove_managed_assignments(text: str, *, remove_catalog: bool) -> str:
             current = match.group(1).strip()
             out.append(line)
             continue
-        if line.strip() == MANAGED_COMMENT:
+        if line.strip() in {MANAGED_COMMENT, LEGACY_MANAGED_COMMENT}:
             continue
         assignment = ASSIGN_RE.match(line)
         if assignment and assignment.group(1) in remove.get(current, set()):
@@ -167,7 +183,10 @@ def _profile_catalog(value: object, home: Path) -> bool:
     normalized = value.replace("\\", "/")
     home_norm = home.as_posix().rstrip("/").lower()
     lowered = normalized.lower()
-    return lowered == f"{home_norm}/models-lite.json"
+    return lowered in {
+        f"{home_norm}/models-lite.json",
+        f"{home_norm}/models.json",
+    }
 
 
 def build_config(text: str, profile: str | None, home: Path, *, previous_profile: str | None = None) -> str:
@@ -207,20 +226,41 @@ def _extract_marked(text: str) -> str:
     return normalized[start:stop].strip()
 
 
+def _strip_marked_regions(text: str, begin: str, end: str) -> str:
+    depth = 0
+    kept: list[str] = []
+    for line in _normalize(text).splitlines():
+        marker = line.strip()
+        if marker == begin:
+            depth += 1
+            continue
+        if marker == end:
+            if not depth:
+                raise ValueError(f"Profile marker has no matching begin: {end}")
+            depth -= 1
+            continue
+        if depth == 0:
+            kept.append(line)
+    if depth:
+        raise ValueError(f"Profile marker has no matching end: {begin}")
+    return "\n".join(kept)
+
+
 def build_agents(text: str, profile: str | None) -> str:
     normalized = _normalize(text)
-    marked = re.compile(
-        rf"(?:^|\n)[ \t]*{re.escape(BEGIN)}.*?{re.escape(END)}[ \t]*(?=\n|$)",
-        re.S,
-    )
-    normalized = marked.sub("\n", normalized)
+    for begin, end in ((BEGIN, END), (LEGACY_BEGIN, LEGACY_END)):
+        normalized = _strip_marked_regions(normalized, begin, end)
 
-    for heading in PROFILE_HEADINGS:
-        if heading in normalized:
-            raise ValueError(
-                f"Unmarked profile routing section remains in AGENTS.md ({heading!r}); "
-                "review/remove that unmanaged block, then retry"
-            )
+    lines = normalized.splitlines()
+    first_owned_heading = next(
+        (index for index, line in enumerate(lines) if line.strip() in PROFILE_HEADINGS),
+        None,
+    )
+    if first_owned_heading is not None:
+        raise ValueError(
+            "Unmarked profile routing heading has no safe deletion boundary: "
+            f"{lines[first_owned_heading].strip()}"
+        )
 
     normalized = re.sub(r"\n{3,}", "\n\n", normalized).strip()
     if profile is not None:
@@ -299,9 +339,22 @@ def apply(
     agents_path = home / "AGENTS.md"
     config_text = config_path.read_text(encoding="utf-8-sig") if config_path.exists() else ""
     agents_text = agents_path.read_text(encoding="utf-8-sig") if agents_path.exists() else ""
+    parsed_config = tomllib.loads(config_text) if config_text.strip() else {}
+    configured_catalog = parsed_config.get("model_catalog_json")
+    normalized_catalog = configured_catalog.replace("\\", "/").lower() if isinstance(configured_catalog, str) else ""
+    legacy_catalog_path = home / "models.json"
+    legacy_catalog_owned = (
+        _profile_catalog(configured_catalog, home)
+        and normalized_catalog.endswith("/models.json")
+    )
 
     manifest = home / "profiles" / "roles-state.json"
-    role_state = manage_roles.load_state(manifest)
+    try:
+        role_state = manage_roles.load_state(manifest)
+    except (ValueError, UnicodeError, json.JSONDecodeError):
+        if profile is None:
+            raise
+        role_state = None
     previous_profile = role_state.get("profile") if role_state else None
     new_config = build_config(config_text, profile, home, previous_profile=previous_profile)
     new_agents = build_agents(agents_text, profile)
@@ -327,8 +380,12 @@ def apply(
         changes.append("AGENTS.md")
     if profile == "lite" and catalog_bytes != (catalog_path.read_bytes() if catalog_path.exists() else None):
         changes.append("models-lite.json")
-    if profile is None and catalog_path.exists():
+    if profile != "lite" and catalog_path.exists():
         changes.append("models-lite.json")
+    if legacy_catalog_owned and legacy_catalog_path.exists():
+        changes.append("models.json")
+    if role_plan.get("legacy_removed"):
+        changes.append("routing-rules/")
 
     report = {
         "profile": profile,
@@ -345,6 +402,10 @@ def apply(
         agents_path: current_agents,
         catalog_path: catalog_path.read_bytes() if catalog_path.exists() else None,
     }
+    if legacy_catalog_owned:
+        old[legacy_catalog_path] = (
+            legacy_catalog_path.read_bytes() if legacy_catalog_path.exists() else None
+        )
     try:
         _apply_text(config_path, new_config)
         _apply_text(agents_path, new_agents)
@@ -353,6 +414,8 @@ def apply(
             _atomic_write(catalog_path, catalog_bytes)
         elif catalog_path.exists():
             catalog_path.unlink()
+        if legacy_catalog_owned and legacy_catalog_path.exists():
+            legacy_catalog_path.unlink()
         manage_roles.manage(
             home,
             profile,

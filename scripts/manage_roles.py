@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manage only profile-owned Codex role files. Python 3.11+, no dependencies."""
+"""Install an exact Codex profile role set. Python 3.11+, no dependencies."""
 from __future__ import annotations
 
 import argparse
@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import tempfile
 import tomllib
 
@@ -120,17 +121,23 @@ def manage(
     dry_run: bool = False,
     root: Path = ROOT,
 ) -> dict:
-    """Synchronize canonical profile roles after a collision-safe preflight."""
+    """Replace all top-level role TOMLs on install; remove owned roles on uninstall."""
     home = Path(os.path.abspath(home.expanduser()))
     agents = home / "agents"
     control = home / "profiles"
+    legacy_control = home / "routing-rules"
     manifest = control / "roles-state.json"
     lock = control / "roles.lock"
-    for path in (home, agents, control, lock):
+    legacy_lock = legacy_control / "roles.lock"
+    for path in (home, agents, control, legacy_control, lock, legacy_lock):
         directory(path)
-    if lock.exists():
+    if lock.exists() or legacy_lock.exists():
         raise ValueError("Another role operation may be active; review roles.lock before retrying")
-    state = load_state(manifest)
+    # Install is a clean replacement: the old manifest is an artifact to replace,
+    # not authority over whether existing role TOMLs may be removed. Removal stays
+    # fail-closed because it relies on that manifest to identify owned files.
+    regular(manifest)
+    state = load_state(manifest) if profile is None else None
     current: dict[str, bytes] = {}
     if state:
         for name, sha in state["owned"].items():
@@ -147,6 +154,9 @@ def manage(
         if path.name in current:
             continue
         regular(path)
+        if profile is not None:
+            current[path.name] = path.read_bytes()
+            continue
         role = tomllib.loads(path.read_text(encoding="utf-8-sig"))
         if path.name in OWNABLE or role.get("name") in RESERVED_NAMES:
             raise ValueError(f"Unmanaged role collision: {path}")
@@ -172,8 +182,14 @@ def manage(
         else None
     )
     old_state = manifest.read_bytes() if manifest.exists() else None
-    report = {"profile": profile, "changed_roles": changes, "dry_run": dry_run}
-    if dry_run or (not changes and old_state == state_bytes):
+    legacy_removed = profile is not None and legacy_control.exists()
+    report = {
+        "profile": profile,
+        "changed_roles": changes,
+        "legacy_removed": legacy_removed,
+        "dry_run": dry_run,
+    }
+    if dry_run or (not changes and old_state == state_bytes and not legacy_removed):
         return report
 
     control.mkdir(parents=True, exist_ok=True)
@@ -200,6 +216,12 @@ def manage(
                 atomic_write(manifest, state_bytes)
             elif manifest.exists():
                 manifest.unlink()
+            if legacy_removed:
+                resolved_legacy = legacy_control.resolve()
+                resolved_home = home.resolve()
+                if resolved_legacy == resolved_home or resolved_home not in resolved_legacy.parents:
+                    raise ValueError("Legacy routing directory escapes the selected Codex home")
+                shutil.rmtree(legacy_control)
         except OSError:
             for name in changes:
                 if name in current:
