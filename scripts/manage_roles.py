@@ -7,18 +7,31 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import tempfile
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILES = {"lite": "luna", "strict-common": "luna", "private": "sol", "work": "luna"}
-ALIASES = ("default", "worker", "explorer")
+PROFILES = {"lite", "strict-common", "private", "work"}
+MODE_PROFILES = {"private", "work"}
+MODES = {"solo", "team"}
 ROLE_FILES = {"luna-worker.toml", "sol-worker.toml"}
-ALIAS_FILES = {f"profile-{name}.toml" for name in ALIASES}
-OWNABLE = ROLE_FILES | ALIAS_FILES
-RESERVED_NAMES = {"luna_worker", "sol_worker", *ALIASES}
+LEGACY_ALIAS_FILES = {"profile-default.toml", "profile-worker.toml", "profile-explorer.toml"}
+OWNABLE = ROLE_FILES | LEGACY_ALIAS_FILES
+RESERVED_NAMES = {"luna_worker", "sol_worker", "default", "worker", "explorer"}
+
+
+def normalize_mode(profile: str, mode: str | None) -> str:
+    if profile not in PROFILES:
+        raise ValueError(f"Unknown profile: {profile}")
+    if profile in MODE_PROFILES:
+        selected = mode or "solo"
+        if selected not in MODES:
+            raise ValueError(f"Unknown mode for {profile}: {selected}")
+        return selected
+    if mode not in (None, "team"):
+        raise ValueError(f"{profile} has fixed team routing; mode switching is only supported for private/work")
+    return "team"
 
 
 def digest(data: bytes) -> str:
@@ -31,7 +44,6 @@ def regular(path: Path) -> None:
 
 
 def directory(path: Path) -> None:
-    # Reject symlinked ancestors too. Junctions need an OS-specific review on Windows.
     for part in (path, *path.parents):
         if part.is_symlink() or (hasattr(part, "is_junction") and part.is_junction()):
             raise ValueError(f"Linked directory requires manual review: {part}")
@@ -52,27 +64,23 @@ def atomic_write(path: Path, data: bytes) -> None:
             os.unlink(name)
 
 
-def alias_bytes(base: bytes, name: str) -> bytes:
-    text = base.replace(b"\r\n", b"\n").decode("utf-8")
-    alias, count = re.subn(r'^name = "[^"]+"$', f'name = "{name}"', text, count=1, flags=re.M)
-    if count != 1:
-        raise ValueError("Cannot derive a pinned profile role alias")
-    return alias.encode()
-
-
-def desired_roles(profile: str, root: Path = ROOT) -> dict[str, bytes]:
-    if profile not in PROFILES:
-        raise ValueError(f"Unknown profile: {profile}")
+def desired_roles(profile: str, mode: str | None = None, root: Path = ROOT) -> dict[str, bytes]:
+    selected = normalize_mode(profile, mode)
+    if profile in MODE_PROFILES and selected == "solo":
+        return {}
     result = {
         path.name: path.read_bytes().replace(b"\r\n", b"\n")
         for path in sorted((root / profile / "agents").glob("*.toml"))
     }
-    base = result[f"{PROFILES[profile]}-worker.toml"]
-    for name in ALIASES:
-        result[f"profile-{name}.toml"] = alias_bytes(base, name)
+    expected = {
+        "lite": {"luna-worker.toml"},
+        "strict-common": {"luna-worker.toml"},
+        "private": {"luna-worker.toml", "sol-worker.toml"},
+        "work": {"luna-worker.toml", "sol-worker.toml"},
+    }[profile]
+    if set(result) != expected:
+        raise ValueError(f"Unexpected role set for {profile}: {', '.join(sorted(result))}")
     for filename, data in result.items():
-        if filename not in OWNABLE:
-            raise ValueError(f"Unexpected role filename: {filename}")
         role = tomllib.loads(data.decode("utf-8"))
         if not all(
             role.get(key)
@@ -95,29 +103,37 @@ def load_state(path: Path) -> dict | None:
     if not path.exists():
         return None
     state = json.loads(path.read_text(encoding="utf-8"))
-    if (
-        not isinstance(state, dict)
-        or state.get("version") != 1
-        or state.get("profile") not in PROFILES
-    ):
+    if not isinstance(state, dict) or state.get("profile") not in PROFILES:
         raise ValueError("Unknown or malformed profile role state")
+    version = state.get("version")
+    if version not in {1, 2}:
+        raise ValueError("Unknown or malformed profile role state")
+    profile = state["profile"]
+    if version == 1:
+        mode = "team"
+    else:
+        mode = normalize_mode(profile, state.get("mode"))
     owned = state.get("owned")
-    if not isinstance(owned, dict) or not owned:
+    if not isinstance(owned, dict):
+        raise ValueError("Missing profile role ownership manifest")
+    if version == 1 and not owned:
         raise ValueError("Missing profile role ownership manifest")
     for name, sha in owned.items():
         if (
             name not in OWNABLE
             or not isinstance(sha, str)
-            or not re.fullmatch(r"[0-9a-f]{64}", sha)
+            or len(sha) != 64
+            or any(ch not in "0123456789abcdef" for ch in sha)
         ):
             raise ValueError("Unsafe filename or hash in profile role state")
-    return state
+    return {"version": version, "profile": profile, "mode": mode, "owned": owned}
 
 
 def manage(
     home: Path,
     profile: str | None,
     *,
+    mode: str | None = None,
     dry_run: bool = False,
     root: Path = ROOT,
 ) -> dict:
@@ -133,9 +149,8 @@ def manage(
         directory(path)
     if lock.exists() or legacy_lock.exists():
         raise ValueError("Another role operation may be active; review roles.lock before retrying")
-    # Install is a clean replacement: the old manifest is an artifact to replace,
-    # not authority over whether existing role TOMLs may be removed. Removal stays
-    # fail-closed because it relies on that manifest to identify owned files.
+
+    selected_mode = normalize_mode(profile, mode) if profile is not None else None
     regular(manifest)
     state = load_state(manifest) if profile is None else None
     current: dict[str, bytes] = {}
@@ -149,7 +164,7 @@ def manage(
                 )
             current[name] = path.read_bytes()
 
-    target = desired_roles(profile, root) if profile else {}
+    target = desired_roles(profile, selected_mode, root) if profile else {}
     for path in sorted(agents.glob("*.toml")) if agents.exists() else []:
         if path.name in current:
             continue
@@ -170,8 +185,9 @@ def manage(
         (
             json.dumps(
                 {
-                    "version": 1,
+                    "version": 2,
                     "profile": profile,
+                    "mode": selected_mode,
                     "owned": {name: digest(data) for name, data in sorted(target.items())},
                 },
                 indent=2,
@@ -185,6 +201,7 @@ def manage(
     legacy_removed = profile is not None and legacy_control.exists()
     report = {
         "profile": profile,
+        "mode": selected_mode,
         "changed_roles": changes,
         "legacy_removed": legacy_removed,
         "dry_run": dry_run,
@@ -254,6 +271,7 @@ def main() -> int:
     subs = parser.add_subparsers(dest="command", required=True)
     install = subs.add_parser("install")
     install.add_argument("profile", choices=sorted(PROFILES))
+    install.add_argument("--mode", choices=sorted(MODES))
     remove = subs.add_parser("remove")
     for command in (install, remove):
         command.add_argument("--home", type=Path, default=argparse.SUPPRESS)
@@ -263,12 +281,13 @@ def main() -> int:
         result = manage(
             args.home,
             getattr(args, "profile", None),
+            mode=getattr(args, "mode", None),
             dry_run=args.dry_run,
         )
     except (OSError, ValueError, KeyError, UnicodeError) as exc:
         parser.exit(1, f"No successful role update: {exc}\n")
     print(json.dumps(result, indent=2))
-    print("Roles only. Complete the documented config/AGENTS merge and a fresh-thread smoke test.")
+    print("Roles only. Use manage_profile.py for the complete profile lifecycle.")
     return 0
 
 
