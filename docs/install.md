@@ -34,14 +34,14 @@ Default solo:
 
 ```powershell
 python scripts/manage_profile.py install private
-python scripts/manae_profile.py install work
+python scripts/manage_profile.py install work
 ```
 
 Direct team install:
 
 ```powershell
 python scripts/manage_profile.py install private --mode team
-python scripts/manae_profile.py install work --mode team
+python scripts/manage_profile.py install work --mode team
 ```
 
 `lite` and `strict-common` do not accept `--mode solo`.
