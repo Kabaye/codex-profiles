@@ -1,8 +1,6 @@
 # Merge these keys; do not replace the complete user configuration.
 model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
-model_catalog_json = "C:/Users/YOUR_USER/.codex/models-managed.json"
-
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 1
