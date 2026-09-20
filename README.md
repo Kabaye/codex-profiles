@@ -35,7 +35,7 @@ Subagents therefore remain available through normal Codex behavior when the user
 - at most two open child threads for `private` and `work`;
 - every delegated spawn explicitly names `luna_worker` or `sol_worker`;
 - no generated `default`, `worker`, or `explorer` aliases exist;
-- no automatic reviewer is added; the root verifies delegated work and owns final acceptance.
+- no automatic reviewer is added; an independent reviewer is used only when the user explicitly requests one, while the root verifies delegated work and owns final acceptance.
 
 `private/team` uses Luna Max for cheap/simple/mechanical/well-specified bounded work and Sol High for substantial bounded implementation or non-trivial debugging.
 
