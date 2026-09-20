@@ -7,18 +7,16 @@ python scripts/manage_profile.py install strict-common --dry-run
 python scripts/manage_profile.py install strict-common
 ```
 
-**Destructive role reset:** in the selected Codex home, installation deletes every existing top-level `agents/*.toml` file, including unrelated and custom roles, and writes no backup copy. It then writes only the `strict-common` roles. The scope is non-recursive; nested directories and non-TOML files are not deleted.
+Installation deletes every existing top-level `agents/*.toml` file in the selected Codex home, writes no persistent backup, and installs only the explicit Luna Max worker. There are no generated routing aliases.
 
 Expected profile state:
 
 - default root: GPT-5.6 Sol / xhigh;
 - delegated model: GPT-5.6 Luna / max;
-- open child cap: 4;
-- normal account/provider model catalog;
+- fixed team routing with open child cap 4;
+- `models-managed.json` generated from the current client's complete model catalog, with Luna patched to Multi-Agent V2;
 - empty Multi-Agent V2 mode hint;
 - experimental context management enabled.
-
-Unrelated configuration outside this role-file scope is preserved. After installation, the selected home's top-level `agents/*.toml` set must equal exactly the `strict-common` role set.
 
 After installation, fully restart Codex and open a new thread.
 
