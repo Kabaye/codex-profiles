@@ -174,7 +174,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         config = self.config()
         self.assertEqual(
             config["model_catalog_json"],
-            (self.home / lifecycle.MANAED_CATALOG).s_posix(),
+            (self.home / lifecycle.MANAGED_CATALOG).as_posix(),
         )
         self.assertEqual(config["agents"]["max_concurrent_threads_per_session"], 1)
         self.assertEqual(self.state()["mode"], "team")
@@ -239,7 +239,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertFalse(legacy.exists())
         self.assertFalse(old_lite.exists())
         self.assertEqual(self.role_names(), set())
-        self.assertTrue((self.home / lifecycle.MANAED_CATALOG).is_file())
+        self.assertTrue((self.home / lifecycle.MANAGED_CATALOG).is_file())
 
     def test_remove_cleans_managed_catalog_and_preserves_unrelated_text(self):
         self.home.mkdir()
