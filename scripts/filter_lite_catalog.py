@@ -15,7 +15,7 @@ REQUIRED_EFFORT = {
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", type=Path, help="Unmodified JSON output captured from `codex debug models`")
+    parser.add_argument("input", type=Path, help="Unmodified JSON output captured from `codex debug models --bundled`")
     parser.add_argument("output", type=Path, help="Destination managed catalog JSON")
     args = parser.parse_args()
 
