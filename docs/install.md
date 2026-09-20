@@ -114,7 +114,7 @@ After any install or mode switch:
 
 1. fully restart Codex;
 2. start a new thread;
-1. run:
+3. run:
 
 ```powershell
 python scripts/manage_profile.py status
