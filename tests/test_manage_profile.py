@@ -157,6 +157,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertIn("это личная задача", text)
         self.assertIn("sol_worker", text)
         self.assertIn("Selecting Astra as root changes only the root", text)
+        self.assertIn("only when the user explicitly requests one", text)
         self.assertEqual(
             self.role_names(),
             {"luna-worker.toml", "sol-worker.toml"},
