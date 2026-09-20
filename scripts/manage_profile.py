@@ -23,8 +23,8 @@ LEGACY_BEGIN = "<!-- codex-routing-rules:begin -->"
 LEGACY_END = "<!-- codex-routing-rules:end -->"
 MANAGED_COMMENT = "# codex-profiles: managed profile keys"
 LEGACY_MANAGED_COMMENT = "# codex-routing-rules: managed profile keys"
-SECTION_RE = re.compile(r"^\\s*\\[([^\\[\\]]+)\\]\\s*(?:#.*)?$")
-ASSIGN_RE = re.compile(r"^\\s*([A-Za-z0-9_-]+)\\s*=")
+SECTION_RE = re.compile(r"^\s*\[([^\[\]]+)\]\s*(?:#.*)?$")
+ASSIGN_RE = re.compile(r"^\s*([A-Za-z0-9_-]+)\s*=")
 MANAGED_CATALOG = "models-managed.json"
 LEGACY_LITE_CATALOG = "models-lite.json"
 
@@ -66,7 +66,7 @@ PROFILE_HEADINGS = (
 
 
 def _normalize(text: str) -> str:
-    return text.replace("\\r\\n", "\\n").replace("\\r", "\\n")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def _atomic_write(path: Path, data: bytes) -> None:
@@ -133,7 +133,7 @@ def _prune_empty_managed_sections(text: str) -> str:
             continue
         out.extend(lines[index:end])
         index = end
-    return "\\n".join(out).rstrip() + ("\\n" if out else "")
+    return "\n".join(out).rstrip() + ("\n" if out else "")
 
 
 def _remove_managed_assignments(text: str, *, remove_catalog: bool) -> str:
@@ -157,13 +157,13 @@ def _remove_managed_assignments(text: str, *, remove_catalog: bool) -> str:
         if assignment and assignment.group(1) in remove.get(current_section, set()):
             continue
         out.append(line)
-    return _prune_empty_managed_sections("\\n".join(out))
+    return _prune_empty_managed_sections("\n".join(out))
 
 
 def _insert_managed_assignments(
     text: str, desired: dict[str, dict[str, object]]
 ) -> str:
-    lines = _normalize(text).rstrip("\\n").splitlines()
+    lines = _normalize(text).rstrip("\n").splitlines()
 
     top = desired.get("", {})
     if top:
@@ -205,7 +205,7 @@ def _insert_managed_assignments(
             insertion -= 1
         lines[insertion:insertion] = [*additions, ""]
 
-    result = "\\n".join(lines).rstrip() + "\\n"
+    result = "\n".join(lines).rstrip() + "\n"
     tomllib.loads(result)
     return result
 
@@ -236,7 +236,7 @@ def _desired_config(
 def _profile_catalog(value: object, home: Path) -> bool:
     if not isinstance(value, str) or not value:
         return False
-    normalized = value.replace("\\\\", "/").lower()
+    normalized = value.replace("\\", "/").lower()
     home_norm = home.as_posix().rstrip("/").lower()
     return normalized in {
         f"{home_norm}/{MANAGED_CATALOG}".lower(),
@@ -311,7 +311,7 @@ def _strip_marked_regions(text: str, begin: str, end: str) -> str:
             kept.append(line)
     if depth:
         raise ValueError(f"Profile marker has no matching end: {begin}")
-    return "\\n".join(kept)
+    return "\n".join(kept)
 
 
 def _git_history_blocks() -> list[str]:
@@ -382,7 +382,7 @@ def build_agents(text: str, profile: str | None, *, mode: str | None = None) -> 
             f"{lines[first_owned_heading].strip()}"
         )
 
-    normalized = re.sub(r"\\n{3,}", "\\n\\n", normalized).strip()
+    normalized = re.sub(r"\n{3,}", "\n\n", normalized).strip()
     install_block = False
     if profile is not None:
         selected_mode = manage_roles.normalize_mode(profile, mode)
@@ -393,8 +393,8 @@ def build_agents(text: str, profile: str | None, *, mode: str | None = None) -> 
         block = _extract_marked(
             (ROOT / profile / "agents-subset.md").read_text(encoding="utf-8")
         )
-        normalized = f"{normalized}\\n\\n{block}" if normalized else block
-    return normalized.rstrip() + ("\\n" if normalized else "")
+        normalized = f"{normalized}\n\n{block}" if normalized else block
+    return normalized.rstrip() + ("\n" if normalized else "")
 
 
 def _supported_efforts(model: dict) -> set[str]:
@@ -462,7 +462,7 @@ def _managed_catalog_bytes(catalog: dict, profile: str) -> bytes:
         ]
     else:
         result["models"] = [by_slug[model["slug"]] for model in models]
-    return (json.dumps(result, ensure_ascii=False, indent=2) + "\\n").encode("utf-8")
+    return (json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
 def _capture_catalog(profile: str, models: Path | None) -> bytes:
@@ -522,7 +522,7 @@ def apply(
     legacy_models_owned = (
         _profile_catalog(configured_catalog, home)
         and isinstance(configured_catalog, str)
-        and configured_catalog.replace("\\\\", "/").lower().endswith("/models.json")
+        and configured_catalog.replace("\\", "/").lower().endswith("/models.json")
     )
 
     manifest = home / "profiles" / "roles-state.json"
@@ -735,7 +735,7 @@ def main() -> int:
         json.JSONDecodeError,
         tomllib.TOMLDecodeError,
     ) as exc:
-        parser.exit(1, f"No successful profile update: {exc}\\n")
+        parser.exit(1, f"No successful profile update: {exc}\n")
 
     print(json.dumps(result, indent=2))
     if not args.dry_run:
