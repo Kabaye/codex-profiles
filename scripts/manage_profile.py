@@ -661,7 +661,7 @@ def main() -> int:
     install.add_argument(
         "--models",
         type=Path,
-        help="Captured `codex debug models` JSON (offline/testing install)",
+        help="Captured model-catalog JSON, preferably from `codex debug models --bundled` (offline/testing install)",
     )
     install.add_argument("--dry-run", action="store_true")
 
