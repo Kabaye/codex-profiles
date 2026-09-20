@@ -48,7 +48,7 @@ In that explicit personal lane:
 
 ## Catalog policy
 
-All profiles use `models-managed.json`, regenerated from `codex debug models` on profile install.
+All profiles use `models-managed.json`, regenerated from `codex debug models --bundled` on profile install.
 
 The source catalog is preserved except for the intentional Luna override:
 
