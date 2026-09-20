@@ -80,7 +80,7 @@ python scripts/manage_profile.py install private --models PATH_TO_CAPTURED_MODEL
 Preview and install a profile:
 
 ```powershell
-python scripts/manae_profile.py install private --dry-run
+python scripts/manage_profile.py install private --dry-run
 python scripts/manage_profile.py install private
 ```
 
