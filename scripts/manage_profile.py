@@ -471,7 +471,7 @@ def _capture_catalog(profile: str, models: Path | None) -> bytes:
         return _managed_catalog_bytes(catalog, profile)
     try:
         proc = subprocess.run(
-            ["codex", "debug", "models"],
+            ["codex", "debug", "models", "--bundled"],
             check=True,
             capture_output=True,
             text=True,
@@ -483,7 +483,7 @@ def _capture_catalog(profile: str, models: Path | None) -> bytes:
         ) from exc
     except subprocess.CalledProcessError as exc:
         raise ValueError(
-            f"`codex debug models` failed: {exc.stderr.strip()}"
+            f"`codex debug models --bundled` failed: {exc.stderr.strip()}"
         ) from exc
     return _managed_catalog_bytes(json.loads(proc.stdout), profile)
 
