@@ -1,27 +1,15 @@
 <!-- codex-profiles:begin -->
-## Agent routing — work
+## Agent routing — work team
 
-- The root model and effort selected by the user are authoritative. Profile defaults apply at installation, not as an instruction to switch a running root. Never change the root model/effort, enable Fast/Ultra, or alter configuration merely because a task seems difficult.
-- Installation default: **GPT-5.6 Sol / xhigh**. The normal Codex model selector remains available, so the user may select **GPT-6 Astra** as root directly.
-- Delegation under this profile is proactive when useful: do not require a separate user phrase such as “use sub-agents” before spawning an allowed worker. The explicit personal-task declaration below selects the Sol-vs-Luna delegated path; it is not a second authorization gate for delegation itself.
-- **Default delegated mode is always work-safe:** use `luna_worker`, pinned to **GPT-5.6 Luna / max**. Do not infer that an objective is personal from the repository, path, project name, conversation context, task content, task difficulty, root model, or the user's selection of Astra.
-- Personal delegated mode is enabled only when the user explicitly states that the current objective is personal, for example: `это личная задача`. Natural-language equivalents are acceptable only when they explicitly say the objective is personal; do not infer this indirectly.
-- When the user explicitly marks the objective as personal, immediately acknowledge it once with a short confirmation such as: `Понял: это личная задача. Для делегирования можно использовать Sol High.` Do not ask for another confirmation.
-- After that acknowledgement, prefer `sol_worker`, pinned to **GPT-5.6 Sol / high**, for substantial delegated implementation, repository exploration, debugging, research and verification where delegation is useful. Luna is not required for the quality-critical delegated path of that personal objective.
-- Personal mode applies to the current coherent objective and its direct follow-ups. A new unrelated objective returns to the default Luna-first mode unless the user explicitly marks that new objective as personal too.
-- Selecting Astra as root changes only the root. It does not activate personal mode and does not automatically turn children into Astra or Sol. This profile intentionally installs no Astra worker; stronger reasoning stays in the user-selected root.
-- At most **four open subagent threads**. Usually use zero to two. Use a third or fourth only for genuinely independent workstreams with clear ownership and real parallel value. In ordinary mode those are Luna Max; in explicit personal mode substantial delegated work may use Sol High.
-- The generated `default` / `worker` / `explorer` aliases remain pinned to Luna Max, so accidental unnamed/default delegation stays economical. In personal mode deliberately request `sol_worker`; otherwise deliberately request `luna_worker`. If the requested model pin cannot be verified, keep that work in the current root rather than silently substituting another worker.
-
-## Ownership and coordination
-
-- Assign one coherent workstream, including its implementation and fix/test loop, to one owner. Reuse that owner for follow-ups; change owner only when the responsibility or required model materially changes.
-- Delegation replaces work; the root and other workers must not repeat the same investigation or edit. A verifier checks a defined risk independently, not the entire task a second time.
-- Every spawn must specify an allowed native role and `fork_turns = "none"`. Supply objective, ownership, interfaces, constraints, relevant evidence and acceptance checks in the handoff. Only when essential, use the smallest positive integer string for recent turns. Never omit `fork_turns` or use `"all"`; full-history inheritance can defeat model routing.
-- Use no nested delegation, including spawning another Codex process as a workaround. Use native waits rather than busy polling. Close finished threads when they are no longer needed: the configured cap counts open child threads, not just workers currently using tools.
-- Parallelize only independent work with an expected wall-clock or verification benefit. Writers need separate authorized worktrees or demonstrably disjoint ownership without shared Git, build or state collisions.
-- Workers resolve ordinary implementation choices within their scope. Return `DECISION REQUIRED` for a material change to the agreed contract, architecture, security boundary, data integrity or backward compatibility; include evidence and a recommendation. Do not bounce routine choices back to the root.
-- Production writes, pushes, migrations and deployments require the user's existing authorization or an applicable approved runbook. These routing rules never grant permissions or weaken sandbox/approval policies.
-- The root inspects actual diffs and decisive acceptance evidence, reruns the highest-risk checks as appropriate, and reports unresolved gaps. Do not blindly repeat every passing command.
+- The current user-selected root model and effort are authoritative. Installation defaults to **GPT-5.6 Sol / xhigh**, but the user may select **GPT-6 Astra** (or another available root) directly; routing never changes it.
+- Team mode uses selective delegation: keep work in the root by default, normally use zero or one worker, and never exceed **two open child threads**.
+- For ordinary work objectives, delegated work uses only `luna_worker`, pinned to **GPT-5.6 Luna / max**.
+- A personal lane is enabled only when the user explicitly states that the current objective is personal, for example: `это личная задача`. Do not infer it from repository, path, task content, difficulty, or root model. Acknowledge the declaration once; it applies to that coherent objective and direct follow-ups only.
+- In the explicit personal lane, use `luna_worker` for simple/mechanical/well-specified bounded work and `sol_worker` (**GPT-5.6 Sol / high**) for substantial implementation or non-trivial debugging.
+- Selecting Astra as root changes only the root and never activates the personal lane.
+- Keep architecture, material ambiguity, hard reasoning, integration, worker verification, and final acceptance in the root. Do not add an automatic reviewer.
+- Every spawn must explicitly request `luna_worker` or, in the personal lane, `sol_worker`, with `fork_turns = "none"` and a self-contained objective, ownership, interfaces, constraints, and acceptance checks. There are no `default` / `worker` / `explorer` routing aliases.
+- Delegated work substitutes for root work; do not duplicate the same investigation or implementation. Reuse the same owner for its fix/test loop when practical.
+- Workers never spawn children or change routing/model settings. Production writes, pushes, migrations, and deployments still require the user's existing authorization or an applicable runbook.
 
 <!-- codex-profiles:end -->
