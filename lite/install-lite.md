@@ -7,18 +7,15 @@ python scripts/manage_profile.py install lite --dry-run
 python scripts/manage_profile.py install lite
 ```
 
-**Destructive role reset:** in the selected Codex home, installation deletes every existing top-level `agents/*.toml` file, including unrelated and custom roles, and writes no backup copy. It then writes only the `lite` roles. The scope is non-recursive; nested directories and non-TOML files are not deleted.
+Installation fully replaces the repository-managed routing state for the selected Codex home. It deletes every existing top-level `agents/*.toml` file, writes no persistent backup, and installs only the explicit `luna-worker.toml` role. There are no generated `default`, `worker`, or `explorer` aliases.
 
-The manager automatically:
+The manager also:
 
-- replaces the currently managed profile state;
-- installs the full managed `lite` AGENTS block;
-- installs Luna Max worker and generated alias roles;
 - sets Terra Medium as the default root;
-- enables the profile's empty Multi-Agent V2 mode hint and experimental context management;
-- runs `codex debug models` and builds `<selected-home>/models-lite.json` containing only the real Terra and Luna records.
-
-After installation, the selected home's top-level `agents/*.toml` set must equal exactly the `lite` role set.
+- keeps fixed team routing with a one-child cap;
+- enables the empty Multi-Agent V2 mode hint and experimental context management;
+- captures the current client's `codex debug models` metadata;
+- writes `<selected-home>/models-managed.json`, patches Luna to Multi-Agent V2, and filters the model list to Terra + Luna.
 
 For offline/testing use captured metadata:
 
