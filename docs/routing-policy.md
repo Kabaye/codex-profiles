@@ -62,4 +62,4 @@ A mode switch reuses the existing managed catalog; it does not rebuild it.
 
 ## Verification ownership
 
-Workers verify their own bounded implementation as needed, but final acceptance stays with the root. Do not spawn a separate reviewer automatically. Independent review is an explicit user request or a specifically justified exceptional risk, not a default phase.
+Workers verify their own bounded implementation as needed, but final acceptance stays with the root. Do not spawn a separate reviewer automatically. Independent review is used only when the user explicitly requests it.
