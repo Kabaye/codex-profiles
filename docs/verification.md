@@ -70,7 +70,7 @@ Inspect `models-managed.json` after install:
 - Luna Max remains in supported reasoning levels;
 - `lite` contains exactly Terra and Luna.
 
-Mode switching should leave the managed catalog bytes unchanged. Profile installation should rebuild it from the current client capture.
+Mode switching should leave the managed catalog bytes unchanged. Profile installation should rebuild it from the current client's `codex debug models --bundled` capture.
 
 ## Boundaries
 
