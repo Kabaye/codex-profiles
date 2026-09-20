@@ -132,6 +132,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertIn("Luna / max", agents_text)
         self.assertIn("Sol / high", agents_text)
         self.assertIn("two open child threads", agents_text)
+        self.assertIn("only when the user explicitly requests one", agents_text)
         self.assertNotIn("profile-default", agents_text)
         self.assertEqual(before_catalog, (self.home / lifecycle.MANAGED_CATALOG).read_bytes())
 
