@@ -43,10 +43,10 @@ Subagents therefore remain available through normal Codex behavior when the user
 
 ## Managed model catalog
 
-Every profile installation captures the current client's real metadata with:
+Every profile installation captures the current binary's version-matched bundled metadata with:
 
 ```powershell
-codex debug models
+codex debug models --bundled
 ```
 
 and writes:
