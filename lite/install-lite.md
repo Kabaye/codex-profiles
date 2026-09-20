@@ -14,7 +14,7 @@ The manager also:
 - sets Terra Medium as the default root;
 - keeps fixed team routing with a one-child cap;
 - enables the empty Multi-Agent V2 mode hint and experimental context management;
-- captures the current client's `codex debug models` metadata;
+- captures the current client's `codex debug models --bundled` metadata;
 - writes `<selected-home>/models-managed.json`, patches Luna to Multi-Agent V2, and filters the model list to Terra + Luna.
 
 For offline/testing use captured metadata:
