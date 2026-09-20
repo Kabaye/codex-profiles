@@ -1,26 +1,34 @@
 # Install `private`
 
-Use the shared profile lifecycle. Installing `private` automatically replaces the currently managed profile state; do not manually remove another profile first.
+Use the shared profile lifecycle. Installing `private` replaces the currently managed profile state; do not manually remove another profile first.
+
+Default install is native `solo`:
 
 ```powershell
 python scripts/manage_profile.py install private --dry-run
 python scripts/manage_profile.py install private
 ```
 
-**Destructive role reset:** in the selected Codex home, installation deletes every existing top-level `agents/*.toml` file, including unrelated and custom roles, and writes no backup copy. It then writes only the `private` roles. The scope is non-recursive; nested directories and non-TOML files are not deleted.
+Install directly in selective `team` mode:
 
-Expected profile state:
+```powershell
+python scripts/manage_profile.py install private --mode team --dry-run
+python scripts/manage_profile.py install private --mode team
+```
+
+Expected base state:
 
 - default root: GPT-6 Astra / high;
-- delegated model: GPT-5.6 Sol / high only;
-- no Astra worker role;
-- open child cap: 4;
-- normal account/provider model catalog;
-- empty Multi-Agent V2 mode hint;
+- root model and effort remain user-selectable at runtime;
 - experimental context management enabled;
+- `models-managed.json` rebuilt from the current client's model metadata with Luna patched to Multi-Agent V2;
 - provider/Codex memory defaults retained.
 
-Unrelated configuration outside this role-file scope is preserved. After installation, the selected home's top-level `agents/*.toml` set must equal exactly the `private` role set.
+In `solo`, the repository installs no custom worker TOMLs, no child cap, no proactive routing block, and no `multi_agent_mode_hint_text`; explicit user-requested subagents remain native Codex behavior.
+
+In `team`, the repository installs only `luna-worker.toml` and `sol-worker.toml`, sets the open-child cap to 2, and enables selective routing: Luna Max for cheap/simple/mechanical/well-specified bounded work and Sol High for substantial bounded implementation or non-trivial debugging. The root owns architecture, hard reasoning, integration, verification, and final acceptance. No automatic reviewer is added.
+
+Installation deletes every existing top-level `agents/*.toml` file in the selected Codex home and writes no persistent backup.
 
 After installation, fully restart Codex and open a new thread.
 
