@@ -1,28 +1,34 @@
 # Install `work`
 
-Use the shared profile lifecycle. Installing `work` automatically replaces the currently managed profile state; do not manually remove another profile first.
+Use the shared profile lifecycle. Installing `work` replaces the currently managed profile state; do not manually remove another profile first.
+
+Default install is native `solo`:
 
 ```powershell
 python scripts/manage_profile.py install work --dry-run
 python scripts/manage_profile.py install work
 ```
 
-**Destructive role reset:** in the selected Codex home, installation deletes every existing top-level `agents/*.toml` file, including unrelated and custom roles, and writes no backup copy. It then writes only the `work` roles. The scope is non-recursive; nested directories and non-TOML files are not deleted.
+Install directly in selective `team` mode:
 
-Expected profile state:
+```powershell
+python scripts/manage_profile.py install work --mode team --dry-run
+python scripts/manage_profile.py install work --mode team
+```
+
+Expected base state:
 
 - default root: GPT-5.6 Sol / xhigh;
-- Astra remains manually selectable as root;
-- delegated model: Luna Max by default;
-- after explicit `это личная задача`, substantial delegated work may use Sol High;
-- open child cap: 4;
-- normal account/provider model catalog;
-- empty Multi-Agent V2 mode hint;
-- experimental context management enabled.
+- Astra or another available root remains manually selectable; routing never changes the selected root;
+- experimental context management enabled;
+- Luna used for memory extraction/consolidation;
+- `models-managed.json` rebuilt from the current client's model metadata with Luna patched to Multi-Agent V2.
 
-The personal declaration selects the Sol-vs-Luna delegated path; it is not a second permission gate for whether agents may be spawned at all.
+In `solo`, the repository installs no custom worker TOMLs, no child cap, no proactive routing block, and no `multi_agent_mode_hint_text`; explicit user-requested subagents remain native Codex behavior.
 
-Unrelated configuration outside this role-file scope is preserved. After installation, the selected home's top-level `agents/*.toml` set must equal exactly the `work` role set.
+In `team`, the repository installs only `luna-worker.toml` and `sol-worker.toml` and sets the open-child cap to 2. Ordinary work delegation uses Luna Max only. Sol High becomes available only after the user explicitly marks the current objective as personal, for example `это личная задача`; the personal lane applies only to that coherent objective and direct follow-ups. Selecting Astra as root does not activate it.
+
+Installation deletes every existing top-level `agents/*.toml` file in the selected Codex home and writes no persistent backup.
 
 After installation, fully restart Codex and open a new thread.
 
