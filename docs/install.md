@@ -46,7 +46,7 @@ python scripts/manage_profile.py install work --mode team
 
 `lite` and `strict-common` do not accept `--mode solo`.
 
-Every install rebuilds `models-managed.json` from the current client's `codex debug models` output. The complete source metadata is preserved except that Luna's `multi_agent_version` is intentionally patched to `v2`. `lite` additionally filters the generated catalog to Terra + Luna.
+Every install rebuilds `models-managed.json` from the current client's `codex debug models --bundled` output. The complete source metadata is preserved except that Luna's `multi_agent_version` is intentionally patched to `v2`. `lite` additionally filters the generated catalog to Terra + Luna.
 
 Offline/testing:
 
