@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static preset checks; optionally validate real model metadata and the lite catalog."""
+"""Static preset checks; optionally validate source or generated model metadata."""
 from __future__ import annotations
 
 import argparse
@@ -12,53 +12,82 @@ import manage_roles
 ROOT = Path(__file__).resolve().parents[1]
 BEGIN = "<!-- codex-profiles:begin -->"
 END = "<!-- codex-profiles:end -->"
-EXPECTED = {
-    "lite": ("gpt-5.6-terra", "medium", "gpt-5.6-luna", "max", 1,
-             {"luna_worker": ("gpt-5.6-luna", "max")}),
-    "strict-common": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 4,
-           {"luna_worker": ("gpt-5.6-luna", "max")}),
-    "private": ("gpt-6-astra", "high", "gpt-5.6-sol", "high", 4,
-            {"sol_worker": ("gpt-5.6-sol", "high")}),
-    "work": ("gpt-5.6-sol", "xhigh", "gpt-5.6-luna", "max", 4,
-                 {"luna_worker": ("gpt-5.6-luna", "max"), "sol_worker": ("gpt-5.6-sol", "high")}),
+
+ROOTS = {
+    "lite": ("gpt-5.6-terra", "medium"),
+    "strict-common": ("gpt-5.6-sol", "xhigh"),
+    "private": ("gpt-6-astra", "high"),
+    "work": ("gpt-5.6-sol", "xhigh"),
+}
+TEAM_ROLES = {
+    "lite": {"luna_worker": ("gpt-5.6-luna", "max")},
+    "strict-common": {"luna_worker": ("gpt-5.6-luna", "max")},
+    "private": {
+        "luna_worker": ("gpt-5.6-luna", "max"),
+        "sol_worker": ("gpt-5.6-sol", "high"),
+    },
+    "work": {
+        "luna_worker": ("gpt-5.6-luna", "max"),
+        "sol_worker": ("gpt-5.6-sol", "high"),
+    },
 }
 LITE_MODELS = {"gpt-5.6-terra", "gpt-5.6-luna"}
-EXPECTED_FEATURES = {
-    "multi_agent_v2": {"multi_agent_mode_hint_text": ""},
-    "context_management": {"experimental_mode": True},
-}
-PROFILE_ALIASES = {f"profile-{name}.toml" for name in manage_roles.ALIASES}
 
 
-def _catalog_errors(catalog: dict, required: set[tuple[str, str]], exact_slugs: set[str] | None = None) -> list[str]:
+def _catalog_errors(
+    catalog: dict,
+    required: set[tuple[str, str]],
+    *,
+    exact_slugs: set[str] | None = None,
+    require_luna_v2: bool = False,
+) -> list[str]:
     errors: list[str] = []
     models = catalog.get("models") if isinstance(catalog, dict) else None
-    if not isinstance(models, list) or not all(isinstance(m, dict) and isinstance(m.get("slug"), str) for m in models):
-        return ["Unrecognized metadata: expected models[] with slug; never invent or repair capabilities"]
-    index = {m["slug"]: m for m in models}
+    if not isinstance(models, list) or not all(
+        isinstance(model, dict) and isinstance(model.get("slug"), str)
+        for model in models
+    ):
+        return ["Unrecognized metadata: expected models[] with slug"]
+    index = {model["slug"]: model for model in models}
     if len(index) != len(models):
         errors.append("Duplicate model slugs in metadata")
     if exact_slugs is not None and set(index) != exact_slugs:
         errors.append(f"Catalog must contain exactly: {', '.join(sorted(exact_slugs))}")
     for slug, effort in sorted(required):
         levels = index.get(slug, {}).get("supported_reasoning_levels", [])
-        supported = {x.get("effort") for x in levels if isinstance(x, dict)} if isinstance(levels, list) else set()
+        supported = (
+            {item.get("effort") for item in levels if isinstance(item, dict)}
+            if isinstance(levels, list)
+            else set()
+        )
         if effort not in supported:
             errors.append(f"Model metadata does not confirm {slug} / {effort}")
+    if require_luna_v2 and index.get("gpt-5.6-luna", {}).get("multi_agent_version") != "v2":
+        errors.append("Managed catalog must patch gpt-5.6-luna multi_agent_version to v2")
     return errors
 
 
-def validate_lite_catalog(catalog: dict) -> list[str]:
+def validate_managed_catalog(catalog: dict, profile: str) -> list[str]:
+    exact = LITE_MODELS if profile == "lite" else None
+    required = {("gpt-5.6-luna", "max")}
+    if profile == "lite":
+        required.add(("gpt-5.6-terra", "medium"))
     return _catalog_errors(
         catalog,
-        {("gpt-5.6-terra", "medium"), ("gpt-5.6-luna", "max")},
-        exact_slugs=LITE_MODELS,
+        required,
+        exact_slugs=exact,
+        require_luna_v2=True,
     )
 
 
-def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None = None) -> list[str]:
-    errors, required = [], set()
-    if profile is not None and profile not in EXPECTED:
+def validate(
+    root: Path = ROOT,
+    catalog: dict | None = None,
+    profile: str | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    required: set[tuple[str, str]] = set()
+    if profile is not None and profile not in ROOTS:
         return [f"Unknown profile: {profile}"]
 
     def check(condition: bool, message: str) -> None:
@@ -66,56 +95,113 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
             errors.append(message)
 
     check((root / "scripts" / "manage_profile.py").is_file(), "unified profile lifecycle manager missing")
-    check(set(EXPECTED) == set(manage_roles.PROFILES), "public profile registry drift")
+    check(set(ROOTS) == set(manage_roles.PROFILES), "public profile registry drift")
 
-    for p, (model, effort, child, child_eff, cap, roles) in EXPECTED.items():
-        config = tomllib.loads((root / p / "config.toml").read_text(encoding="utf-8"))
-        check(config.get("model") == model and config.get("model_reasoning_effort") == effort, f"{p}: root pin drift")
-        catalog_path = config.get("model_catalog_json")
-        if p == "lite":
-            normalized = catalog_path.replace("\\", "/") if isinstance(catalog_path, str) else ""
-            check(normalized.endswith("/models-lite.json"), "lite: restricted models-lite.json catalog is required")
+    for name, (root_model, root_effort) in ROOTS.items():
+        config = tomllib.loads((root / name / "config.toml").read_text(encoding="utf-8"))
+        check(
+            config.get("model") == root_model
+            and config.get("model_reasoning_effort") == root_effort,
+            f"{name}: root pin drift",
+        )
+        check(
+            config.get("features", {}).get("context_management")
+            == {"experimental_mode": True},
+            f"{name}: experimental context management drift",
+        )
+        if name in manage_roles.MODE_PROFILES:
+            check("agents" not in config, f"{name}: base config must leave native agents untouched in solo")
+            check(
+                "multi_agent_v2" not in config.get("features", {}),
+                f"{name}: base config must not suppress native multi-agent mode in solo",
+            )
         else:
-            check(catalog_path is None, f"{p}: custom catalog hides root choices")
-        check(config.get("features", {}) == EXPECTED_FEATURES,
-              f"{p}: profile-managed feature drift (empty multi-agent mode hint + experimental context management required)")
-        agents = config.get("agents", {})
-        check(agents == {"enabled": True, "max_concurrent_threads_per_session": cap,
-                         "default_subagent_model": child, "default_subagent_reasoning_effort": child_eff},
-              f"{p}: agent defaults/cap drift")
-        check(config.get("memories", {}) == ({} if p == "private" else {
-            "extract_model": "gpt-5.6-luna", "consolidation_model": "gpt-5.6-luna"}),
-              f"{p}: memory routing drift")
-        if profile is None or profile == p:
-            required.add((model, effort))
-            required.add((child, child_eff))
-        actual = {}
-        for path in (root / p / "agents").glob("*.toml"):
+            expected_cap = 1 if name == "lite" else 4
+            check(
+                config.get("agents")
+                == {"enabled": True, "max_concurrent_threads_per_session": expected_cap},
+                f"{name}: fixed team agent cap drift",
+            )
+            check(
+                config.get("features", {}).get("multi_agent_v2")
+                == {"multi_agent_mode_hint_text": ""},
+                f"{name}: fixed team multi-agent hint drift",
+            )
+        expected_memories = (
+            {}
+            if name == "private"
+            else {
+                "extract_model": "gpt-5.6-luna",
+                "consolidation_model": "gpt-5.6-luna",
+            }
+        )
+        check(config.get("memories", {}) == expected_memories, f"{name}: memory routing drift")
+
+        actual_roles: dict[str, tuple[str, str]] = {}
+        for path in (root / name / "agents").glob("*.toml"):
             role = tomllib.loads(path.read_text(encoding="utf-8"))
-            name = role.get("name")
-            check(name not in actual, f"{p}: duplicate role {name}")
-            actual[name] = (role.get("model"), role.get("model_reasoning_effort"))
-            check(bool(role.get("description")) and bool(role.get("developer_instructions")), f"{p}: incomplete role {name}")
-            check(role.get("agents", {}).get("enabled") is False, f"{p}: nested delegation enabled")
-            if profile is None or profile == p:
-                required.add(actual[name])
-        check(actual == roles, f"{p}: unexpected/missing worker or effort")
-        generated = set(manage_roles.desired_roles(p, root))
-        check(PROFILE_ALIASES.issubset(generated), f"{p}: profile aliases missing")
+            role_name = role.get("name")
+            check(role_name not in actual_roles, f"{name}: duplicate role {role_name}")
+            actual_roles[role_name] = (
+                role.get("model"),
+                role.get("model_reasoning_effort"),
+            )
+            check(
+                bool(role.get("description")) and bool(role.get("developer_instructions")),
+                f"{name}: incomplete role {role_name}",
+            )
+            check(
+                role.get("agents", {}).get("enabled") is False,
+                f"{name}: nested delegation enabled",
+            )
+        check(actual_roles == TEAM_ROLES[name], f"{name}: unexpected/missing team role")
 
-        text = (root / p / "agents-subset.md").read_text(encoding="utf-8")
+        team_files = set(manage_roles.desired_roles(name, "team", root))
+        expected_files = {
+            "luna-worker.toml"
+        } | ({"sol-worker.toml"} if name in {"private", "work"} else set())
+        check(team_files == expected_files, f"{name}: explicit team role files drift")
+        check(
+            not any(filename.startswith("profile-") for filename in team_files),
+            f"{name}: generated routing aliases must not exist",
+        )
+        if name in manage_roles.MODE_PROFILES:
+            check(
+                manage_roles.desired_roles(name, "solo", root) == {},
+                f"{name}: solo must install no custom roles",
+            )
+
+        text = (root / name / "agents-subset.md").read_text(encoding="utf-8")
         stripped = text.strip()
-        check(text.count(BEGIN) == 1 and text.count(END) == 1, f"{p}: routing marker drift")
-        check(stripped.startswith(BEGIN) and stripped.endswith(END),
-              f"{p}: profile instructions exist outside the managed lifecycle block")
-        check('fork_turns = "none"' in text, f"{p}: explicit bounded fork policy missing")
-        check("SOL_XHIGH_AGENTS_EXPLICITLY_REQUESTED" not in text, f"{p}: stale authorization gate")
-
+        check(
+            text.count(BEGIN) == 1 and text.count(END) == 1,
+            f"{name}: routing marker drift",
+        )
+        check(
+            stripped.startswith(BEGIN) and stripped.endswith(END),
+            f"{name}: profile instructions exist outside the managed lifecycle block",
+        )
+        check('fork_turns = "none"' in text, f"{name}: explicit bounded fork policy missing")
+        if name in {"private", "work"}:
+            check("two open child threads" in text, f"{name}: team cap policy missing")
+            check("automatic reviewer" in text, f"{name}: no-automatic-review policy missing")
         for operation in ("install", "remove"):
-            page = (root / p / f"{operation}-{p}.md").read_text(encoding="utf-8")
-            check(f"../docs/{operation}.md" in page, f"{p}: {operation} procedure drift")
-            check("scripts/manage_profile.py" in page, f"{p}: {operation} does not use unified profile lifecycle")
-            check("scripts/manage_roles.py" not in page, f"{p}: {operation} exposes obsolete roles-only lifecycle")
+            page = (root / name / f"{operation}-{name}.md").read_text(encoding="utf-8")
+            check(f"../docs/{operation}.md" in page, f"{name}: {operation} procedure drift")
+            check(
+                "scripts/manage_profile.py" in page,
+                f"{name}: {operation} does not use unified profile lifecycle",
+            )
+            check(
+                "scripts/manage_roles.py" not in page,
+                f"{name}: {operation} exposes obsolete roles-only lifecycle",
+            )
+
+        if profile is None or profile == name:
+            required.add((root_model, root_effort))
+            required.add(("gpt-5.6-luna", "max"))
+            if name in {"private", "work"}:
+                required.add(("gpt-5.6-sol", "high"))
 
     if catalog is not None:
         errors.extend(_catalog_errors(catalog, required))
@@ -125,21 +211,30 @@ def validate(root: Path = ROOT, catalog: dict | None = None, profile: str | None
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models", type=Path, help="Unmodified JSON from `codex debug models`")
-    parser.add_argument("--lite-catalog", type=Path, help="Generated models-lite.json; must contain exactly Terra and Luna")
-    parser.add_argument("--profile", choices=sorted(EXPECTED), help="Limit live metadata requirements to one profile")
+    parser.add_argument(
+        "--managed-catalog",
+        type=Path,
+        help="Generated models-managed.json; Luna must be patched to V2",
+    )
+    parser.add_argument("--profile", choices=sorted(ROOTS), help="Limit live metadata requirements")
     args = parser.parse_args()
     try:
-        catalog = json.loads(args.models.read_text(encoding="utf-8-sig")) if args.models else None
-        errors = validate(catalog=catalog, profile=args.profile)
-        if args.lite_catalog:
-            lite_catalog = json.loads(args.lite_catalog.read_text(encoding="utf-8-sig"))
-            errors.extend(validate_lite_catalog(lite_catalog))
+        raw = json.loads(args.models.read_text(encoding="utf-8-sig")) if args.models else None
+        errors = validate(catalog=raw, profile=args.profile)
+        if args.managed_catalog:
+            if not args.profile:
+                raise ValueError("--managed-catalog requires --profile")
+            managed = json.loads(args.managed_catalog.read_text(encoding="utf-8-sig"))
+            errors.extend(validate_managed_catalog(managed, args.profile))
     except (OSError, ValueError, TypeError) as exc:
         parser.exit(1, f"Validation could not complete: {exc}\n")
     if errors:
         print("\n".join(errors))
         return 1
-    print("PASS: four static profiles" + (" and supplied model metadata" if catalog or args.lite_catalog else ""))
+    print(
+        "PASS: four static profiles"
+        + (" and supplied model metadata" if raw or args.managed_catalog else "")
+    )
     print("Not a Codex runtime, account entitlement, quota or model-behavior test.")
     return 0
 

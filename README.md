@@ -1,82 +1,143 @@
 # Codex profiles
 
-Four mutually exclusive local Codex routing presets. Reviewed on **2026-09-09**, against the **0.153.4** source/catalog plus current Multi-Agent V2 source/tests and documentation. Account/client metadata and the live smoke test remain the authority for an installed machine.
+Local Codex routing presets with an explicit separation between the **root profile** and the **agent mode**.
 
-| Profile | Initial root | Visible root models | Delegated work | Open child cap | Memory models |
-|---|---|---|---|---:|---|
-| [lite](lite/install-lite.md) | Terra medium | **Terra + Luna only** | Luna Max only | 1 | Luna / Luna |
-| [strict-common](strict-common/install-strict-common.md) | Sol xhigh | Normal account catalog | Luna Max only | 4 | Luna / Luna |
-| [private](private/install-private.md) | Astra high | Normal account catalog | Sol high only | 4 | Codex/provider defaults |
-| [work](work/install-work.md) | Sol xhigh; manual Astra root available | Normal account catalog | Luna Max by default; Sol high after explicit personal-task declaration | 4 | Luna / Luna |
+## Profiles and modes
 
-All four profiles set `[features.multi_agent_v2] multi_agent_mode_hint_text = ""`. The empty custom hint suppresses Codex's effort-dependent built-in `<multi_agent_mode>` developer message, so the applicable `AGENTS.md` profile decides when delegation is useful instead of non-Ultra efforts silently becoming explicit-request-only or Ultra silently changing to a separate built-in proactive policy. The profiles do not set `multi_agent_v2.enabled = true` merely to force a backend version.
+| Profile | Default root | Default mode | Team workers | Team child cap |
+|---|---|---|---|---:|
+| `lite` | Terra medium | fixed team | Luna Max | 1 |
+| `strict-common` | Sol xhigh | fixed team | Luna Max | 4 |
+| `private` | Astra high | **solo** | Luna Max + Sol High | 2 |
+| `work` | Sol xhigh | **solo** | Luna Max; Sol High only in explicit personal lane | 2 |
 
-All four profiles also explicitly enable Codex experimental context management with `[features.context_management] experimental_mode = true`. This is an intentional experimental setting and is separate from Memories/model routing.
+The user's current root model and effort are authoritative. `work` does **not** restrict the root selector: the user may manually select Astra or another available root, and routing never changes that selection.
 
-`lite` is intentionally restricted. Its installation generates `models-lite.json` by filtering the **real** Codex model metadata down to `gpt-5.6-terra` and `gpt-5.6-luna`; it does not manufacture capabilities. Terra Medium is the default root and Luna Max is the only child model. GPT-5.6 Sol and GPT-6/Astra must not be visible in this profile.
+### `solo`
 
-The other three profiles use the normal account/provider model catalog. The user's root model/effort selection is authoritative: runtime routing never changes it.
+`private` and `work` install in `solo` unless `--mode team` is supplied.
 
-`work` has one explicit switch. Every unmarked objective uses Luna Max for delegation. If the user explicitly says that the current objective is personal (for example, `это личная задача`), Codex acknowledges that once and may use the pinned Sol High worker for that objective and its direct follow-ups. A new unrelated objective resets to Luna-first. The profile never infers personal mode from repository context, task difficulty, or the selected root model. Selecting Astra changes only the root and never activates Sol or Astra children automatically.
+`solo` deliberately leaves Codex multi-agent behavior native:
 
-`private` is quality-first and intentionally simple: Astra High is the root for hard reasoning, architecture, difficult debugging, integration and final acceptance; Sol High is the only delegated worker for substantial implementation, exploration, ordinary debugging, tests/builds/logs and tool-heavy execution. There is no Astra child role. Astra xhigh/max remains a manual root escalation for unusually difficult sessions.
+- no profile routing block is installed into `AGENTS.md`;
+- no custom worker TOMLs are installed;
+- no profile `multi_agent_mode_hint_text` override is installed;
+- no profile child-thread cap is installed.
 
-For `strict-common`, `private` and `work`, the technical child cap is **4**, but normal routing should use zero to two. A third or fourth child is for genuinely independent workstreams with clear ownership and real parallel benefit, not for filling slots.
+Subagents therefore remain available through normal Codex behavior when the user explicitly asks for them. `solo` is not `agents.enabled = false`.
 
-## One profile lifecycle
+### `team`
 
-Use **one command surface for every profile**. Installing a profile means switching the whole routing setup to that profile; do not manually stack profiles.
+`team` enables the repository's selective routing policy:
+
+- normally keep the task in the root;
+- normally use zero or one worker;
+- at most two open child threads for `private` and `work`;
+- every delegated spawn explicitly names `luna_worker` or `sol_worker`;
+- no generated `default`, `worker`, or `explorer` aliases exist;
+- no automatic reviewer is added; the root verifies delegated work and owns final acceptance.
+
+`private/team` uses Luna Max for cheap/simple/mechanical/well-specified bounded work and Sol High for substantial bounded implementation or non-trivial debugging.
+
+`work/team` uses Luna Max for ordinary work objectives. Sol High becomes available only when the user explicitly marks the current objective as personal, for example `это личная задача`. That declaration applies only to the current coherent objective and direct follow-ups. Selecting Astra as the root does not activate the personal lane.
+
+## Managed model catalog
+
+Every profile installation captures the current client's real metadata with:
 
 ```powershell
-# Preview a switch
-python scripts/manage_profile.py install work --dry-run
+codex debug models
+```
 
-# Install or switch to a profile
-python scripts/manage_profile.py install work
+and writes:
 
-# Show the active managed profile
+```text
+~/.codex/models-managed.json
+```
+
+The catalog preserves the captured records and top-level metadata, with one intentional compatibility override:
+
+```json
+"gpt-5.6-luna": {
+  "multi_agent_version": "v2"
+}
+```
+
+Luna remains pinned to **Max** wherever this repository delegates to it.
+
+For `lite`, the same generated catalog is additionally filtered to Terra + Luna only. For the other profiles, the complete captured catalog is retained.
+
+The catalog is rebuilt on `install`; changing only `solo`/`team` reuses the existing generated snapshot. Fully restart Codex after an install or mode switch because the client can retain the previous catalog/configuration snapshot until restart.
+
+For offline/testing installs, pass captured metadata explicitly:
+
+```powershell
+python scripts/manage_profile.py install private --models PATH_TO_CAPTURED_MODELS_JSON
+```
+
+## Lifecycle
+
+Preview and install a profile:
+
+```powershell
+python scripts/manae_profile.py install private --dry-run
+python scripts/manage_profile.py install private
+```
+
+Install directly into team mode:
+
+```powershell
+python scripts/manage_profile.py install private --mode team
+python scripts/manage_profile.py install work --mode team
+```
+
+Switch `private` or `work` without reinstalling the root profile or rebuilding the catalog:
+
+```powershell
+python scripts/manage_profile.py mode team
+python scripts/manage_profile.py mode solo
+```
+
+Show state:
+
+```powershell
 python scripts/manage_profile.py status
+```
 
-# Preview complete removal
+Remove repository-owned profile state:
+
+```powershell
 python scripts/manage_profile.py remove --dry-run
-
-# Remove all repository-owned profile artifacts
 python scripts/manage_profile.py remove
 ```
 
-Replace `work` with `lite`, `strict-common`, or `private` as needed. `lite` automatically captures `codex debug models` and builds the restricted Terra+Luna catalog; for offline/testing use `--models PATH_TO_CAPTURED_MODELS_JSON`.
+`install PROFILE` is a complete profile switch. It deletes every existing top-level `agents/*.toml` file in the selected Codex home before writing the destination role set. In `private/work solo`, that destination role set is empty. Non-TOML files and unrelated configuration outside the repository-owned keys are preserved.
 
-`install PROFILE` replaces the currently managed profile state and installs the destination profile. For the selected Codex home, every existing top-level `agents/*.toml` file is deleted before the destination roles are written. This includes unrelated and custom roles; the deletion is intentional and non-recursive, and no backup copy is written. The lifecycle also manages:
+The ownership state is stored in `profiles/roles-state.json`. Version 2 records both `profile` and `mode`; an empty `owned` role set is valid for solo.
 
-- profile-owned `config.toml` keys;
-- the managed `AGENTS.md` profile block;
-- the destination native worker roles and generated `default` / `worker` / `explorer` aliases;
-- the ownership manifest under `profiles/roles-state.json` and canonical `profile-*.toml` alias filenames;
-- `models-lite.json` when entering or leaving `lite`.
+The lifecycle also removes historical `x5`/`x20`/`x20-work` routing artifacts, generated alias roles, old `models-lite.json`, and an old profile-owned `models.json` reference when identified safely.
 
-Unrelated configuration outside this role-file scope is preserved. The only supported profile identifiers are `lite`, `strict-common`, `private`, and `work`; the only managed marker namespace is `codex-profiles`; the ownership manifest is `profiles/roles-state.json`; and generated aliases use the `profile-*.toml` prefix. After installation, the selected home's top-level `agents` directory contains only the destination profile's TOML roles.
+No persistent backups are created. The managers keep only in-process bytes for best-effort rollback during the current operation.
 
-Install does not preserve or stop on modified/missing old role files or a malformed old role manifest; those are replaced. Link, non-regular-file, concurrent-operation, and ambiguous instruction-boundary safety checks remain fail-closed. The separate `remove` command still validates its ownership manifest before deleting roles.
+After install, mode switch, or removal, fully restart Codex and start a new thread.
 
-The same install also removes historical `x5`/`x20`/`x20-work` marked instruction blocks and config keys, the old `routing-rules/` state and backup directory, and an old profile-owned `models.json`. Thus a legacy profile cannot remain stacked under a current one.
+## Validation
 
-The lifecycle intentionally creates **no persistent backups**. It keeps only an in-process snapshot for best-effort rollback if a write fails during the current operation; no `profile-backups` or role `backups` directories are created.
-
-After install/switch/remove, **fully restart Codex and start a new thread**. Old threads may retain old developer/context instructions.
-
-Detailed behavior: [installation and switching](docs/install.md), [removal](docs/remove.md).
-
-## Policy, evidence and validation
-
-- [Routing/effort matrix and usage policy](docs/routing-policy.md)
-- [Technical findings, sources and limitations](docs/research-2026-09-06.md)
-- [Adversarial review and local smoke tests](docs/verification.md)
-
-```sh
+```powershell
 python scripts/validate.py
 python -m unittest discover -s tests -v
 ```
 
-**Limits:** role pins and a filtered catalog are stronger than prompting, but this is not a security or spending firewall. Configuration precedence, separate Codex processes, unsupported clients, organizational policy, or a client that ignores the empty mode-hint override can change effective behavior. Verify the selector, effective empty multi-agent mode hint, context-management setting and actual child model/effort in native session/config metadata. If the expected restrictions cannot be established, do not treat the profile as successfully installed.
+Optional catalog checks:
 
-The separate local Astra history/Skills playbook is not part of this routing repository.
+```powershell
+python scripts/validate.py --profile private --models PATH_TO_CAPTURED_MODELS_JSON
+python scripts/validate.py --profile private --managed-catalog $HOME\.codex\models-managed.json
+```
+
+See:
+
+- [installation and switching](docs/install.md)
+- [routing policy](docs/routing-policy.md)
+- [verification](docs/verification.md)
+- [removal](docs/remove.md)

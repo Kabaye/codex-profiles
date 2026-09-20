@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the lite model catalog by filtering real Codex model metadata."""
+"""Create the managed lite model catalog from real Codex metadata."""
 from __future__ import annotations
 
 import argparse
@@ -16,7 +16,7 @@ REQUIRED_EFFORT = {
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path, help="Unmodified JSON output captured from `codex debug models`")
-    parser.add_argument("output", type=Path, help="Destination models-lite.json")
+    parser.add_argument("output", type=Path, help="Destination managed catalog JSON")
     args = parser.parse_args()
 
     catalog = json.loads(args.input.read_text(encoding="utf-8-sig"))
@@ -31,7 +31,10 @@ def main() -> int:
         slug = model["slug"]
         if slug in by_slug:
             parser.exit(1, f"Duplicate model slug in source catalog: {slug}\n")
-        by_slug[slug] = model
+        current = dict(model)
+        if slug == "gpt-5.6-luna":
+            current["multi_agent_version"] = "v2"
+        by_slug[slug] = current
 
     filtered = []
     for slug in ALLOWED:
@@ -49,11 +52,14 @@ def main() -> int:
             parser.exit(1, f"Source metadata does not confirm {slug} / {effort}\n")
         filtered.append(model)
 
-    # Preserve the source catalog and model records exactly; only remove unwanted models.
-    catalog["models"] = filtered
+    result = dict(catalog)
+    result["models"] = filtered
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"Wrote {args.output} with: {', '.join(ALLOWED)}")
+    args.output.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(f"Wrote {args.output} with Luna V2 and: {', '.join(ALLOWED)}")
     return 0
 
 
