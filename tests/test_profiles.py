@@ -51,14 +51,15 @@ class ProfileStaticTests(unittest.TestCase):
                     role = tomllib.loads(data.decode("utf-8"))
                     self.assertFalse(role["agents"]["enabled"])
                     if filename == "luna-worker.toml":
+                        expected_model = "gpt-5.6-luna" if profile == "lite" else "gpt-6-luna"
                         self.assertEqual(
                             (role["model"], role["model_reasoning_effort"]),
-                            ("gpt-5.6-luna", "max"),
+                            (expected_model, "max"),
                         )
                     elif filename == "sol-worker.toml":
                         self.assertEqual(
                             (role["model"], role["model_reasoning_effort"]),
-                            ("gpt-5.6-sol", "high"),
+                            ("gpt-6-sol", "xhigh"),
                         )
 
     def test_install_solo_purges_existing_top_level_role_tomls(self):
