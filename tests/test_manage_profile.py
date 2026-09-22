@@ -132,6 +132,9 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertIn("Luna / max", agents_text)
         self.assertIn("Sol / high", agents_text)
         self.assertIn("two open child threads", agents_text)
+        self.assertIn("Sol-first", agents_text)
+        self.assertIn("bounded or limited to a few files is not enough", agents_text)
+        self.assertIn("Owner reuse never overrides model suitability", agents_text)
         self.assertIn("only when the user explicitly requests one", agents_text)
         self.assertNotIn("profile-default", agents_text)
         self.assertEqual(before_catalog, (self.home / lifecycle.MANAGED_CATALOG).read_bytes())
@@ -157,6 +160,9 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertIn("это личная задача", text)
         self.assertIn("sol_worker", text)
         self.assertIn("Selecting Astra as root changes only the root", text)
+        self.assertIn("Sol-first", text)
+        self.assertIn("bounded or limited to a few files is not enough", text)
+        self.assertIn("Owner reuse never overrides model suitability", text)
         self.assertIn("only when the user explicitly requests one", text)
         self.assertEqual(
             self.role_names(),
