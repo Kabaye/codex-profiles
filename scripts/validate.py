@@ -185,6 +185,15 @@ def validate(
         if name in {"private", "work"}:
             check("two open child threads" in text, f"{name}: team cap policy missing")
             check("automatic reviewer" in text, f"{name}: no-automatic-review policy missing")
+            check("Sol-first" in text, f"{name}: Sol-first personal routing policy missing")
+            check(
+                "bounded or limited to a few files is not enough" in text,
+                f"{name}: bounded-scope Luna guard missing",
+            )
+            check(
+                "Owner reuse never overrides model suitability" in text,
+                f"{name}: model reassessment policy missing",
+            )
         for operation in ("install", "remove"):
             page = (root / name / f"{operation}-{name}.md").read_text(encoding="utf-8")
             check(f"../docs/{operation}.md" in page, f"{name}: {operation} procedure drift")
@@ -210,7 +219,7 @@ def validate(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--models", type=Path, help="Unmodified JSON from `codex debug models`")
+    parser.add_argument("--models", type=Path, help="Unmodified JSON from `codex debug models --bundled`")
     parser.add_argument(
         "--managed-catalog",
         type=Path,
