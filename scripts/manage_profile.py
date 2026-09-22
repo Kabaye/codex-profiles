@@ -216,7 +216,8 @@ def _desired_config(
     source = tomllib.loads(
         (ROOT / profile / "config.toml").read_text(encoding="utf-8")
     )
-    source["model_catalog_json"] = (home / MANAGED_CATALOG).as_posix()
+    if profile == "lite":
+        source["model_catalog_json"] = (home / MANAGED_CATALOG).as_posix()
     if profile in manage_roles.MODE_PROFILES:
         if mode == "team":
             source["agents"] = {
@@ -409,6 +410,9 @@ def _supported_efforts(model: dict) -> set[str]:
 
 
 def _managed_catalog_bytes(catalog: dict, profile: str) -> bytes:
+    if profile != "lite":
+        raise ValueError("Managed model catalog is only used by the lite profile")
+
     models = catalog.get("models") if isinstance(catalog, dict) else None
     if not isinstance(models, list):
         raise ValueError("Expected Codex model metadata with models[]")
@@ -427,41 +431,22 @@ def _managed_catalog_bytes(catalog: dict, profile: str) -> bytes:
             current_model["multi_agent_version"] = "v2"
         by_slug[slug] = current_model
 
-    required = {
-        "lite": (
-            ("gpt-5.6-terra", "medium"),
-            ("gpt-5.6-luna", "max"),
-        ),
-        "strict-common": (
-            ("gpt-5.6-sol", "xhigh"),
-            ("gpt-5.6-luna", "max"),
-        ),
-        "private": (
-            ("gpt-6-astra", "high"),
-            ("gpt-5.6-luna", "max"),
-            ("gpt-5.6-sol", "high"),
-        ),
-        "work": (
-            ("gpt-5.6-sol", "xhigh"),
-            ("gpt-5.6-sol", "high"),
-            ("gpt-5.6-luna", "max"),
-        ),
-    }[profile]
+    required = (
+        ("gpt-5.6-terra", "medium"),
+        ("gpt-5.6-luna", "max"),
+    )
     for slug, effort in required:
         model = by_slug.get(slug)
         if model is None:
-            raise ValueError(f"Required model is unavailable: {slug}")
+            raise ValueError(f"Required lite model is unavailable: {slug}")
         if effort not in _supported_efforts(model):
             raise ValueError(f"Metadata does not confirm {slug} / {effort}")
 
     result = dict(catalog)
-    if profile == "lite":
-        result["models"] = [
-            by_slug["gpt-5.6-terra"],
-            by_slug["gpt-5.6-luna"],
-        ]
-    else:
-        result["models"] = [by_slug[model["slug"]] for model in models]
+    result["models"] = [
+        by_slug["gpt-5.6-terra"],
+        by_slug["gpt-5.6-luna"],
+    ]
     return (json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
@@ -546,13 +531,13 @@ def apply(
     )
     new_agents = build_agents(agents_text, profile, mode=selected_mode)
 
-    if profile is not None:
+    if profile == "lite":
         if refresh_catalog:
             catalog_bytes = _capture_catalog(profile, models)
         else:
             if not catalog_path.is_file():
                 raise ValueError(
-                    "Managed model catalog is missing; reinstall the profile to rebuild it"
+                    "Managed model catalog is missing; reinstall lite to rebuild it"
                 )
             catalog_bytes = catalog_path.read_bytes()
     else:
@@ -661,7 +646,7 @@ def main() -> int:
     install.add_argument(
         "--models",
         type=Path,
-        help="Captured model-catalog JSON, preferably from `codex debug models --bundled` (offline/testing install)",
+        help="Captured bundled model-catalog JSON for offline/testing lite installs",
     )
     install.add_argument("--dry-run", action="store_true")
 
