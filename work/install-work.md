@@ -26,7 +26,7 @@ Expected base state:
 
 In `solo`, the repository installs no custom worker TOMLs, no child cap, no proactive routing block, and no `multi_agent_mode_hint_text`; explicit user-requested subagents remain native Codex behavior.
 
-In `team`, the repository installs only `luna-worker.toml` and `sol-worker.toml` and sets the open-child cap to 2. Ordinary work delegation uses Luna Max only. Sol High becomes available only after the user explicitly marks the current objective as personal, for example `это личная задача`; the personal lane applies only to that coherent objective and direct follow-ups. Selecting Astra as root does not activate it.
+In `team`, the repository installs only `luna-worker.toml` and `sol-worker.toml` and sets the open-child cap to 2. Ordinary work delegation uses Luna Max only. Sol High becomes available only after the user explicitly marks the current objective as personal, for example `это личная задача`; in that personal lane delegated implementation is Sol-first, while Luna Max is restricted to clearly mechanical, low-risk work with a settled specification. Bounded scope alone does not qualify personal work for Luna, and a Luna assignment that materially expands must be reclassified before continuing. The personal lane applies only to that coherent objective and direct follow-ups. Selecting Astra as root does not activate it.
 
 Installation deletes every existing top-level `agents/*.toml` file in the selected Codex home and writes no persistent backup.
 
