@@ -18,15 +18,15 @@ python scripts/manage_profile.py install private --mode team
 
 Expected base state:
 
-- default root: GPT-6 Astra / high;
+- default root: GPT-6 Astra / xhigh;
 - root model and effort remain user-selectable at runtime;
 - experimental context management enabled;
-- `models-managed.json` rebuilt from the current client's model metadata with Luna patched to Multi-Agent V2;
+- native Codex model catalog; GPT-6 Sol/Luna are used without a compatibility override;
 - provider/Codex memory defaults retained.
 
 In `solo`, the repository installs no custom worker TOMLs, no child cap, no proactive routing block, and no `multi_agent_mode_hint_text`; explicit user-requested subagents remain native Codex behavior.
 
-In `team`, the repository installs only `luna-worker.toml` and `sol-worker.toml`, sets the open-child cap to 2, and enables selective routing. Delegated implementation is Sol-first: Sol High handles substantial implementation, debugging, workflow/state changes, business or financial logic, contracts, migrations, cross-component behavior, adaptive UI work, and uncertain complexity. Luna Max is only for clearly mechanical, low-risk work with a settled specification and no meaningful behavioral semantics; bounded scope alone is not sufficient. If Luna work materially expands, the root must reassess and move the remaining work to Sol or back to the root. The root owns architecture, hard reasoning, integration, verification, and final acceptance. No automatic reviewer is added.
+In `team`, the repository installs only `luna-worker.toml` and `sol-worker.toml`, sets the open-child cap to 2, and enables selective routing. Delegated implementation is Sol-first: GPT-6 Sol xhigh handles substantial implementation, debugging, workflow/state changes, business or financial logic, contracts, migrations, cross-component behavior, adaptive UI work, and uncertain complexity. GPT-6 Luna Max is only for clearly mechanical, low-risk work with a settled specification and no meaningful behavioral semantics; bounded scope alone is not sufficient. If Luna work materially expands, the root must reassess and move the remaining work to Sol or back to the root. The root owns architecture, hard reasoning, integration, verification, and final acceptance. No automatic reviewer is added.
 
 Installation deletes every existing top-level `agents/*.toml` file in the selected Codex home and writes no persistent backup.
 
