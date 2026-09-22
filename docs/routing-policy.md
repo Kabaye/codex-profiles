@@ -31,8 +31,11 @@ Team is selective, not maximal:
 
 ### Private team
 
-- `luna_worker` = GPT-5.6 Luna / **max** for simple, mechanical, well-specified, exploration, tool-heavy, test/build/log, and other cheap bounded work.
-- `sol_worker` = GPT-5.6 Sol / high for substantial bounded implementation, non-trivial debugging, or work where Luna is a poor fit.
+- delegated implementation is Sol-first;
+- `sol_worker` = GPT-5.6 Sol / high for substantial implementation, non-trivial debugging, workflow/state changes, business or financial logic, API/contracts, migrations, cross-component behavior, adaptive UI behavior, or uncertain complexity;
+- `luna_worker` = GPT-5.6 Luna / **max** only for clearly mechanical, low-risk work with a settled specification and no meaningful business logic, workflow/state semantics, contracts, migrations, or cross-component behavior;
+- bounded scope or a small file count does not by itself qualify work for Luna; when uncertain, use Sol or keep the work in the root;
+- if Luna work materially expands in complexity or risk, reassess before continuing; owner reuse never overrides model suitability.
 - root = architecture, material ambiguity, hard reasoning, integration, verification, and final acceptance.
 
 ### Work team
@@ -43,8 +46,11 @@ The Sol High path is enabled only after an explicit statement that the current o
 
 In that explicit personal lane:
 
-- Luna Max handles simple/mechanical/well-specified bounded work.
-- Sol High handles substantial implementation and non-trivial debugging.
+- delegated implementation is Sol-first;
+- Sol High handles substantial implementation, non-trivial debugging, workflow/state changes, business or financial logic, API/contracts, migrations, cross-component behavior, adaptive UI behavior, and uncertain complexity;
+- Luna Max is limited to clearly mechanical, low-risk work with a settled specification and no meaningful business logic, workflow/state semantics, contracts, migrations, or cross-component behavior;
+- bounded scope alone never makes a task a Luna task;
+- when a Luna assignment materially expands, reassess the model before continuing; owner reuse never overrides model suitability.
 
 ## Catalog policy
 
