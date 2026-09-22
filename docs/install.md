@@ -46,12 +46,14 @@ python scripts/manage_profile.py install work --mode team
 
 `lite` and `strict-common` do not accept `--mode solo`.
 
-Every install rebuilds `models-managed.json` from the current client's `codex debug models --bundled` output. The complete source metadata is preserved except that Luna's `multi_agent_version` is intentionally patched to `v2`. `lite` additionally filters the generated catalog to Terra + Luna.
+`private`, `work`, and `strict-common` use the native Codex catalog and do not create `models-managed.json`. Installing one of them removes an older repository-owned custom catalog reference/file when safely identified.
 
-Offline/testing:
+`lite` intentionally keeps a restricted generated catalog. It rebuilds `models-managed.json` from `codex debug models --bundled`, filters to GPT-5.6 Terra + GPT-5.6 Luna, and applies the legacy GPT-5.6 Luna V2 override.
+
+Offline/testing lite install:
 
 ```powershell
-python scripts/manage_profile.py install private --models PATH_TO_CAPTURED_MODELS_JSON
+python scripts/manage_profile.py install lite --models PATH_TO_CAPTURED_MODELS_JSON
 ```
 
 ## Switch only the agent mode
@@ -65,7 +67,7 @@ python scripts/manage_profile.py mode team
 python scripts/manage_profile.py mode solo
 ```
 
-A mode switch does not recapture model metadata. It reuses the installed `models-managed.json`.
+A private/work mode switch changes routing state only; it does not use or create a custom model catalog.
 
 ### Solo contract
 
@@ -122,4 +124,4 @@ python scripts/validate.py
 python -m unittest discover -s tests -v
 ```
 
-A custom model catalog and developer instructions can remain snapshotted by an already running app-server/thread, so old sessions are not valid verification of a new install.
+Developer instructions and model selection can remain snapshotted by an already running app-server/thread, so old sessions are not valid verification of a new install. `lite` additionally requires restart after rebuilding its custom catalog.
