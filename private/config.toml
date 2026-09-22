@@ -1,6 +1,6 @@
 # Merge these keys; do not replace the complete user configuration.
 model = "gpt-6-astra"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 
 [features.context_management]
 experimental_mode = true
