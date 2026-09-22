@@ -15,20 +15,20 @@ END = "<!-- codex-profiles:end -->"
 
 ROOTS = {
     "lite": ("gpt-5.6-terra", "medium"),
-    "strict-common": ("gpt-5.6-sol", "xhigh"),
-    "private": ("gpt-6-astra", "high"),
-    "work": ("gpt-5.6-sol", "xhigh"),
+    "strict-common": ("gpt-6-sol", "xhigh"),
+    "private": ("gpt-6-astra", "xhigh"),
+    "work": ("gpt-6-sol", "xhigh"),
 }
 TEAM_ROLES = {
     "lite": {"luna_worker": ("gpt-5.6-luna", "max")},
-    "strict-common": {"luna_worker": ("gpt-5.6-luna", "max")},
+    "strict-common": {"luna_worker": ("gpt-6-luna", "max")},
     "private": {
-        "luna_worker": ("gpt-5.6-luna", "max"),
-        "sol_worker": ("gpt-5.6-sol", "high"),
+        "luna_worker": ("gpt-6-luna", "max"),
+        "sol_worker": ("gpt-6-sol", "xhigh"),
     },
     "work": {
-        "luna_worker": ("gpt-5.6-luna", "max"),
-        "sol_worker": ("gpt-5.6-sol", "high"),
+        "luna_worker": ("gpt-6-luna", "max"),
+        "sol_worker": ("gpt-6-sol", "xhigh"),
     },
 }
 LITE_MODELS = {"gpt-5.6-terra", "gpt-5.6-luna"}
@@ -68,14 +68,16 @@ def _catalog_errors(
 
 
 def validate_managed_catalog(catalog: dict, profile: str) -> list[str]:
-    exact = LITE_MODELS if profile == "lite" else None
-    required = {("gpt-5.6-luna", "max")}
-    if profile == "lite":
-        required.add(("gpt-5.6-terra", "medium"))
+    if profile != "lite":
+        return ["Managed model catalog is only used by the lite profile"]
+    required = {
+        ("gpt-5.6-terra", "medium"),
+        ("gpt-5.6-luna", "max"),
+    }
     return _catalog_errors(
         catalog,
         required,
-        exact_slugs=exact,
+        exact_slugs=LITE_MODELS,
         require_luna_v2=True,
     )
 
@@ -127,14 +129,21 @@ def validate(
                 == {"multi_agent_mode_hint_text": ""},
                 f"{name}: fixed team multi-agent hint drift",
             )
-        expected_memories = (
-            {}
-            if name == "private"
-            else {
+        expected_memories = {
+            "lite": {
                 "extract_model": "gpt-5.6-luna",
                 "consolidation_model": "gpt-5.6-luna",
-            }
-        )
+            },
+            "strict-common": {
+                "extract_model": "gpt-6-luna",
+                "consolidation_model": "gpt-6-luna",
+            },
+            "private": {},
+            "work": {
+                "extract_model": "gpt-6-luna",
+                "consolidation_model": "gpt-6-luna",
+            },
+        }[name]
         check(config.get("memories", {}) == expected_memories, f"{name}: memory routing drift")
 
         actual_roles: dict[str, tuple[str, str]] = {}
@@ -208,9 +217,13 @@ def validate(
 
         if profile is None or profile == name:
             required.add((root_model, root_effort))
-            required.add(("gpt-5.6-luna", "max"))
-            if name in {"private", "work"}:
-                required.add(("gpt-5.6-sol", "high"))
+            if name == "lite":
+                required.add(("gpt-5.6-luna", "max"))
+            elif name == "strict-common":
+                required.add(("gpt-6-luna", "max"))
+            elif name in {"private", "work"}:
+                required.add(("gpt-6-luna", "max"))
+                required.add(("gpt-6-sol", "xhigh"))
 
     if catalog is not None:
         errors.extend(_catalog_errors(catalog, required))
@@ -231,8 +244,8 @@ def main() -> int:
         raw = json.loads(args.models.read_text(encoding="utf-8-sig")) if args.models else None
         errors = validate(catalog=raw, profile=args.profile)
         if args.managed_catalog:
-            if not args.profile:
-                raise ValueError("--managed-catalog requires --profile")
+            if args.profile != "lite":
+                raise ValueError("--managed-catalog requires --profile lite")
             managed = json.loads(args.managed_catalog.read_text(encoding="utf-8-sig"))
             errors.extend(validate_managed_catalog(managed, args.profile))
     except (OSError, ValueError, TypeError) as exc:
