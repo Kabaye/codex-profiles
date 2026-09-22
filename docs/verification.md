@@ -15,6 +15,10 @@ The tests cover:
 - `solo ↔ team` switching without changing the root profile;
 - team cap 2;
 - explicit Luna Max / Sol High role pins;
+- Sol-first delegated implementation in private/personal routing;
+- Luna limited to clearly mechanical low-risk personal work;
+- bounded scope not treated as sufficient Luna eligibility;
+- model reassessment when a Luna assignment materially expands;
 - absence of generated `default` / `worker` / `explorer` aliases;
 - empty-role solo manifests;
 - legacy v1 role-state compatibility;
@@ -48,9 +52,10 @@ After a full Codex restart and a new thread:
 2. restart Codex;
 3. confirm only `luna_worker` and `sol_worker` are installed;
 4. confirm effective child cap is 2;
-5. give a simple bounded task and verify Luna Max is selected when delegation is worthwhile;
-6. give a substantial bounded implementation and verify Sol High can be selected;
-7. verify the root performs integration/final acceptance and no automatic reviewer is spawned.
+5. give a clearly mechanical low-risk task with a settled specification and verify Luna Max can be selected;
+6. give a bounded but behaviorally substantial implementation (for example workflow/state or cross-component UI behavior) and verify Sol High is selected despite the bounded scope;
+7. start a mechanical Luna assignment, materially expand its scope, and verify the root reassesses the model before continuing;
+8. verify the root performs integration/final acceptance and no automatic reviewer is spawned.
 
 ### Work team
 
@@ -58,8 +63,10 @@ After a full Codex restart and a new thread:
 2. verify an ordinary delegated work task uses Luna Max only;
 3. manually selecting Astra as root must not change the delegated work lane;
 4. explicitly state `это личная задача`;
-5. verify Luna remains available for simple bounded work and Sol High becomes available for substantial delegated work;
-6. start an unrelated objective without another personal declaration and verify the lane returns to ordinary Luna-only work.
+5. verify the personal lane is Sol-first for delegated implementation and Luna is used only for clearly mechanical low-risk work;
+6. verify a bounded but behaviorally substantial personal task routes to Sol High rather than Luna;
+7. verify a Luna personal assignment that materially expands is reassessed before continuing;
+8. start an unrelated objective without another personal declaration and verify the lane returns to ordinary Luna-only work.
 
 ### Managed catalog
 
