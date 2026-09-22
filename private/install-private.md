@@ -26,7 +26,7 @@ Expected base state:
 
 In `solo`, the repository installs no custom worker TOMLs, no child cap, no proactive routing block, and no `multi_agent_mode_hint_text`; explicit user-requested subagents remain native Codex behavior.
 
-In `team`, the repository installs only `luna-worker.toml` and `sol-worker.toml`, sets the open-child cap to 2, and enables selective routing: Luna Max for cheap/simple/mechanical/well-specified bounded work and Sol High for substantial bounded implementation or non-trivial debugging. The root owns architecture, hard reasoning, integration, verification, and final acceptance. No automatic reviewer is added.
+In `team`, the repository installs only `luna-worker.toml` and `sol-worker.toml`, sets the open-child cap to 2, and enables selective routing. Delegated implementation is Sol-first: Sol High handles substantial implementation, debugging, workflow/state changes, business or financial logic, contracts, migrations, cross-component behavior, adaptive UI work, and uncertain complexity. Luna Max is only for clearly mechanical, low-risk work with a settled specification and no meaningful behavioral semantics; bounded scope alone is not sufficient. If Luna work materially expands, the root must reassess and move the remaining work to Sol or back to the root. The root owns architecture, hard reasoning, integration, verification, and final acceptance. No automatic reviewer is added.
 
 Installation deletes every existing top-level `agents/*.toml` file in the selected Codex home and writes no persistent backup.
 
