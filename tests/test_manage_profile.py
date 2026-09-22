@@ -30,11 +30,16 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                             "multi_agent_version": "v2",
                         },
                         {
-                            "slug": "gpt-5.6-sol",
+                            "slug": "gpt-6-sol",
                             "supported_reasoning_levels": [
                                 {"effort": "high"},
                                 {"effort": "xhigh"},
                             ],
+                            "multi_agent_version": "v2",
+                        },
+                        {
+                            "slug": "gpt-6-luna",
+                            "supported_reasoning_levels": [{"effort": "max"}],
                             "multi_agent_version": "v2",
                         },
                         {
@@ -88,26 +93,13 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 config = self.config()
                 self.assertNotIn("agents", config)
                 self.assertNotIn("multi_agent_v2", config.get("features", {}))
-                self.assertEqual(
-                    config["model_catalog_json"],
-                    (self.home / lifecycle.MANAGED_CATALOG).as_posix(),
-                )
+                self.assertNotIn("model_catalog_json", config)
                 self.assertFalse((self.home / "AGENTS.md").exists())
-
-                catalog = json.loads(
-                    (self.home / lifecycle.MANAGED_CATALOG).read_text(encoding="utf-8")
-                )
-                luna = next(model for model in catalog["models"] if model["slug"] == "gpt-5.6-luna")
-                self.assertEqual(luna["multi_agent_version"], "v2")
-                self.assertEqual(
-                    luna["model_messages"]["instructions_template"],
-                    "preserve me",
-                )
-                self.assertEqual(catalog["catalog_version"], "synthetic")
+                self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_private_team_switch_adds_only_explicit_luna_and_sol_roles(self):
         self.install("private")
-        before_catalog = (self.home / lifecycle.MANAGED_CATALOG).read_bytes()
+        self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
         team = lifecycle.apply(
             self.home,
@@ -130,14 +122,14 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         agents_text = (self.home / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn("Luna / max", agents_text)
-        self.assertIn("Sol / high", agents_text)
+        self.assertIn("Sol / xhigh", agents_text)
         self.assertIn("two open child threads", agents_text)
         self.assertIn("Sol-first", agents_text)
         self.assertIn("bounded or limited to a few files is not enough", agents_text)
         self.assertIn("Owner reuse never overrides model suitability", agents_text)
         self.assertIn("only when the user explicitly requests one", agents_text)
         self.assertNotIn("profile-default", agents_text)
-        self.assertEqual(before_catalog, (self.home / lifecycle.MANAGED_CATALOG).read_bytes())
+        self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
         solo = lifecycle.apply(
             self.home,
@@ -150,7 +142,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertFalse((self.home / "AGENTS.md").exists())
         self.assertNotIn("agents", self.config())
         self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
-        self.assertEqual(before_catalog, (self.home / lifecycle.MANAGED_CATALOG).read_bytes())
+        self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_work_team_keeps_luna_default_and_explicit_personal_sol_lane(self):
         self.install("work", mode="team")
@@ -247,7 +239,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertFalse(legacy.exists())
         self.assertFalse(old_lite.exists())
         self.assertEqual(self.role_names(), set())
-        self.assertTrue((self.home / lifecycle.MANAGED_CATALOG).is_file())
+        self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_remove_cleans_managed_catalog_and_preserves_unrelated_text(self):
         self.home.mkdir()
@@ -276,16 +268,17 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertFalse((self.home / "profiles" / "roles-state.json").exists())
 
-    def test_mode_switch_requires_existing_managed_catalog(self):
+    def test_mode_switch_does_not_require_managed_catalog(self):
         self.install("private")
-        (self.home / lifecycle.MANAGED_CATALOG).unlink()
-        with self.assertRaisesRegex(ValueError, "catalog is missing"):
-            lifecycle.apply(
-                self.home,
-                "private",
-                mode="team",
-                refresh_catalog=False,
-            )
+        self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
+        result = lifecycle.apply(
+            self.home,
+            "private",
+            mode="team",
+            refresh_catalog=False,
+        )
+        self.assertEqual(result["mode"], "team")
+        self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_dry_run_does_not_write(self):
         result = self.install("private", dry_run=True)
