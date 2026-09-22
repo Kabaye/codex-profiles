@@ -11,10 +11,10 @@ Installation deletes every existing top-level `agents/*.toml` file in the select
 
 Expected profile state:
 
-- default root: GPT-5.6 Sol / xhigh;
-- delegated model: GPT-5.6 Luna / max;
+- default root: GPT-6 Sol / xhigh;
+- delegated model: GPT-6 Luna / max;
 - fixed team routing with open child cap 4;
-- `models-managed.json` generated from the current client's complete model catalog, with Luna patched to Multi-Agent V2;
+- native Codex model catalog; GPT-6 Sol/Luna are used without a compatibility override;
 - empty Multi-Agent V2 mode hint;
 - experimental context management enabled.
 
