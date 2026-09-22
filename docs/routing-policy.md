@@ -6,10 +6,10 @@ The repository separates **root selection** from **agent mode**.
 
 | Profile | Root default | Mode | Delegation |
 |---|---|---|---|
-| `lite` | Terra medium | fixed team | GPT-6 Luna Max, cap 1 |
-| `strict-common` | GPT-6 Sol xhigh | fixed team | GPT-6 GPT-6 Luna Max, cap 4 |
-| `private` | Astra xhigh | solo default | native Codex; team: GPT-6 GPT-6 Luna Max + GPT-6 Sol xhigh, cap 2 |
-| `work` | GPT-6 Sol xhigh | solo default | native Codex; team: GPT-6 GPT-6 Luna Max, plus GPT-6 Sol xhigh only in explicit personal lane, cap 2 |
+| `lite` | GPT-5.6 Terra medium | fixed team | GPT-5.6 Luna Max, cap 1 |
+| `strict-common` | GPT-6 Sol xhigh | fixed team | GPT-6 Luna Max, cap 4 |
+| `private` | Astra xhigh | solo default | native Codex; team: GPT-6 Luna Max + GPT-6 Sol xhigh, cap 2 |
+| `work` | GPT-6 Sol xhigh | solo default | native Codex; team: GPT-6 Luna Max, plus GPT-6 Sol xhigh only in explicit personal lane, cap 2 |
 
 The user-selected root and effort are authoritative. In particular, `work` does not restrict the normal root selector; manually selecting Astra changes only the root.
 
