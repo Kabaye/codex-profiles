@@ -7,9 +7,9 @@ Local Codex routing presets with an explicit separation between the **root profi
 | Profile | Default root | Default mode | Team workers | Team child cap |
 |---|---|---|---|---:|
 | `lite` | Terra medium | fixed team | Luna Max | 1 |
-| `strict-common` | Sol xhigh | fixed team | Luna Max | 4 |
-| `private` | Astra high | **solo** | Luna Max + Sol High | 2 |
-| `work` | Sol xhigh | **solo** | Luna Max; Sol High only in explicit personal lane | 2 |
+| `strict-common` | GPT-6 Sol xhigh | fixed team | GPT-6 Luna Max | 4 |
+| `private` | Astra xhigh | **solo** | GPT-6 Luna Max + GPT-6 Sol xhigh | 2 |
+| `work` | GPT-6 Sol xhigh | **solo** | GPT-6 Luna Max; GPT-6 Sol xhigh only in explicit personal lane | 2 |
 
 The user's current root model and effort are authoritative. `work` does **not** restrict the root selector: the user may manually select Astra or another available root, and routing never changes that selection.
 
@@ -37,42 +37,20 @@ Subagents therefore remain available through normal Codex behavior when the user
 - no generated `default`, `worker`, or `explorer` aliases exist;
 - no automatic reviewer is added; an independent reviewer is used only when the user explicitly requests one, while the root verifies delegated work and owns final acceptance.
 
-`private/team` is **Sol-first for delegated implementation**. Sol High handles substantial implementation, debugging, workflow/state changes, business or financial logic, contracts, migrations, cross-component behavior, adaptive UI work, and uncertain complexity. Luna Max is reserved for clearly mechanical, low-risk work with a settled specification; bounded scope or a small file count alone does not make a task a Luna task. If a Luna assignment grows materially, the root must reassess the model before continuing.
+`private/team` is **Sol-first for delegated implementation**. GPT-6 Sol xhigh handles substantial implementation, debugging, workflow/state changes, business or financial logic, contracts, migrations, cross-component behavior, adaptive UI work, and uncertain complexity. GPT-6 Luna Max is reserved for clearly mechanical, low-risk work with a settled specification; bounded scope or a small file count alone does not make a task a Luna task. If a Luna assignment grows materially, the root must reassess the model before continuing.
 
-`work/team` uses Luna Max for ordinary work objectives. Sol High becomes available only when the user explicitly marks the current objective as personal, for example `это личная задача`. In that personal lane, delegated implementation becomes Sol-first and Luna is restricted to clearly mechanical, low-risk work. That declaration applies only to the current coherent objective and direct follow-ups. Selecting Astra as the root does not activate the personal lane.
+`work/team` uses GPT-6 Luna Max for ordinary work objectives. GPT-6 Sol xhigh becomes available only when the user explicitly marks the current objective as personal, for example `это личная задача`. In that personal lane, delegated implementation becomes Sol-first and Luna is restricted to clearly mechanical, low-risk work. That declaration applies only to the current coherent objective and direct follow-ups. Selecting Astra as the root does not activate the personal lane.
 
-## Managed model catalog
+## Model catalog
 
-Every profile installation captures the current binary's version-matched bundled metadata with:
+`private`, `work`, and `strict-common` use the native Codex model catalog. GPT-6 Sol and GPT-6 Luna already advertise Multi-Agent V2 natively, so these profiles do not create or reference a custom catalog.
 
-```powershell
-codex debug models --bundled
-```
+Only `lite` keeps a generated `models-managed.json` because it intentionally filters the visible model list to GPT-5.6 Terra + GPT-5.6 Luna and applies the legacy Luna V2 compatibility override.
 
-and writes:
-
-```text
-~/.codex/models-managed.json
-```
-
-The catalog preserves the captured records and top-level metadata, with one intentional compatibility override:
-
-```json
-"gpt-5.6-luna": {
-  "multi_agent_version": "v2"
-}
-```
-
-Luna remains pinned to **Max** wherever this repository delegates to it.
-
-For `lite`, the same generated catalog is additionally filtered to Terra + Luna only. For the other profiles, the complete captured catalog is retained.
-
-The catalog is rebuilt on `install`; changing only `solo`/`team` reuses the existing generated snapshot. Fully restart Codex after an install or mode switch because the client can retain the previous catalog/configuration snapshot until restart.
-
-For offline/testing installs, pass captured metadata explicitly:
+For offline/testing lite installs:
 
 ```powershell
-python scripts/manage_profile.py install private --models PATH_TO_CAPTURED_MODELS_JSON
+python scripts/manage_profile.py install lite --models PATH_TO_CAPTURED_MODELS_JSON
 ```
 
 ## Lifecycle
@@ -91,7 +69,7 @@ python scripts/manage_profile.py install private --mode team
 python scripts/manage_profile.py install work --mode team
 ```
 
-Switch `private` or `work` without reinstalling the root profile or rebuilding the catalog:
+Switch `private` or `work` without reinstalling the root profile:
 
 ```powershell
 python scripts/manage_profile.py mode team
@@ -132,7 +110,7 @@ Optional catalog checks:
 
 ```powershell
 python scripts/validate.py --profile private --models PATH_TO_CAPTURED_MODELS_JSON
-python scripts/validate.py --profile private --managed-catalog $HOME\.codex\models-managed.json
+python scripts/validate.py --profile lite --managed-catalog $HOME\.codex\models-managed.json
 ```
 
 See:
