@@ -37,9 +37,9 @@ Subagents therefore remain available through normal Codex behavior when the user
 - no generated `default`, `worker`, or `explorer` aliases exist;
 - no automatic reviewer is added; an independent reviewer is used only when the user explicitly requests one, while the root verifies delegated work and owns final acceptance.
 
-`private/team` uses Luna Max for cheap/simple/mechanical/well-specified bounded work and Sol High for substantial bounded implementation or non-trivial debugging.
+`private/team` is **Sol-first for delegated implementation**. Sol High handles substantial implementation, debugging, workflow/state changes, business or financial logic, contracts, migrations, cross-component behavior, adaptive UI work, and uncertain complexity. Luna Max is reserved for clearly mechanical, low-risk work with a settled specification; bounded scope or a small file count alone does not make a task a Luna task. If a Luna assignment grows materially, the root must reassess the model before continuing.
 
-`work/team` uses Luna Max for ordinary work objectives. Sol High becomes available only when the user explicitly marks the current objective as personal, for example `это личная задача`. That declaration applies only to the current coherent objective and direct follow-ups. Selecting Astra as the root does not activate the personal lane.
+`work/team` uses Luna Max for ordinary work objectives. Sol High becomes available only when the user explicitly marks the current objective as personal, for example `это личная задача`. In that personal lane, delegated implementation becomes Sol-first and Luna is restricted to clearly mechanical, low-risk work. That declaration applies only to the current coherent objective and direct follow-ups. Selecting Astra as the root does not activate the personal lane.
 
 ## Managed model catalog
 
