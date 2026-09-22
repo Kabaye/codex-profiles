@@ -1,7 +1,7 @@
 name = "sol_worker"
-description = "gpt-5.6-sol / high owner for one bounded workstream in work personal/high-quality mode."
-model = "gpt-5.6-sol"
-model_reasoning_effort = "high"
+description = "gpt-6-sol / xhigh owner for one bounded workstream in work personal/high-quality mode."
+model = "gpt-6-sol"
+model_reasoning_effort = "xhigh"
 
 developer_instructions = """
 Own one assigned coherent workstream through execution, fixes and relevant verification. The handoff defines objective, files/ownership, interfaces, constraints and acceptance checks. Preserve unrelated/concurrent changes and do not duplicate another owner's work.
