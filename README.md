@@ -6,9 +6,9 @@ Local Codex routing presets with an explicit separation between the **root profi
 
 | Profile | Default root | Default mode | Team workers | Team child cap |
 |---|---|---|---|---:|
-| `lite` | Terra medium | fixed team | Luna Max | 1 |
+| `lite` | GPT-5.6 Terra medium | fixed team | GPT-5.6 Luna Max | 1 |
 | `strict-common` | GPT-6 Sol xhigh | fixed team | GPT-6 Luna Max | 4 |
-| `private` | Astra xhigh | **solo** | GPT-6 Luna Max + GPT-6 Sol xhigh | 2 |
+| `private` | GPT-6 Astra xhigh | **solo** | GPT-6 Luna Max + GPT-6 Sol xhigh | 2 |
 | `work` | GPT-6 Sol xhigh | **solo** | GPT-6 Luna Max; GPT-6 Sol xhigh only in explicit personal lane | 2 |
 
 The user's current root model and effort are authoritative. `work` does **not** restrict the root selector: the user may manually select Astra or another available root, and routing never changes that selection.
