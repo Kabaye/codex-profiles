@@ -26,7 +26,10 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                     "models": [
                         {
                             "slug": "gpt-6-astra",
-                            "supported_reasoning_levels": [{"effort": "high"}],
+                            "supported_reasoning_levels": [
+                                {"effort": "high"},
+                                {"effort": "xhigh"},
+                            ],
                             "multi_agent_version": "v2",
                         },
                         {
