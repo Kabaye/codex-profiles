@@ -14,7 +14,7 @@ The tests cover:
 - `private/work` defaulting to native `solo`;
 - `solo ↔ team` switching without changing the root profile;
 - team cap 2;
-- explicit Luna Max / Sol High role pins;
+- explicit GPT-6 Luna Max / GPT-6 Sol xhigh role pins;
 - Sol-first delegated implementation in private/personal routing;
 - Luna limited to clearly mechanical low-risk personal work;
 - bounded scope not treated as sufficient Luna eligibility;
@@ -25,9 +25,10 @@ The tests cover:
 - destructive top-level role reset on install;
 - fail-closed managed-role removal;
 - no persistent backup directories;
-- `models-managed.json` generation;
-- preservation of captured model metadata;
-- Luna `multi_agent_version` patch to `v2`;
+- native catalog use for `private`, `work`, and `strict-common`;
+- absence/cleanup of `models-managed.json` for those native-catalog profiles;
+- `lite` `models-managed.json` generation and metadata preservation;
+- legacy GPT-5.6 Luna `multi_agent_version` patch to `v2` in `lite`;
 - `lite` Terra+Luna filtering;
 - unrelated custom catalog refusal;
 - legacy catalog cleanup;
@@ -52,32 +53,33 @@ After a full Codex restart and a new thread:
 2. restart Codex;
 3. confirm only `luna_worker` and `sol_worker` are installed;
 4. confirm effective child cap is 2;
-5. give a clearly mechanical low-risk task with a settled specification and verify Luna Max can be selected;
-6. give a bounded but behaviorally substantial implementation (for example workflow/state or cross-component UI behavior) and verify Sol High is selected despite the bounded scope;
+5. give a clearly mechanical low-risk task with a settled specification and verify GPT-6 Luna Max can be selected;
+6. give a bounded but behaviorally substantial implementation (for example workflow/state or cross-component UI behavior) and verify GPT-6 Sol xhigh is selected despite the bounded scope;
 7. start a mechanical Luna assignment, materially expand its scope, and verify the root reassesses the model before continuing;
 8. verify the root performs integration/final acceptance and no automatic reviewer is spawned.
 
 ### Work team
 
 1. install/switch to `work --mode team`;
-2. verify an ordinary delegated work task uses Luna Max only;
+2. verify an ordinary delegated work task uses GPT-6 Luna Max only;
 3. manually selecting Astra as root must not change the delegated work lane;
 4. explicitly state `это личная задача`;
 5. verify the personal lane is Sol-first for delegated implementation and Luna is used only for clearly mechanical low-risk work;
-6. verify a bounded but behaviorally substantial personal task routes to Sol High rather than Luna;
+6. verify a bounded but behaviorally substantial personal task routes to GPT-6 Sol xhigh rather than Luna;
 7. verify a Luna personal assignment that materially expands is reassessed before continuing;
 8. start an unrelated objective without another personal declaration and verify the lane returns to ordinary Luna-only work.
 
-### Managed catalog
+### Model catalogs
 
-Inspect `models-managed.json` after install:
+For `private`, `work`, and `strict-common`, confirm there is no repository-owned `model_catalog_json` in the effective config and no required `models-managed.json` file. Confirm the runtime catalog exposes GPT-6 Sol and GPT-6 Luna as Multi-Agent V2.
 
-- all non-lite captured model records remain present;
-- Luna retains its captured metadata except `multi_agent_version = "v2"`;
-- Luna Max remains in supported reasoning levels;
-- `lite` contains exactly Terra and Luna.
+For `lite`, inspect `models-managed.json` after install:
 
-Mode switching should leave the managed catalog bytes unchanged. Profile installation should rebuild it from the current client's `codex debug models --bundled` capture.
+- the catalog contains exactly GPT-5.6 Terra and GPT-5.6 Luna;
+- Luna retains captured metadata except `multi_agent_version = "v2"`;
+- Luna Max remains supported.
+
+A private/work mode switch must not create model-catalog state. A lite install rebuilds its managed catalog from the current client's `codex debug models --bundled` capture.
 
 ## Boundaries
 
