@@ -15,6 +15,6 @@ To switch from `lite` to another profile, do **not** remove first. Install the d
 python scripts/manage_profile.py install work
 ```
 
-The destination install performs the profile replacement and rebuilds `models-managed.json` from the current client for the destination profile.
+The destination install performs the profile replacement. Native-catalog profiles remove the lite custom catalog; reinstalling `lite` rebuilds its Luna-only catalog.
 
 See the shared [removal procedure](../docs/remove.md).
