@@ -85,6 +85,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
 
     def test_install_collapses_whitespace_before_managed_top_level_block(self):
         self.home.mkdir()
+        managed_catalog = (self.home / lifecycle.MANAGED_CATALOG).as_posix()
         (self.home / "config.toml").write_text(
             "mcp_oauth_callback_port = 18000\n"
             "   \n"
@@ -93,7 +94,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             "# codex-profiles: managed profile keys\n"
             'model = "gpt-5.6-sol"\n'
             'model_reasoning_effort = "xhigh"\n'
-            'model_catalog_json = "C:/Users/example/.codex/models-managed.json"\n'
+            f'model_catalog_json = "{managed_catalog}"\n'
             "\n",
             encoding="utf-8",
         )
