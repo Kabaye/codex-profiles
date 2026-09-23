@@ -11,11 +11,11 @@ Installation fully replaces the repository-managed routing state for the selecte
 
 The manager also:
 
-- sets Terra Medium as the default root;
+- sets GPT-6 Luna / Max as the default root;
 - keeps fixed team routing with a one-child cap;
 - enables the empty Multi-Agent V2 mode hint and experimental context management;
 - captures the current client's `codex debug models --bundled` metadata;
-- writes `<selected-home>/models-managed.json`, patches Luna to Multi-Agent V2, and filters the model list to Terra + Luna.
+- writes `<selected-home>/models-managed.json` containing only the native GPT-6 Luna record.
 
 For offline/testing use captured metadata:
 
@@ -23,6 +23,6 @@ For offline/testing use captured metadata:
 python scripts/manage_profile.py install lite --models PATH_TO_CAPTURED_MODELS_JSON
 ```
 
-After installation, fully restart Codex and open a new thread. The selector must expose only Terra and Luna, with Terra Medium as the initial root.
+After installation, fully restart Codex and open a new thread. The selector must expose only GPT-6 Luna, with Luna Max as the initial root.
 
 See the shared [installation/switching procedure](../docs/install.md) and [verification](../docs/verification.md).
