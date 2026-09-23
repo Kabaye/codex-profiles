@@ -171,7 +171,7 @@ def _insert_managed_assignments(
             (i for i, line in enumerate(lines) if SECTION_RE.match(line)), len(lines)
         )
         prefix, suffix = lines[:first_header], lines[first_header:]
-        while prefix and prefix[-1] == "":
+        while prefix and not prefix[-1].strip():
             prefix.pop()
         additions = [MANAGED_COMMENT] + [
             f"{key} = {_render(value)}" for key, value in top.items()
@@ -191,7 +191,7 @@ def _insert_managed_assignments(
                 header_index = index
                 break
         if header_index is None:
-            while lines and lines[-1] == "":
+            while lines and not lines[-1].strip():
                 lines.pop()
             lines.extend(["", f"[{section}]", *additions])
             continue
@@ -201,7 +201,7 @@ def _insert_managed_assignments(
                 end = index
                 break
         insertion = end
-        while insertion > header_index + 1 and lines[insertion - 1] == "":
+        while insertion > header_index + 1 and not lines[insertion - 1].strip():
             insertion -= 1
         lines[insertion:insertion] = [*additions, ""]
 
