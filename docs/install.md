@@ -48,7 +48,7 @@ python scripts/manage_profile.py install work --mode team
 
 `private`, `work`, and `strict-common` use the native Codex catalog and do not create `models-managed.json`. Installing one of them removes an older repository-owned custom catalog reference/file when safely identified.
 
-`lite` intentionally keeps a restricted generated catalog. It rebuilds `models-managed.json` from `codex debug models --bundled`, filters to GPT-5.6 Terra + GPT-5.6 Luna, and applies the legacy GPT-5.6 Luna V2 override.
+`lite` intentionally keeps a restricted generated catalog. It rebuilds `models-managed.json` from `codex debug models --bundled` and filters it to **GPT-6 Luna only**. No V2 compatibility patch is needed.
 
 Offline/testing lite install:
 
