@@ -6,10 +6,9 @@ import argparse
 import json
 from pathlib import Path
 
-ALLOWED = ("gpt-5.6-terra", "gpt-5.6-luna")
+ALLOWED = ("gpt-6-luna",)
 REQUIRED_EFFORT = {
-    "gpt-5.6-terra": "medium",
-    "gpt-5.6-luna": "max",
+    "gpt-6-luna": "max",
 }
 
 
@@ -31,10 +30,7 @@ def main() -> int:
         slug = model["slug"]
         if slug in by_slug:
             parser.exit(1, f"Duplicate model slug in source catalog: {slug}\n")
-        current = dict(model)
-        if slug == "gpt-5.6-luna":
-            current["multi_agent_version"] = "v2"
-        by_slug[slug] = current
+        by_slug[slug] = dict(model)
 
     filtered = []
     for slug in ALLOWED:
@@ -50,6 +46,8 @@ def main() -> int:
         effort = REQUIRED_EFFORT[slug]
         if effort not in supported:
             parser.exit(1, f"Source metadata does not confirm {slug} / {effort}\n")
+        if model.get("multi_agent_version") != "v2":
+            parser.exit(1, f"Source metadata does not confirm {slug} Multi-Agent V2\n")
         filtered.append(model)
 
     result = dict(catalog)
@@ -59,7 +57,7 @@ def main() -> int:
         json.dumps(result, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(f"Wrote {args.output} with Luna V2 and: {', '.join(ALLOWED)}")
+    print(f"Wrote {args.output} with: {', '.join(ALLOWED)}")
     return 0
 
 
