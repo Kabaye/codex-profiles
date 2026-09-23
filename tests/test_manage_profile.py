@@ -83,6 +83,42 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         agents = self.home / "agents"
         return {path.name for path in agents.glob("*.toml")} if agents.exists() else set()
 
+    def test_install_collapses_whitespace_before_managed_top_level_block(self):
+        self.home.mkdir()
+        (self.home / "config.toml").write_text(
+            "mcp_oauth_callback_port = 18000\n"
+            "   \n"
+            "\t\n"
+            "\n"
+            "# codex-profiles: managed profile keys\n"
+            'model = "gpt-5.6-sol"\n'
+            'model_reasoning_effort = "xhigh"\n'
+            'model_catalog_json = "C:/Users/example/.codex/models-managed.json"\n'
+            "\n",
+            encoding="utf-8",
+        )
+
+        self.install("work")
+        text = (self.home / "config.toml").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "mcp_oauth_callback_port = 18000\n\n"
+            "# codex-profiles: managed profile keys\n"
+            'model = "gpt-6-sol"\n'
+            'model_reasoning_effort = "xhigh"\n',
+            text,
+        )
+        self.assertNotIn("\n \n", text)
+        self.assertNotIn("\n\t\n", text)
+        self.assertNotIn("model_catalog_json", text)
+
+        before = text
+        self.install("work")
+        self.assertEqual(
+            before,
+            (self.home / "config.toml").read_text(encoding="utf-8"),
+        )
+
     def test_private_and_work_install_default_to_native_solo(self):
         for profile in ("private", "work"):
             with self.subTest(profile=profile), tempfile.TemporaryDirectory() as raw:
