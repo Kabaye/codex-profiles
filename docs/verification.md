@@ -28,8 +28,8 @@ The tests cover:
 - native catalog use for `private`, `work`, and `strict-common`;
 - absence/cleanup of `models-managed.json` for those native-catalog profiles;
 - `lite` `models-managed.json` generation and metadata preservation;
-- legacy GPT-5.6 Luna `multi_agent_version` patch to `v2` in `lite`;
-- `lite` Terra+Luna filtering;
+- `lite` filtering to GPT-6 Luna only;
+- native GPT-6 Luna Multi-Agent V2 metadata preserved without patching;
 - unrelated custom catalog refusal;
 - legacy catalog cleanup;
 - in-process rollback.
@@ -75,9 +75,10 @@ For `private`, `work`, and `strict-common`, confirm there is no repository-owned
 
 For `lite`, inspect `models-managed.json` after install:
 
-- the catalog contains exactly GPT-5.6 Terra and GPT-5.6 Luna;
-- Luna retains captured metadata except `multi_agent_version = "v2"`;
-- Luna Max remains supported.
+- the catalog contains exactly GPT-6 Luna;
+- Luna keeps native `multi_agent_version = "v2"` metadata;
+- Luna Max remains supported;
+- the selector exposes no Terra, Sol, Astra, or other models.
 
 A private/work mode switch must not create model-catalog state. A lite install rebuilds its managed catalog from the current client's `codex debug models --bundled` capture.
 
