@@ -51,7 +51,7 @@ class ProfileStaticTests(unittest.TestCase):
                     role = tomllib.loads(data.decode("utf-8"))
                     self.assertFalse(role["agents"]["enabled"])
                     if filename == "luna-worker.toml":
-                        expected_model = "gpt-5.6-luna" if profile == "lite" else "gpt-6-luna"
+                        expected_model = "gpt-6-luna"
                         self.assertEqual(
                             (role["model"], role["model_reasoning_effort"]),
                             (expected_model, "max"),
@@ -144,24 +144,32 @@ class ProfileStaticTests(unittest.TestCase):
         self.assertEqual(state, (self.home / "profiles" / "roles-state.json").read_bytes())
         self.assertFalse((self.home / "profiles" / "backups").exists())
 
-    def test_managed_catalog_validation_requires_luna_v2(self):
+    def test_managed_catalog_validation_requires_only_gpt6_luna_v2(self):
         catalog = {
             "models": [
                 {
-                    "slug": "gpt-5.6-luna",
+                    "slug": "gpt-6-luna",
                     "supported_reasoning_levels": [{"effort": "max"}],
                     "multi_agent_version": "v2",
-                },
-                {
-                    "slug": "gpt-5.6-terra",
-                    "supported_reasoning_levels": [{"effort": "medium"}],
                 },
             ]
         }
         self.assertEqual(presets.validate_managed_catalog(catalog, "lite"), [])
+
         catalog["models"][0]["multi_agent_version"] = "v1"
         self.assertTrue(
-            any("Luna" in error or "luna" in error for error in presets.validate_managed_catalog(catalog, "lite"))
+            any("V2" in error or "v2" in error for error in presets.validate_managed_catalog(catalog, "lite"))
+        )
+
+        catalog["models"][0]["multi_agent_version"] = "v2"
+        catalog["models"].append(
+            {
+                "slug": "gpt-5.6-terra",
+                "supported_reasoning_levels": [{"effort": "medium"}],
+            }
+        )
+        self.assertTrue(
+            any("exactly" in error.lower() for error in presets.validate_managed_catalog(catalog, "lite"))
         )
 
     def test_validator_rejects_private_base_team_override(self):
