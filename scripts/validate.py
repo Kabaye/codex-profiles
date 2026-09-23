@@ -14,13 +14,13 @@ BEGIN = "<!-- codex-profiles:begin -->"
 END = "<!-- codex-profiles:end -->"
 
 ROOTS = {
-    "lite": ("gpt-5.6-terra", "medium"),
+    "lite": ("gpt-6-luna", "max"),
     "strict-common": ("gpt-6-sol", "xhigh"),
     "private": ("gpt-6-astra", "xhigh"),
     "work": ("gpt-6-sol", "xhigh"),
 }
 TEAM_ROLES = {
-    "lite": {"luna_worker": ("gpt-5.6-luna", "max")},
+    "lite": {"luna_worker": ("gpt-6-luna", "max")},
     "strict-common": {"luna_worker": ("gpt-6-luna", "max")},
     "private": {
         "luna_worker": ("gpt-6-luna", "max"),
@@ -31,7 +31,7 @@ TEAM_ROLES = {
         "sol_worker": ("gpt-6-sol", "xhigh"),
     },
 }
-LITE_MODELS = {"gpt-5.6-terra", "gpt-5.6-luna"}
+LITE_MODELS = {"gpt-6-luna"}
 
 
 def _catalog_errors(
@@ -62,8 +62,8 @@ def _catalog_errors(
         )
         if effort not in supported:
             errors.append(f"Model metadata does not confirm {slug} / {effort}")
-    if require_luna_v2 and index.get("gpt-5.6-luna", {}).get("multi_agent_version") != "v2":
-        errors.append("Managed catalog must patch gpt-5.6-luna multi_agent_version to v2")
+    if require_luna_v2 and index.get("gpt-6-luna", {}).get("multi_agent_version") != "v2":
+        errors.append("Managed catalog must preserve gpt-6-luna multi_agent_version = v2")
     return errors
 
 
@@ -71,8 +71,7 @@ def validate_managed_catalog(catalog: dict, profile: str) -> list[str]:
     if profile != "lite":
         return ["Managed model catalog is only used by the lite profile"]
     required = {
-        ("gpt-5.6-terra", "medium"),
-        ("gpt-5.6-luna", "max"),
+        ("gpt-6-luna", "max"),
     }
     return _catalog_errors(
         catalog,
@@ -131,8 +130,8 @@ def validate(
             )
         expected_memories = {
             "lite": {
-                "extract_model": "gpt-5.6-luna",
-                "consolidation_model": "gpt-5.6-luna",
+                "extract_model": "gpt-6-luna",
+                "consolidation_model": "gpt-6-luna",
             },
             "strict-common": {
                 "extract_model": "gpt-6-luna",
@@ -218,7 +217,7 @@ def validate(
         if profile is None or profile == name:
             required.add((root_model, root_effort))
             if name == "lite":
-                required.add(("gpt-5.6-luna", "max"))
+                required.add(("gpt-6-luna", "max"))
             elif name == "strict-common":
                 required.add(("gpt-6-luna", "max"))
             elif name in {"private", "work"}:
@@ -236,7 +235,7 @@ def main() -> int:
     parser.add_argument(
         "--managed-catalog",
         type=Path,
-        help="Generated models-managed.json; Luna must be patched to V2",
+        help="Generated lite models-managed.json; must contain only GPT-6 Luna with V2 metadata",
     )
     parser.add_argument("--profile", choices=sorted(ROOTS), help="Limit live metadata requirements")
     args = parser.parse_args()
