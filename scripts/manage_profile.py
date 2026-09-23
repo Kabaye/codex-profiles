@@ -426,27 +426,18 @@ def _managed_catalog_bytes(catalog: dict, profile: str) -> bytes:
         slug = model["slug"]
         if slug in by_slug:
             raise ValueError(f"Duplicate model slug: {slug}")
-        current_model = dict(model)
-        if slug == "gpt-5.6-luna":
-            current_model["multi_agent_version"] = "v2"
-        by_slug[slug] = current_model
+        by_slug[slug] = dict(model)
 
-    required = (
-        ("gpt-5.6-terra", "medium"),
-        ("gpt-5.6-luna", "max"),
-    )
-    for slug, effort in required:
-        model = by_slug.get(slug)
-        if model is None:
-            raise ValueError(f"Required lite model is unavailable: {slug}")
-        if effort not in _supported_efforts(model):
-            raise ValueError(f"Metadata does not confirm {slug} / {effort}")
+    model = by_slug.get("gpt-6-luna")
+    if model is None:
+        raise ValueError("Required lite model is unavailable: gpt-6-luna")
+    if "max" not in _supported_efforts(model):
+        raise ValueError("Metadata does not confirm gpt-6-luna / max")
+    if model.get("multi_agent_version") != "v2":
+        raise ValueError("Metadata does not confirm gpt-6-luna Multi-Agent V2")
 
     result = dict(catalog)
-    result["models"] = [
-        by_slug["gpt-5.6-terra"],
-        by_slug["gpt-5.6-luna"],
-    ]
+    result["models"] = [model]
     return (json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
