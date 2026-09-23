@@ -188,10 +188,14 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(
             {model["slug"] for model in catalog["models"]},
-            {"gpt-5.6-terra", "gpt-5.6-luna"},
+            {"gpt-6-luna"},
         )
-        luna = next(model for model in catalog["models"] if model["slug"] == "gpt-5.6-luna")
+        luna = catalog["models"][0]
         self.assertEqual(luna["multi_agent_version"], "v2")
+        self.assertIn(
+            "max",
+            {level["effort"] for level in luna["supported_reasoning_levels"]},
+        )
 
     def test_strict_common_remains_fixed_team(self):
         self.install("strict-common")
