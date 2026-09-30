@@ -33,7 +33,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                             "multi_agent_version": "v2",
                         },
                         {
-                            "slug": "gpt-6-sol",
+                            "slug": "gpt-6.1-sol",
                             "supported_reasoning_levels": [
                                 {"effort": "high"},
                                 {"effort": "xhigh"},
@@ -105,7 +105,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertIn(
             "mcp_oauth_callback_port = 18000\n\n"
             "# codex-profiles: managed profile keys\n"
-            'model = "gpt-6-sol"\n'
+            'model = "gpt-6.1-sol"\n'
             'model_reasoning_effort = "xhigh"\n',
             text,
         )
