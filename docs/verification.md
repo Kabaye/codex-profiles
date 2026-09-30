@@ -14,7 +14,7 @@ The tests cover:
 - `private/work` defaulting to native `solo`;
 - `solo ↔ team` switching without changing the root profile;
 - team cap 2;
-- explicit GPT-6 Luna Max / GPT-6 Sol xhigh role pins;
+- explicit GPT-6 Luna Max / GPT-6.1 Sol xhigh role pins;
 - Sol-first delegated implementation in private/personal routing;
 - Luna limited to clearly mechanical low-risk personal work;
 - bounded scope not treated as sufficient Luna eligibility;
@@ -54,7 +54,7 @@ After a full Codex restart and a new thread:
 3. confirm only `luna_worker` and `sol_worker` are installed;
 4. confirm effective child cap is 2;
 5. give a clearly mechanical low-risk task with a settled specification and verify GPT-6 Luna Max can be selected;
-6. give a bounded but behaviorally substantial implementation (for example workflow/state or cross-component UI behavior) and verify GPT-6 Sol xhigh is selected despite the bounded scope;
+6. give a bounded but behaviorally substantial implementation (for example workflow/state or cross-component UI behavior) and verify GPT-6.1 Sol xhigh is selected despite the bounded scope;
 7. start a mechanical Luna assignment, materially expand its scope, and verify the root reassesses the model before continuing;
 8. verify the root performs integration/final acceptance and no automatic reviewer is spawned.
 
@@ -65,13 +65,13 @@ After a full Codex restart and a new thread:
 3. manually selecting Astra as root must not change the delegated work lane;
 4. explicitly state `это личная задача`;
 5. verify the personal lane is Sol-first for delegated implementation and Luna is used only for clearly mechanical low-risk work;
-6. verify a bounded but behaviorally substantial personal task routes to GPT-6 Sol xhigh rather than Luna;
+6. verify a bounded but behaviorally substantial personal task routes to GPT-6.1 Sol xhigh rather than Luna;
 7. verify a Luna personal assignment that materially expands is reassessed before continuing;
 8. start an unrelated objective without another personal declaration and verify the lane returns to ordinary Luna-only work.
 
 ### Model catalogs
 
-For `private`, `work`, and `strict-common`, confirm there is no repository-owned `model_catalog_json` in the effective config and no required `models-managed.json` file. Confirm the runtime catalog exposes GPT-6 Sol and GPT-6 Luna as Multi-Agent V2.
+For `private`, `work`, and `strict-common`, confirm there is no repository-owned `model_catalog_json` in the effective config and no required `models-managed.json` file. Confirm the runtime catalog exposes GPT-6.1 Sol and GPT-6 Luna as Multi-Agent V2.
 
 For `lite`, inspect `models-managed.json` after install:
 
