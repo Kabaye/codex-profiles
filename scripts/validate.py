@@ -15,20 +15,20 @@ END = "<!-- codex-profiles:end -->"
 
 ROOTS = {
     "lite": ("gpt-6-luna", "max"),
-    "strict-common": ("gpt-6-sol", "xhigh"),
+    "strict-common": ("gpt-6.1-sol", "xhigh"),
     "private": ("gpt-6-astra", "xhigh"),
-    "work": ("gpt-6-sol", "xhigh"),
+    "work": ("gpt-6.1-sol", "xhigh"),
 }
 TEAM_ROLES = {
     "lite": {"luna_worker": ("gpt-6-luna", "max")},
     "strict-common": {"luna_worker": ("gpt-6-luna", "max")},
     "private": {
         "luna_worker": ("gpt-6-luna", "max"),
-        "sol_worker": ("gpt-6-sol", "xhigh"),
+        "sol_worker": ("gpt-6.1-sol", "xhigh"),
     },
     "work": {
         "luna_worker": ("gpt-6-luna", "max"),
-        "sol_worker": ("gpt-6-sol", "xhigh"),
+        "sol_worker": ("gpt-6.1-sol", "xhigh"),
     },
 }
 LITE_MODELS = {"gpt-6-luna"}
@@ -222,7 +222,7 @@ def validate(
                 required.add(("gpt-6-luna", "max"))
             elif name in {"private", "work"}:
                 required.add(("gpt-6-luna", "max"))
-                required.add(("gpt-6-sol", "xhigh"))
+                required.add(("gpt-6.1-sol", "xhigh"))
 
     if catalog is not None:
         errors.extend(_catalog_errors(catalog, required))
