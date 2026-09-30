@@ -1,6 +1,6 @@
 name = "sol_worker"
-description = "gpt-6-sol / xhigh owner for one bounded workstream in work personal/high-quality mode."
-model = "gpt-6-sol"
+description = "gpt-6.1-sol / xhigh owner for one bounded workstream in work personal/high-quality mode."
+model = "gpt-6.1-sol"
 model_reasoning_effort = "xhigh"
 
 developer_instructions = """
