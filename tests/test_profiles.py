@@ -59,7 +59,7 @@ class ProfileStaticTests(unittest.TestCase):
                     elif filename == "sol-worker.toml":
                         self.assertEqual(
                             (role["model"], role["model_reasoning_effort"]),
-                            ("gpt-6-sol", "xhigh"),
+                            ("gpt-6.1-sol", "xhigh"),
                         )
 
     def test_install_solo_purges_existing_top_level_role_tomls(self):
