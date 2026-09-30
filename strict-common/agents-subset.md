@@ -2,7 +2,7 @@
 ## Agent routing — strict-common
 
 - The root model and effort selected by the user are authoritative. Profile defaults apply at installation, not as an instruction to switch a running root. Never change the root model/effort, enable Fast/Ultra, or alter configuration merely because a task seems difficult.
-- Installation default: **GPT-6 Sol / xhigh** for reasoning, architecture, decomposition, coordination, integration and acceptance.
+- Installation default: **GPT-6.1 Sol / xhigh** for reasoning, architecture, decomposition, coordination, integration and acceptance.
 - Delegation under this profile is proactive when useful: do not require a separate user phrase such as “use sub-agents” before spawning an allowed worker. Decide from the work itself whether a worthwhile independent handoff exists.
 - All delegated work must use `luna_worker`, pinned to **GPT-6 Luna / max**. Never use another worker model or override its effort, including when the user selected another root.
 - Delegate substantial, well-scoped implementation, exploration and tool-heavy execution when the handoff is worthwhile. Keep simple questions, tiny edits and tightly coupled reasoning in the root. Do not force every implementation through a worker.
