@@ -6,7 +6,6 @@ Local Codex routing presets with an explicit separation between the **root profi
 
 | Profile | Default root | Default mode | Team workers | Team child cap |
 |---|---|---|---|---:|
-| `lite` | GPT-6 Luna Max | fixed team | GPT-6 Luna Max | 1 |
 | `strict-common` | GPT-6.1 Sol xhigh | fixed team | GPT-6 Luna Max | 4 |
 | `private` | GPT-6 Astra xhigh | **solo** | GPT-6 Luna Max + GPT-6.1 Sol xhigh | 2 |
 | `work` | GPT-6.1 Sol xhigh | **solo** | GPT-6 Luna Max; GPT-6.1 Sol xhigh only in explicit personal lane | 2 |
@@ -43,15 +42,7 @@ Subagents therefore remain available through normal Codex behavior when the user
 
 ## Model catalog
 
-`private`, `work`, and `strict-common` use the native Codex model catalog. GPT-6.1 Sol and GPT-6 Luna already advertise Multi-Agent V2 natively, so these profiles do not create or reference a custom catalog.
-
-`lite` keeps a generated `models-managed.json` only to restrict the visible model list to **GPT-6 Luna**. GPT-6 Luna is already Multi-Agent V2 natively, so no compatibility patch is applied.
-
-For offline/testing lite installs:
-
-```powershell
-python scripts/manage_profile.py install lite --models PATH_TO_CAPTURED_MODELS_JSON
-```
+`private`, `work`, and `strict-common` use the native Codex model catalog; no profile-specific catalog is generated. The retired `lite` profile is no longer installable. Switching from an older Lite installation to a supported profile removes its owned restricted catalog and roles.
 
 ## Lifecycle
 
@@ -110,7 +101,6 @@ Optional catalog checks:
 
 ```powershell
 python scripts/validate.py --profile private --models PATH_TO_CAPTURED_MODELS_JSON
-python scripts/validate.py --profile lite --managed-catalog $HOME\.codex\models-managed.json
 ```
 
 See:
