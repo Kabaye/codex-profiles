@@ -6,12 +6,11 @@ Use `scripts/manage_profile.py` for the complete lifecycle.
 
 Supported profiles:
 
-- `lite`
 - `strict-common`
 - `private`
 - `work`
 
-`private` and `work` support `solo` and `team`. Their default is `solo`. `lite` and `strict-common` keep fixed team routing.
+`private` and `work` support `solo` and `team` (default: `solo`). `strict-common` uses fixed team routing.
 
 ## Preview first
 
@@ -44,17 +43,9 @@ python scripts/manage_profile.py install private --mode team
 python scripts/manage_profile.py install work --mode team
 ```
 
-`lite` and `strict-common` do not accept `--mode solo`.
+`strict-common` does not accept `--mode solo`.
 
-`private`, `work`, and `strict-common` use the native Codex catalog and do not create `models-managed.json`. Installing one of them removes an older repository-owned custom catalog reference/file when safely identified.
-
-`lite` intentionally keeps a restricted generated catalog. It rebuilds `models-managed.json` from `codex debug models --bundled` and filters it to **GPT-6 Luna only**. No V2 compatibility patch is needed.
-
-Offline/testing lite install:
-
-```powershell
-python scripts/manage_profile.py install lite --models PATH_TO_CAPTURED_MODELS_JSON
-```
+All supported profiles use the native model catalog; none create `models-managed.json`. After retiring `lite`, installing a supported profile removes the legacy Lite catalog, role settings and managed routing block. An unrelated custom catalog remains protected.
 
 ## Switch only the agent mode
 
@@ -124,4 +115,4 @@ python scripts/validate.py
 python -m unittest discover -s tests -v
 ```
 
-Developer instructions and model selection can remain snapshotted by an already running app-server/thread, so old sessions are not valid verification of a new install. `lite` additionally requires restart after rebuilding its custom catalog.
+Developer instructions and model selection can remain snapshotted by a running app-server/thread, so old sessions are not valid verification after an install or migration.
