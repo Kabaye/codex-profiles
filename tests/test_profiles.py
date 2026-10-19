@@ -38,7 +38,6 @@ class ProfileStaticTests(unittest.TestCase):
                 )
 
     def test_fixed_profiles_keep_explicit_luna_role_without_aliases(self):
-        self.assertEqual(set(roles.desired_roles("lite")), {"luna-worker.toml"})
         self.assertEqual(set(roles.desired_roles("strict-common")), {"luna-worker.toml"})
         for profile in roles.PROFILES:
             for filename in roles.desired_roles(profile, "team"):
@@ -144,33 +143,33 @@ class ProfileStaticTests(unittest.TestCase):
         self.assertEqual(state, (self.home / "profiles" / "roles-state.json").read_bytes())
         self.assertFalse((self.home / "profiles" / "backups").exists())
 
-    def test_managed_catalog_validation_requires_only_gpt6_luna_v2(self):
-        catalog = {
-            "models": [
-                {
-                    "slug": "gpt-6-luna",
-                    "supported_reasoning_levels": [{"effort": "max"}],
-                    "multi_agent_version": "v2",
-                },
-            ]
-        }
-        self.assertEqual(presets.validate_managed_catalog(catalog, "lite"), [])
+    def test_retired_lite_is_not_installable_but_state_can_be_removed(self):
+        self.assertEqual(roles.PROFILES, {"private", "work", "strict-common"})
+        with self.assertRaisesRegex(ValueError, "Unknown profile"):
+            roles.normalize_mode("lite", None)
+        with self.assertRaisesRegex(ValueError, "Unknown profile"):
+            roles.desired_roles("lite")
 
-        catalog["models"][0]["multi_agent_version"] = "v1"
-        self.assertTrue(
-            any("V2" in error or "v2" in error for error in presets.validate_managed_catalog(catalog, "lite"))
+        data = roles.desired_roles("strict-common")["luna-worker.toml"]
+        agents = self.home / "agents"
+        agents.mkdir(parents=True)
+        (agents / "luna-worker.toml").write_bytes(data)
+        control = self.home / "profiles"
+        control.mkdir()
+        (control / "roles-state.json").write_text(
+            json.dumps({
+                "version": 2,
+                "profile": "lite",
+                "mode": "team",
+                "owned": {"luna-worker.toml": roles.digest(data)}
+            }),
+            encoding="utf-8",
         )
-
-        catalog["models"][0]["multi_agent_version"] = "v2"
-        catalog["models"].append(
-            {
-                "slug": "gpt-5.6-terra",
-                "supported_reasoning_levels": [{"effort": "medium"}],
-            }
-        )
-        self.assertTrue(
-            any("exactly" in error.lower() for error in presets.validate_managed_catalog(catalog, "lite"))
-        )
+        self.assertEqual(roles.load_state(control / "roles-state.json")["mode"], "team")
+        result = roles.manage(self.home, None)
+        self.assertIn("luna-worker.toml", result["changed_roles"])
+        self.assertEqual(self.snapshot(), {})
+        self.assertFalse((control / "roles-state.json").exists())
 
     def test_validator_rejects_private_base_team_override(self):
         root = Path(self.tmp.name) / "repo"
