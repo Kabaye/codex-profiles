@@ -12,7 +12,6 @@ MARKER_END = "<!-- codex-profiles:end -->"
 class CompactRoutingInstructionsTests(unittest.TestCase):
     def test_size_and_markers(self):
         budgets = {
-            "lite": 5000,
             "strict-common": 2400,
             "private": 1900,
             "work": 2200,
@@ -28,15 +27,11 @@ class CompactRoutingInstructionsTests(unittest.TestCase):
                 self.assertEqual(source.count(MARKER_END), 1)
                 self.assertIn('fork_turns = "none"', source)
 
-    def test_fixed_profiles_preserve_routing_contracts(self):
-        lite = (ROOT / "lite/agents-subset.md").read_text(encoding="utf-8")
-        for rule in ("git fetch", "GPT-6 Luna / max", "luna_worker", "один открытый", "проактивно", "реценз", "вложенных"):
-            with self.subTest(profile="lite", rule=rule):
-                if rule == "реценз":
-                    self.assertIn("reviewer", lite)
-                else:
-                    self.assertIn(rule, lite)
+    def test_lite_sources_are_retired(self):
+        self.assertFalse((ROOT / "lite").exists())
+        self.assertFalse((ROOT / "scripts/filter_lite_catalog.py").exists())
 
+    def test_fixed_profiles_preserve_routing_contracts(self):
         strict = (ROOT / "strict-common/agents-subset.md").read_text(encoding="utf-8")
         for rule in ("GPT-6.1 Sol", "GPT-6 Luna / max", "four open child threads", "DECISION REQUIRED"):
             with self.subTest(profile="strict-common", rule=rule):
