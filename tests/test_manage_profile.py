@@ -18,57 +18,12 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.home = Path(self.tmp.name) / "codex-home"
-        self.models = Path(self.tmp.name) / "models.json"
-        self.models.write_text(
-            json.dumps(
-                {
-                    "catalog_version": "synthetic",
-                    "models": [
-                        {
-                            "slug": "gpt-6-astra",
-                            "supported_reasoning_levels": [
-                                {"effort": "high"},
-                                {"effort": "xhigh"},
-                            ],
-                            "multi_agent_version": "v2",
-                        },
-                        {
-                            "slug": "gpt-6.1-sol",
-                            "supported_reasoning_levels": [
-                                {"effort": "high"},
-                                {"effort": "xhigh"},
-                            ],
-                            "multi_agent_version": "v2",
-                        },
-                        {
-                            "slug": "gpt-6-luna",
-                            "supported_reasoning_levels": [{"effort": "max"}],
-                            "multi_agent_version": "v2",
-                        },
-                        {
-                            "slug": "gpt-5.6-terra",
-                            "supported_reasoning_levels": [{"effort": "medium"}],
-                            "multi_agent_version": "v2",
-                        },
-                        {
-                            "slug": "gpt-5.6-luna",
-                            "supported_reasoning_levels": [{"effort": "max"}],
-                            "multi_agent_version": "v1",
-                            "model_messages": {"instructions_template": "preserve me"},
-                        },
-                    ],
-                }
-            ),
-            encoding="utf-8",
-        )
-
     def install(self, profile: str, *, mode: str | None = None, dry_run: bool = False):
         return lifecycle.apply(
             self.home,
             profile,
             mode=mode,
             dry_run=dry_run,
-            models=self.models,
         )
 
     def state(self) -> dict:
@@ -145,7 +100,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             self.home,
             "private",
             mode="team",
-            refresh_catalog=False,
         )
         self.assertEqual(team["mode"], "team")
         self.assertEqual(
@@ -175,7 +129,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             self.home,
             "private",
             mode="solo",
-            refresh_catalog=False,
         )
         self.assertEqual(solo["mode"], "solo")
         self.assertEqual(self.role_names(), set())
@@ -209,30 +162,52 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(self.state()["mode"], "solo")
         self.assertEqual(self.role_names(), set())
 
-    def test_lite_uses_same_managed_catalog_path_and_filters_models(self):
-        self.install("lite")
-        config = self.config()
-        self.assertEqual(
-            config["model_catalog_json"],
-            (self.home / lifecycle.MANAGED_CATALOG).as_posix(),
+    def test_retired_lite_installed_state_switches_to_work(self):
+        self.home.mkdir()
+        agents = self.home / "agents"
+        agents.mkdir()
+        data = roles.desired_roles("strict-common")["luna-worker.toml"]
+        (agents / "luna-worker.toml").write_bytes(data)
+        control = self.home / "profiles"
+        control.mkdir()
+        (control / "roles-state.json").write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "profile": "lite",
+                    "mode": "team",
+                    "owned": {"luna-worker.toml": roles.digest(data)},
+                }
+            ),
+            encoding="utf-8",
         )
-        self.assertEqual(config["agents"]["max_concurrent_threads_per_session"], 1)
-        self.assertEqual(self.state()["mode"], "team")
-        self.assertEqual(self.role_names(), {"luna-worker.toml"})
+        catalog = self.home / lifecycle.MANAGED_CATALOG
+        catalog.write_text("synthetic former lite catalog", encoding="utf-8")
+        (self.home / lifecycle.LEGACY_LITE_CATALOG).write_text(
+            "synthetic legacy catalog", encoding="utf-8"
+        )
+        (self.home / "config.toml").write_text(
+            f'model_catalog_json = "{catalog.as_posix()}"\n'
+            'model = "gpt-6-luna"\n',
+            encoding="utf-8",
+        )
+        (self.home / "AGENTS.md").write_text(
+            "<!-- codex-profiles:begin -->\n"
+            "## Lite — маршрутизация\n"
+            "Old lite rules\n"
+            "<!-- codex-profiles:end -->\n",
+            encoding="utf-8",
+        )
 
-        catalog = json.loads(
-            (self.home / lifecycle.MANAGED_CATALOG).read_text(encoding="utf-8")
-        )
-        self.assertEqual(
-            {model["slug"] for model in catalog["models"]},
-            {"gpt-6-luna"},
-        )
-        luna = catalog["models"][0]
-        self.assertEqual(luna["multi_agent_version"], "v2")
-        self.assertIn(
-            "max",
-            {level["effort"] for level in luna["supported_reasoning_levels"]},
-        )
+        self.assertEqual(lifecycle._state(self.home)["profile"], "lite")
+        result = self.install("work", mode="team")
+        self.assertEqual(result["profile"], "work")
+        self.assertEqual(self.state()["profile"], "work")
+        self.assertEqual(self.role_names(), {"luna-worker.toml", "sol-worker.toml"})
+        self.assertFalse(catalog.exists())
+        self.assertFalse((self.home / lifecycle.LEGACY_LITE_CATALOG).exists())
+        self.assertNotIn("model_catalog_json", self.config())
+        self.assertNotIn("Old lite rules", (self.home / "AGENTS.md").read_text())
 
     def test_strict_common_remains_fixed_team(self):
         self.install("strict-common")
@@ -244,7 +219,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 self.home,
                 "strict-common",
                 mode="solo",
-                models=self.models,
             )
 
     def test_unrelated_custom_catalog_is_refused(self):
@@ -299,7 +273,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         lifecycle.apply(
             self.home,
             None,
-            refresh_catalog=False,
         )
         config = tomllib.loads((self.home / "config.toml").read_text(encoding="utf-8"))
         self.assertEqual(config["unrelated_top"], "keep")
@@ -319,7 +292,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             self.home,
             "private",
             mode="team",
-            refresh_catalog=False,
         )
         self.assertEqual(result["mode"], "team")
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())

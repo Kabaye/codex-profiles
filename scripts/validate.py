@@ -14,13 +14,11 @@ BEGIN = "<!-- codex-profiles:begin -->"
 END = "<!-- codex-profiles:end -->"
 
 ROOTS = {
-    "lite": ("gpt-6-luna", "max"),
     "strict-common": ("gpt-6.1-sol", "xhigh"),
     "private": ("gpt-6-astra", "xhigh"),
     "work": ("gpt-6.1-sol", "xhigh"),
 }
 TEAM_ROLES = {
-    "lite": {"luna_worker": ("gpt-6-luna", "max")},
     "strict-common": {"luna_worker": ("gpt-6-luna", "max")},
     "private": {
         "luna_worker": ("gpt-6-luna", "max"),
@@ -31,15 +29,10 @@ TEAM_ROLES = {
         "sol_worker": ("gpt-6.1-sol", "xhigh"),
     },
 }
-LITE_MODELS = {"gpt-6-luna"}
-
 
 def _catalog_errors(
     catalog: dict,
     required: set[tuple[str, str]],
-    *,
-    exact_slugs: set[str] | None = None,
-    require_luna_v2: bool = False,
 ) -> list[str]:
     errors: list[str] = []
     models = catalog.get("models") if isinstance(catalog, dict) else None
@@ -51,8 +44,6 @@ def _catalog_errors(
     index = {model["slug"]: model for model in models}
     if len(index) != len(models):
         errors.append("Duplicate model slugs in metadata")
-    if exact_slugs is not None and set(index) != exact_slugs:
-        errors.append(f"Catalog must contain exactly: {', '.join(sorted(exact_slugs))}")
     for slug, effort in sorted(required):
         levels = index.get(slug, {}).get("supported_reasoning_levels", [])
         supported = (
@@ -62,23 +53,7 @@ def _catalog_errors(
         )
         if effort not in supported:
             errors.append(f"Model metadata does not confirm {slug} / {effort}")
-    if require_luna_v2 and index.get("gpt-6-luna", {}).get("multi_agent_version") != "v2":
-        errors.append("Managed catalog must preserve gpt-6-luna multi_agent_version = v2")
     return errors
-
-
-def validate_managed_catalog(catalog: dict, profile: str) -> list[str]:
-    if profile != "lite":
-        return ["Managed model catalog is only used by the lite profile"]
-    required = {
-        ("gpt-6-luna", "max"),
-    }
-    return _catalog_errors(
-        catalog,
-        required,
-        exact_slugs=LITE_MODELS,
-        require_luna_v2=True,
-    )
 
 
 def validate(
@@ -117,7 +92,7 @@ def validate(
                 f"{name}: base config must not suppress native multi-agent mode in solo",
             )
         else:
-            expected_cap = 1 if name == "lite" else 4
+            expected_cap = 4
             check(
                 config.get("agents")
                 == {"enabled": True, "max_concurrent_threads_per_session": expected_cap},
@@ -129,10 +104,6 @@ def validate(
                 f"{name}: fixed team multi-agent hint drift",
             )
         expected_memories = {
-            "lite": {
-                "extract_model": "gpt-6-luna",
-                "consolidation_model": "gpt-6-luna",
-            },
             "strict-common": {
                 "extract_model": "gpt-6-luna",
                 "consolidation_model": "gpt-6-luna",
@@ -216,9 +187,7 @@ def validate(
 
         if profile is None or profile == name:
             required.add((root_model, root_effort))
-            if name == "lite":
-                required.add(("gpt-6-luna", "max"))
-            elif name == "strict-common":
+            if name == "strict-common":
                 required.add(("gpt-6-luna", "max"))
             elif name in {"private", "work"}:
                 required.add(("gpt-6-luna", "max"))
@@ -232,29 +201,19 @@ def validate(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models", type=Path, help="Unmodified JSON from `codex debug models --bundled`")
-    parser.add_argument(
-        "--managed-catalog",
-        type=Path,
-        help="Generated lite models-managed.json; must contain only GPT-6 Luna with V2 metadata",
-    )
     parser.add_argument("--profile", choices=sorted(ROOTS), help="Limit live metadata requirements")
     args = parser.parse_args()
     try:
         raw = json.loads(args.models.read_text(encoding="utf-8-sig")) if args.models else None
         errors = validate(catalog=raw, profile=args.profile)
-        if args.managed_catalog:
-            if args.profile != "lite":
-                raise ValueError("--managed-catalog requires --profile lite")
-            managed = json.loads(args.managed_catalog.read_text(encoding="utf-8-sig"))
-            errors.extend(validate_managed_catalog(managed, args.profile))
     except (OSError, ValueError, TypeError) as exc:
         parser.exit(1, f"Validation could not complete: {exc}\n")
     if errors:
         print("\n".join(errors))
         return 1
     print(
-        "PASS: four static profiles"
-        + (" and supplied model metadata" if raw or args.managed_catalog else "")
+        "PASS: three static profiles"
+        + (" and supplied model metadata" if raw else "")
     )
     print("Not a Codex runtime, account entitlement, quota or model-behavior test.")
     return 0

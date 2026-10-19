@@ -46,7 +46,9 @@ LEGACY_KEYS = {
 }
 PROFILE_HEADINGS = (
     "## Scope routing",
-    "## Agent routing — lite",
+    "## Agent routing — lite",  # Historical unmarked blocks need safe detection.
+    "## Lite — общение и работа",
+    "## Lite — маршрутизация",
     "## Agent routing — strict-common",
     "## Agent routing — private",
     "## Agent routing — private team",
@@ -216,8 +218,6 @@ def _desired_config(
     source = tomllib.loads(
         (ROOT / profile / "config.toml").read_text(encoding="utf-8")
     )
-    if profile == "lite":
-        source["model_catalog_json"] = (home / MANAGED_CATALOG).as_posix()
     if profile in manage_roles.MODE_PROFILES:
         if mode == "team":
             source["agents"] = {
@@ -398,72 +398,6 @@ def build_agents(text: str, profile: str | None, *, mode: str | None = None) -> 
     return normalized.rstrip() + ("\n" if normalized else "")
 
 
-def _supported_efforts(model: dict) -> set[str]:
-    levels = model.get("supported_reasoning_levels")
-    if not isinstance(levels, list):
-        return set()
-    return {
-        level.get("effort")
-        for level in levels
-        if isinstance(level, dict) and isinstance(level.get("effort"), str)
-    }
-
-
-def _managed_catalog_bytes(catalog: dict, profile: str) -> bytes:
-    if profile != "lite":
-        raise ValueError("Managed model catalog is only used by the lite profile")
-
-    models = catalog.get("models") if isinstance(catalog, dict) else None
-    if not isinstance(models, list):
-        raise ValueError("Expected Codex model metadata with models[]")
-
-    by_slug: dict[str, dict] = {}
-    for model in models:
-        if not isinstance(model, dict) or not isinstance(model.get("slug"), str):
-            raise ValueError(
-                "Unrecognized model metadata; refusing to manufacture entries"
-            )
-        slug = model["slug"]
-        if slug in by_slug:
-            raise ValueError(f"Duplicate model slug: {slug}")
-        by_slug[slug] = dict(model)
-
-    model = by_slug.get("gpt-6-luna")
-    if model is None:
-        raise ValueError("Required lite model is unavailable: gpt-6-luna")
-    if "max" not in _supported_efforts(model):
-        raise ValueError("Metadata does not confirm gpt-6-luna / max")
-    if model.get("multi_agent_version") != "v2":
-        raise ValueError("Metadata does not confirm gpt-6-luna Multi-Agent V2")
-
-    result = dict(catalog)
-    result["models"] = [model]
-    return (json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
-
-
-def _capture_catalog(profile: str, models: Path | None) -> bytes:
-    if models is not None:
-        catalog = json.loads(models.read_text(encoding="utf-8-sig"))
-        return _managed_catalog_bytes(catalog, profile)
-    try:
-        proc = subprocess.run(
-            ["codex", "debug", "models", "--bundled"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-    except FileNotFoundError as exc:
-        raise ValueError(
-            "Codex executable not found; pass --models with captured model metadata"
-        ) from exc
-    except subprocess.CalledProcessError as exc:
-        raise ValueError(
-            f"`codex debug models --bundled` failed: {exc.stderr.strip()}"
-        ) from exc
-    return _managed_catalog_bytes(json.loads(proc.stdout), profile)
-
-
 def _apply_text(path: Path, text: str) -> None:
     if text.strip():
         _atomic_write(path, text.encode("utf-8"))
@@ -477,8 +411,6 @@ def apply(
     *,
     mode: str | None = None,
     dry_run: bool = False,
-    models: Path | None = None,
-    refresh_catalog: bool = True,
 ) -> dict:
     home = Path(os.path.abspath(home.expanduser()))
     config_path = home / "config.toml"
@@ -522,17 +454,9 @@ def apply(
     )
     new_agents = build_agents(agents_text, profile, mode=selected_mode)
 
-    if profile == "lite":
-        if refresh_catalog:
-            catalog_bytes = _capture_catalog(profile, models)
-        else:
-            if not catalog_path.is_file():
-                raise ValueError(
-                    "Managed model catalog is missing; reinstall lite to rebuild it"
-                )
-            catalog_bytes = catalog_path.read_bytes()
-    else:
-        catalog_bytes = None
+    # Active profiles use the native model catalog. Former Lite catalog files
+    # are removed on install, switch, or uninstall.
+    catalog_bytes = None
 
     role_plan = manage_roles.manage(
         home,
@@ -634,11 +558,6 @@ def main() -> int:
     )
     install.add_argument("profile", choices=PROFILES)
     install.add_argument("--mode", choices=MODES)
-    install.add_argument(
-        "--models",
-        type=Path,
-        help="Captured bundled model-catalog JSON for offline/testing lite installs",
-    )
     install.add_argument("--dry-run", action="store_true")
 
     mode_cmd = sub.add_parser(
@@ -678,14 +597,13 @@ def main() -> int:
             profile = state["profile"]
             if profile not in manage_roles.MODE_PROFILES:
                 raise ValueError(
-                    f"{profile} has fixed team routing; mode switching is only supported for private/work"
+                    f"{profile} cannot switch modes. Install work or private to replace a retired profile."
                 )
             result = apply(
                 home,
                 profile,
                 mode=args.mode,
                 dry_run=args.dry_run,
-                refresh_catalog=False,
             )
         elif args.command == "install":
             result = apply(
@@ -693,15 +611,12 @@ def main() -> int:
                 args.profile,
                 mode=args.mode,
                 dry_run=args.dry_run,
-                models=args.models,
-                refresh_catalog=True,
             )
         else:
             result = apply(
                 home,
                 None,
                 dry_run=args.dry_run,
-                refresh_catalog=False,
             )
     except (
         OSError,

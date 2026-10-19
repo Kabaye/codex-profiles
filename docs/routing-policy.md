@@ -6,7 +6,6 @@ The repository separates **root selection** from **agent mode**.
 
 | Profile | Root default | Mode | Delegation |
 |---|---|---|---|
-| `lite` | GPT-6 Luna Max | fixed team | GPT-6 Luna Max, cap 1 |
 | `strict-common` | GPT-6.1 Sol xhigh | fixed team | GPT-6 Luna Max, cap 4 |
 | `private` | Astra xhigh | solo default | native Codex; team: GPT-6 Luna Max + GPT-6.1 Sol xhigh, cap 2 |
 | `work` | GPT-6.1 Sol xhigh | solo default | native Codex; team: GPT-6 Luna Max, plus GPT-6.1 Sol xhigh only in explicit personal lane, cap 2 |
@@ -54,9 +53,7 @@ In that explicit personal lane:
 
 ## Catalog policy
 
-`private`, `work`, and `strict-common` use the native Codex model catalog. GPT-6.1 Sol and GPT-6 Luna are natively Multi-Agent V2, so no compatibility catalog override is installed for these profiles.
-
-`lite` alone uses `models-managed.json`, regenerated from `codex debug models --bundled`, solely to expose **GPT-6 Luna** and hide every other model. GPT-6 Luna is already Multi-Agent V2, so no compatibility patch is applied. A private/work mode switch does not involve model-catalog state.
+All supported profiles use the native Codex model catalog. GPT-6.1 Sol and GPT-6 Luna are natively Multi-Agent V2. No compatibility catalog override is installed. The retired Lite restricted catalog is removed during migration; private/work mode switches do not create catalog state.
 
 ## Verification ownership
 

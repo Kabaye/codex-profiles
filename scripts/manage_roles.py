@@ -12,7 +12,8 @@ import tempfile
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILES = {"lite", "strict-common", "private", "work"}
+PROFILES = {"strict-common", "private", "work"}
+RETIRED_PROFILES = {"lite"}  # Recognize installed legacy state only for cleanup.
 MODE_PROFILES = {"private", "work"}
 MODES = {"solo", "team"}
 ROLE_FILES = {"luna-worker.toml", "sol-worker.toml"}
@@ -73,7 +74,6 @@ def desired_roles(profile: str, mode: str | None = None, root: Path = ROOT) -> d
         for path in sorted((root / profile / "agents").glob("*.toml"))
     }
     expected = {
-        "lite": {"luna-worker.toml"},
         "strict-common": {"luna-worker.toml"},
         "private": {"luna-worker.toml", "sol-worker.toml"},
         "work": {"luna-worker.toml", "sol-worker.toml"},
@@ -103,14 +103,14 @@ def load_state(path: Path) -> dict | None:
     if not path.exists():
         return None
     state = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(state, dict) or state.get("profile") not in PROFILES:
+    if not isinstance(state, dict) or state.get("profile") not in PROFILES | RETIRED_PROFILES:
         raise ValueError("Unknown or malformed profile role state")
     version = state.get("version")
     if version not in {1, 2}:
         raise ValueError("Unknown or malformed profile role state")
     profile = state["profile"]
-    if version == 1:
-        mode = "team"
+    if version == 1 or profile in RETIRED_PROFILES:
+        mode = "team"  # Former lite installations had fixed team routing.
     else:
         mode = normalize_mode(profile, state.get("mode"))
     owned = state.get("owned")
