@@ -1,24 +1,11 @@
 <!-- codex-profiles:begin -->
 ## Agent routing — strict-common
 
-- The root model and effort selected by the user are authoritative. Profile defaults apply at installation, not as an instruction to switch a running root. Never change the root model/effort, enable Fast/Ultra, or alter configuration merely because a task seems difficult.
-- Installation default: **GPT-6.1 Sol / xhigh** for reasoning, architecture, decomposition, coordination, integration and acceptance.
-- Delegation under this profile is proactive when useful: do not require a separate user phrase such as “use sub-agents” before spawning an allowed worker. Decide from the work itself whether a worthwhile independent handoff exists.
-- All delegated work must use `luna_worker`, pinned to **GPT-6 Luna / max**. Never use another worker model or override its effort, including when the user selected another root.
-- Delegate substantial, well-scoped implementation, exploration and tool-heavy execution when the handoff is worthwhile. Keep simple questions, tiny edits and tightly coupled reasoning in the root. Do not force every implementation through a worker.
-- Luna executes the complete scoped workstream and its tests. Reasoning beyond Luna's assignment returns to the existing root; complexity does not authorize a more expensive child.
-- At most **four open subagent threads**. Usually use zero to two. Use a third or fourth only for genuinely independent workstreams with clear ownership and real parallel value; never fill slots for their own sake. A verification job uses the same Luna pin in a fresh read-only assignment.
-- Every delegated spawn deliberately requests `luna_worker`; there are no generated `default` / `worker` / `explorer` aliases. If the pin cannot be verified, keep the work in the selected root instead of spawning an unpinned agent.
-
-## Ownership and coordination
-
-- Assign one coherent workstream, including its implementation and fix/test loop, to one owner. Reuse that owner for follow-ups; change owner only when the responsibility or required model materially changes.
-- Delegation replaces work; the root and other workers must not repeat the same investigation or edit. A verifier checks a defined risk independently, not the entire task a second time.
-- Every spawn must specify an allowed native role and `fork_turns = "none"`. Supply objective, ownership, interfaces, constraints, relevant evidence and acceptance checks in the handoff. Only when essential, use the smallest positive integer string for recent turns. Never omit `fork_turns` or use `"all"`; full-history inheritance can defeat model routing.
-- Use no nested delegation, including spawning another Codex process as a workaround. Use native waits rather than busy polling. Close finished threads when they are no longer needed: the configured cap counts open child threads, not just workers currently using tools.
-- Parallelize only independent work with an expected wall-clock or verification benefit. Writers need separate authorized worktrees or demonstrably disjoint ownership without shared Git, build or state collisions.
-- Workers resolve ordinary implementation choices within their scope. Return `DECISION REQUIRED` for a material change to the agreed contract, architecture, security boundary, data integrity or backward compatibility; include evidence and a recommendation. Do not bounce routine choices back to the root.
-- Production writes, pushes, migrations and deployments require the user's existing authorization or an applicable approved runbook. These routing rules never grant permissions or weaken sandbox/approval policies.
-- The root inspects actual diffs and decisive acceptance evidence, reruns the highest-risk checks as appropriate, and reports unresolved gaps. Do not blindly repeat every passing command.
-
+- The user-selected root model/effort always wins; installation defaults to **GPT-6.1 Sol / xhigh**. Do not switch the root, enable Fast/Ultra, or modify settings based on task difficulty.
+- Delegation is proactive when genuinely useful. Use **only `luna_worker` (GPT-6 Luna / max)** for every child, regardless of root selection; never override its effort or spawn an unpinned alias (`default`, `worker`, `explorer`).
+- Usually keep the task in root or use up to two workers; **at most four open child threads**. Use a third/fourth only for independent, worthwhile workstreams. Small or tightly coupled work stays in root. A verifier is another Luna worker with read-only scope.
+- Each spawn explicitly selects `luna_worker`, `fork_turns = "none"`, and a self-contained goal, ownership, interfaces, constraints, evidence and acceptance checks. Only when essential may recent turns be passed using the smallest positive numeric string; never use `"all"` or omit the parameter.
+- Assign implementation, repair and tests to one owner; reuse that owner for related fixes. Delegation replaces, not duplicates, root/peer work. Parallel writers need disjoint ownership and must not collide in shared Git/build/state; creating worktrees requires permission.
+- Workers handle routine decisions; return **DECISION REQUIRED** with evidence and a recommendation for material contract, architecture, security, integrity or compatibility choices. Root retains architecture, hard reasoning, integration and final acceptance; inspect diffs and high-risk checks without rerunning everything.
+- No nested delegation, including launching another Codex. Use native waits instead of polling and close completed threads to free open-thread capacity. Production writes, pushes, migrations and deployments still require user authorization or an approved runbook; routing never bypasses sandbox or approval policy.
 <!-- codex-profiles:end -->
