@@ -14,12 +14,10 @@ BEGIN = "<!-- codex-profiles:begin -->"
 END = "<!-- codex-profiles:end -->"
 
 ROOTS = {
-    "strict-common": ("gpt-6.1-sol", "xhigh"),
     "private": ("gpt-6-astra", "xhigh"),
     "work": ("gpt-6.1-sol", "xhigh"),
 }
 TEAM_ROLES = {
-    "strict-common": {"luna_worker": ("gpt-6-luna", "max")},
     "private": {
         "luna_worker": ("gpt-6-luna", "max"),
         "sol_worker": ("gpt-6.1-sol", "xhigh"),
@@ -72,6 +70,14 @@ def validate(
 
     check((root / "scripts" / "manage_profile.py").is_file(), "unified profile lifecycle manager missing")
     check(set(ROOTS) == set(manage_roles.PROFILES), "public profile registry drift")
+    for operation in ("install", "remove"):
+        guide = root / "docs" / f"{operation}.md"
+        check(guide.is_file(), f"shared {operation} guide missing")
+        if guide.is_file():
+            check(
+                "scripts/manage_profile.py" in guide.read_text(encoding="utf-8"),
+                f"shared {operation} guide does not use unified profile lifecycle",
+            )
 
     for name, (root_model, root_effort) in ROOTS.items():
         config = tomllib.loads((root / name / "config.toml").read_text(encoding="utf-8"))
@@ -91,30 +97,7 @@ def validate(
                 "multi_agent_v2" not in config.get("features", {}),
                 f"{name}: base config must not suppress native multi-agent mode in solo",
             )
-        else:
-            expected_cap = 4
-            check(
-                config.get("agents")
-                == {"enabled": True, "max_concurrent_threads_per_session": expected_cap},
-                f"{name}: fixed team agent cap drift",
-            )
-            check(
-                config.get("features", {}).get("multi_agent_v2")
-                == {"multi_agent_mode_hint_text": ""},
-                f"{name}: fixed team multi-agent hint drift",
-            )
-        expected_memories = {
-            "strict-common": {
-                "extract_model": "gpt-6-luna",
-                "consolidation_model": "gpt-6-luna",
-            },
-            "private": {},
-            "work": {
-                "extract_model": "gpt-6-luna",
-                "consolidation_model": "gpt-6-luna",
-            },
-        }[name]
-        check(config.get("memories", {}) == expected_memories, f"{name}: memory routing drift")
+        check(config.get("memories", {}) == {}, f"{name}: memory routing drift")
 
         actual_roles: dict[str, tuple[str, str]] = {}
         for path in (root / name / "agents").glob("*.toml"):
@@ -161,35 +144,24 @@ def validate(
             f"{name}: profile instructions exist outside the managed lifecycle block",
         )
         check('fork_turns = "none"' in text, f"{name}: explicit bounded fork policy missing")
-        if name in {"private", "work"}:
-            check("two open child threads" in text, f"{name}: team cap policy missing")
-            check("automatic reviewer" in text, f"{name}: no-automatic-review policy missing")
-            check("Sol-first" in text, f"{name}: Sol-first personal routing policy missing")
-            check(
-                "bounded or limited to a few files is not enough" in text,
-                f"{name}: bounded-scope Luna guard missing",
-            )
-            check(
-                "Owner reuse never overrides model suitability" in text,
-                f"{name}: model reassessment policy missing",
-            )
-        for operation in ("install", "remove"):
-            page = (root / name / f"{operation}-{name}.md").read_text(encoding="utf-8")
-            check(f"../docs/{operation}.md" in page, f"{name}: {operation} procedure drift")
-            check(
-                "scripts/manage_profile.py" in page,
-                f"{name}: {operation} does not use unified profile lifecycle",
-            )
-            check(
-                "scripts/manage_roles.py" not in page,
-                f"{name}: {operation} exposes obsolete roles-only lifecycle",
-            )
-
+        check(
+            "Use the user-selected root model and effort" in text,
+            f"{name}: user-selected root policy missing",
+        )
+        check("three open child threads" in text, f"{name}: team cap policy missing")
+        check("Sol-first" in text, f"{name}: Sol-first personal routing policy missing")
+        check(
+            "Independent review only when the user explicitly requests one." in text,
+            f"{name}: explicit independent-review policy missing",
+        )
+        for role_name in TEAM_ROLES[name]:
+            check(role_name in text, f"{name}: explicit {role_name} routing missing")
+        if name == "work":
+            check("ordinary work objectives" in text, "work: ordinary work routing missing")
+            check("это личная задача" in text, "work: explicit personal-lane declaration missing")
         if profile is None or profile == name:
             required.add((root_model, root_effort))
-            if name == "strict-common":
-                required.add(("gpt-6-luna", "max"))
-            elif name in {"private", "work"}:
+            if name in {"private", "work"}:
                 required.add(("gpt-6-luna", "max"))
                 required.add(("gpt-6.1-sol", "xhigh"))
 
@@ -212,7 +184,7 @@ def main() -> int:
         print("\n".join(errors))
         return 1
     print(
-        "PASS: three static profiles"
+        "PASS: two static profiles"
         + (" and supplied model metadata" if raw else "")
     )
     print("Not a Codex runtime, account entitlement, quota or model-behavior test.")

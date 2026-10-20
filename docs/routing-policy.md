@@ -1,60 +1,23 @@
 # Routing policy
+## Defaults
 
-The repository separates **root selection** from **agent mode**.
-
-## Matrix
-
-| Profile | Root default | Mode | Delegation |
+| Profile | Root default | Mode | Team routing |
 |---|---|---|---|
-| `strict-common` | GPT-6.1 Sol xhigh | fixed team | GPT-6 Luna Max, cap 4 |
-| `private` | Astra xhigh | solo default | native Codex; team: GPT-6 Luna Max + GPT-6.1 Sol xhigh, cap 2 |
-| `work` | GPT-6.1 Sol xhigh | solo default | native Codex; team: GPT-6 Luna Max, plus GPT-6.1 Sol xhigh only in explicit personal lane, cap 2 |
+| `private` | GPT-6 Astra xhigh | solo | Sol-first implementation; Luna for mechanical edits, exploration and checks |
+| `work` | GPT-6.1 Sol xhigh | solo | Luna for work; Sol-first for explicitly personal tasks |
 
-The user-selected root and effort are authoritative. In particular, `work` does not restrict the normal root selector; manually selecting Astra changes only the root.
-
+Use the user's selected root model and effort.
 ## Solo
-
-`private/work solo` installs no custom roles and no proactive routing block. It also installs no profile multi-agent hint or child cap. Subagents remain available through native Codex behavior when the user directly requests them.
-
+Solo uses native Codex delegation. The profile installs its base settings and leaves custom roles, routing instructions and the child-thread cap to Codex.
 ## Team
-
-Team is selective, not maximal:
-
-- root-first by default;
-- normally zero or one worker;
-- maximum two open child threads per root session for `private/work`;
-- delegated work substitutes for root work instead of duplicating it;
-- every spawn explicitly names a role and uses `fork_turns = "none"`;
-- no generated routing aliases;
-- no automatic reviewer.
-
-### Private team
-
-- delegated implementation is Sol-first;
-- `sol_worker` = GPT-6.1 Sol / xhigh for substantial implementation, non-trivial debugging, workflow/state changes, business or financial logic, API/contracts, migrations, cross-component behavior, adaptive UI behavior, or uncertain complexity;
-- `luna_worker` = GPT-6 Luna / **max** only for clearly mechanical, low-risk work with a settled specification and no meaningful business logic, workflow/state semantics, contracts, migrations, or cross-component behavior;
-- bounded scope or a small file count does not by itself qualify work for Luna; when uncertain, use Sol or keep the work in the root;
-- if Luna work materially expands in complexity or risk, reassess before continuing; owner reuse never overrides model suitability.
-- root = architecture, material ambiguity, hard reasoning, integration, verification, and final acceptance.
-
-### Work team
-
-For ordinary work objectives, only GPT-6 Luna Max is a delegated path.
-
-The GPT-6.1 Sol xhigh path is enabled only after an explicit statement that the current objective is personal, such as `это личная задача`. Do not infer that state from repository, path, task difficulty, content, or selected root model. The declaration applies to the current coherent objective and direct follow-ups; a new unrelated objective returns to the ordinary Luna-only work lane.
-
-In that explicit personal lane:
-
-- delegated implementation is Sol-first;
-- GPT-6.1 Sol xhigh handles substantial implementation, non-trivial debugging, workflow/state changes, business or financial logic, API/contracts, migrations, cross-component behavior, adaptive UI behavior, and uncertain complexity;
-- GPT-6 Luna Max is limited to clearly mechanical, low-risk work with a settled specification and no meaningful business logic, workflow/state semantics, contracts, migrations, or cross-component behavior;
-- bounded scope alone never makes a task a Luna task;
-- when a Luna assignment materially expands, reassess the model before continuing; owner reuse never overrides model suitability.
-
-## Catalog policy
-
-All supported profiles use the native Codex model catalog. GPT-6.1 Sol and GPT-6 Luna are natively Multi-Agent V2. No compatibility catalog override is installed. The retired Lite restricted catalog is removed during migration; private/work mode switches do not create catalog state.
-
-## Verification ownership
-
-Workers verify their own bounded implementation as needed, but final acceptance stays with the root. Do not spawn a separate reviewer automatically. Independent review is used only when the user explicitly requests it.
+- Delegate useful independent work, with up to three open child threads.
+- Select the named `luna_worker` or `sol_worker` with `fork_turns = "none"`.
+- Give each worker its own files, goal, interfaces, constraints and checks.
+- Keep architecture, integration and final acceptance in the root.
+- Assign independent review when the user explicitly requests it.
+### Private
+Use Sol for implementation, debugging and complex or uncertain tasks. Use Luna for mechanical edits, exploration and routine checks; move growing complexity to Sol.
+### Work
+Use Luna for ordinary work objectives. An explicit `это личная задача` enables the personal lane for the current objective and direct follow-ups, using the private Sol-first policy. A new unrelated objective uses ordinary work routing.
+## Role configuration
+Luna uses GPT-6 Luna / max; Sol uses GPT-6.1 Sol / xhigh. Each worker completes its assignment directly, performs focused checks and returns results to the root. Both profiles use the native Codex model catalog.

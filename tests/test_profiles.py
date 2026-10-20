@@ -37,8 +37,7 @@ class ProfileStaticTests(unittest.TestCase):
                     {"luna-worker.toml", "sol-worker.toml"},
                 )
 
-    def test_fixed_profiles_keep_explicit_luna_role_without_aliases(self):
-        self.assertEqual(set(roles.desired_roles("strict-common")), {"luna-worker.toml"})
+    def test_team_profiles_keep_explicit_roles_without_aliases(self):
         for profile in roles.PROFILES:
             for filename in roles.desired_roles(profile, "team"):
                 self.assertFalse(filename.startswith("profile-"))
@@ -144,13 +143,13 @@ class ProfileStaticTests(unittest.TestCase):
         self.assertFalse((self.home / "profiles" / "backups").exists())
 
     def test_retired_lite_is_not_installable_but_state_can_be_removed(self):
-        self.assertEqual(roles.PROFILES, {"private", "work", "strict-common"})
+        self.assertEqual(roles.PROFILES, {"private", "work"})
         with self.assertRaisesRegex(ValueError, "Unknown profile"):
             roles.normalize_mode("lite", None)
         with self.assertRaisesRegex(ValueError, "Unknown profile"):
             roles.desired_roles("lite")
 
-        data = roles.desired_roles("strict-common")["luna-worker.toml"]
+        data = roles.desired_roles("private", "team")["luna-worker.toml"]
         agents = self.home / "agents"
         agents.mkdir(parents=True)
         (agents / "luna-worker.toml").write_bytes(data)
@@ -176,12 +175,12 @@ class ProfileStaticTests(unittest.TestCase):
         shutil.copytree(
             presets.ROOT,
             root,
-            ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            ignore=shutil.ignore_patterns(".git", "temp", "__pycache__", "*.pyc"),
         )
         target = root / "private" / "config.toml"
         target.write_text(
             target.read_text(encoding="utf-8")
-            + '\n[agents]\nenabled = true\nmax_concurrent_threads_per_session = 2\n',
+            + '\n[agents]\nenabled = true\nmax_concurrent_threads_per_session = 3\n',
             encoding="utf-8",
         )
         self.assertTrue(

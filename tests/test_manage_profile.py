@@ -1,12 +1,15 @@
 """Unified profile/mode lifecycle tests. Never touches the real Codex home."""
 from __future__ import annotations
 
+from contextlib import redirect_stdout
+from io import StringIO
 import json
 from pathlib import Path
 import sys
 import tempfile
 import tomllib
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import manage_profile as lifecycle
@@ -25,6 +28,11 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             mode=mode,
             dry_run=dry_run,
         )
+
+    def change_mode(self, mode: str):
+        args = ["manage_profile.py", "--home", str(self.home), "mode", mode]
+        with patch.object(sys, "argv", args), redirect_stdout(StringIO()):
+            self.assertEqual(lifecycle.main(), 0)
 
     def state(self) -> dict:
         return json.loads(
@@ -108,20 +116,18 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(
             self.config()["agents"],
-            {"enabled": True, "max_concurrent_threads_per_session": 2},
+            {"enabled": True, "max_concurrent_threads_per_session": 3},
         )
         self.assertEqual(
             self.config()["features"]["multi_agent_v2"],
             {"multi_agent_mode_hint_text": ""},
         )
         agents_text = (self.home / "AGENTS.md").read_text(encoding="utf-8")
-        self.assertIn("Luna / max", agents_text)
-        self.assertIn("Sol / xhigh", agents_text)
-        self.assertIn("two open child threads", agents_text)
+        self.assertIn("luna_worker", agents_text)
+        self.assertIn("sol_worker", agents_text)
+        self.assertIn("three open child threads", agents_text)
         self.assertIn("Sol-first", agents_text)
-        self.assertIn("bounded or limited to a few files is not enough", agents_text)
-        self.assertIn("Owner reuse never overrides model suitability", agents_text)
-        self.assertIn("only when the user explicitly requests one", agents_text)
+        self.assertIn("Independent review only when the user explicitly requests one.", agents_text)
         self.assertNotIn("profile-default", agents_text)
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
@@ -144,11 +150,13 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertIn("luna_worker", text)
         self.assertIn("это личная задача", text)
         self.assertIn("sol_worker", text)
-        self.assertIn("Selecting Astra as root changes only the root", text)
+        self.assertIn("Use the user-selected root model and effort", text)
         self.assertIn("Sol-first", text)
-        self.assertIn("bounded or limited to a few files is not enough", text)
-        self.assertIn("Owner reuse never overrides model suitability", text)
-        self.assertIn("only when the user explicitly requests one", text)
+        self.assertIn("Independent review only when the user explicitly requests one.", text)
+        self.assertEqual(
+            self.config()["agents"],
+            {"enabled": True, "max_concurrent_threads_per_session": 3},
+        )
         self.assertEqual(
             self.role_names(),
             {"luna-worker.toml", "sol-worker.toml"},
@@ -162,11 +170,70 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(self.state()["mode"], "solo")
         self.assertEqual(self.role_names(), set())
 
+    def test_mode_refresh_preserves_selected_root_and_updates_team_artifacts(self):
+        self.install("private", mode="team")
+        (self.home / "config.toml").write_text(
+            'model = "gpt-6.1-sol"\n'
+            'model_reasoning_effort = "high"\n'
+            'unrelated_top = "keep"\n'
+            '[agents]\n'
+            'enabled = true\n'
+            'max_concurrent_threads_per_session = 2\n',
+            encoding="utf-8",
+        )
+        worker_path = self.home / "agents" / "sol-worker.toml"
+        worker_path.write_bytes(worker_path.read_bytes() + b"# former version\n")
+        agents_path = self.home / "AGENTS.md"
+        agents_path.write_text(
+            agents_path.read_text(encoding="utf-8").replace(
+                "three open child threads", "two open child threads"
+            ),
+            encoding="utf-8",
+        )
+
+        for mode in ("team", "solo", "team"):
+            with self.subTest(mode=mode):
+                self.change_mode(mode)
+                config = self.config()
+                self.assertEqual(config["model"], "gpt-6.1-sol")
+                self.assertEqual(config["model_reasoning_effort"], "high")
+                self.assertEqual(config["unrelated_top"], "keep")
+                self.assertEqual(self.state()["mode"], mode)
+                if mode == "team":
+                    self.assertEqual(
+                        config["agents"],
+                        {"enabled": True, "max_concurrent_threads_per_session": 3},
+                    )
+                    self.assertEqual(
+                        worker_path.read_bytes(),
+                        roles.desired_roles("private", "team")["sol-worker.toml"],
+                    )
+                    self.assertIn("three open child threads", agents_path.read_text(encoding="utf-8"))
+                else:
+                    self.assertNotIn("agents", config)
+                    self.assertEqual(self.role_names(), set())
+                    self.assertFalse(agents_path.exists())
+
+    def test_explicit_reinstall_applies_profile_root_defaults(self):
+        self.install("private", mode="team")
+        config_path = self.home / "config.toml"
+        config_path.write_text(
+            config_path.read_text(encoding="utf-8")
+            .replace('model = "gpt-6-astra"', 'model = "gpt-6.1-sol"')
+            .replace('model_reasoning_effort = "xhigh"', 'model_reasoning_effort = "high"'),
+            encoding="utf-8",
+        )
+
+        self.install("private", mode="team")
+
+        self.assertEqual(self.config()["model"], "gpt-6-astra")
+        self.assertEqual(self.config()["model_reasoning_effort"], "xhigh")
+
     def test_retired_lite_installed_state_switches_to_work(self):
         self.home.mkdir()
         agents = self.home / "agents"
         agents.mkdir()
-        data = roles.desired_roles("strict-common")["luna-worker.toml"]
+        data = roles.desired_roles("private", "team")["luna-worker.toml"]
         (agents / "luna-worker.toml").write_bytes(data)
         control = self.home / "profiles"
         control.mkdir()
@@ -208,18 +275,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertFalse((self.home / lifecycle.LEGACY_LITE_CATALOG).exists())
         self.assertNotIn("model_catalog_json", self.config())
         self.assertNotIn("Old lite rules", (self.home / "AGENTS.md").read_text())
-
-    def test_strict_common_remains_fixed_team(self):
-        self.install("strict-common")
-        self.assertEqual(self.state()["mode"], "team")
-        self.assertEqual(self.role_names(), {"luna-worker.toml"})
-        self.assertEqual(self.config()["agents"]["max_concurrent_threads_per_session"], 4)
-        with self.assertRaisesRegex(ValueError, "fixed team routing"):
-            lifecycle.apply(
-                self.home,
-                "strict-common",
-                mode="solo",
-            )
 
     def test_unrelated_custom_catalog_is_refused(self):
         self.home.mkdir()

@@ -13,19 +13,18 @@ The tests cover:
 
 - `private/work` defaulting to native `solo`;
 - `solo ↔ team` switching without changing the root profile;
-- team cap 2;
+- team cap 3;
 - explicit GPT-6 Luna Max / GPT-6.1 Sol xhigh role pins;
 - Sol-first delegated implementation in private/personal routing;
 - Luna limited to clearly mechanical low-risk personal work;
-- bounded scope not treated as sufficient Luna eligibility;
-- model reassessment when a Luna assignment materially expands;
+- growing complexity routed from Luna to Sol;
 - absence of generated `default` / `worker` / `explorer` aliases;
 - empty-role solo manifests;
 - legacy v1 role-state compatibility;
 - destructive top-level role reset on install;
 - fail-closed managed-role removal;
 - no persistent backup directories;
-- native catalog use for `private`, `work`, and `strict-common`;
+- native catalog use for `private` and `work`;
 - absence/cleanup of `models-managed.json` for those native-catalog profiles;
 - retired Lite catalog and role-state migration to supported profiles;
 - unrelated custom catalog refusal;
@@ -50,7 +49,7 @@ After a full Codex restart and a new thread:
 1. `python scripts/manage_profile.py mode team`
 2. restart Codex;
 3. confirm only `luna_worker` and `sol_worker` are installed;
-4. confirm effective child cap is 2;
+4. confirm effective child cap is 3;
 5. give a clearly mechanical low-risk task with a settled specification and verify GPT-6 Luna Max can be selected;
 6. give a bounded but behaviorally substantial implementation (for example workflow/state or cross-component UI behavior) and verify GPT-6.1 Sol xhigh is selected despite the bounded scope;
 7. start a mechanical Luna assignment, materially expand its scope, and verify the root reassesses the model before continuing;
@@ -69,7 +68,7 @@ After a full Codex restart and a new thread:
 
 ### Model catalogs
 
-For `private`, `work`, and `strict-common`, confirm there is no repository-owned `model_catalog_json` in the effective config and no required `models-managed.json` file. Confirm the runtime catalog exposes GPT-6.1 Sol and GPT-6 Luna as Multi-Agent V2.
+For `private` and `work`, confirm there is no repository-owned `model_catalog_json` in the effective config and no required `models-managed.json` file. Confirm the runtime catalog exposes GPT-6.1 Sol and GPT-6 Luna as Multi-Agent V2.
 
 A private/work mode switch must not create model-catalog state. Switching from a retired Lite installation must remove its managed catalog and roles while preserving unrelated files.
 

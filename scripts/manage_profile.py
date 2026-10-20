@@ -49,7 +49,6 @@ PROFILE_HEADINGS = (
     "## Agent routing — lite",  # Historical unmarked blocks need safe detection.
     "## Lite — общение и работа",
     "## Lite — маршрутизация",
-    "## Agent routing — strict-common",
     "## Agent routing — private",
     "## Agent routing — private team",
     "## Agent routing — work",
@@ -58,7 +57,6 @@ PROFILE_HEADINGS = (
     "## Agent routing — x20",
     "## Agent routing — x20-work",
     "## Маршрутизация агентов — lite",
-    "## Маршрутизация агентов — strict-common",
     "## Маршрутизация агентов — private",
     "## Маршрутизация агентов — work",
     "## Маршрутизация агентов — x5",
@@ -222,7 +220,7 @@ def _desired_config(
         if mode == "team":
             source["agents"] = {
                 "enabled": True,
-                "max_concurrent_threads_per_session": 2,
+                "max_concurrent_threads_per_session": 3,
             }
             features = source.setdefault("features", {})
             features["multi_agent_v2"] = {"multi_agent_mode_hint_text": ""}
@@ -253,6 +251,7 @@ def build_config(
     *,
     mode: str | None = None,
     previous_profile: str | None = None,
+    preserve_root: bool = False,
 ) -> str:
     parsed = tomllib.loads(text) if text.strip() else {}
     catalog = parsed.get("model_catalog_json")
@@ -274,9 +273,16 @@ def build_config(
         return cleaned
 
     selected_mode = manage_roles.normalize_mode(profile, mode)
+    desired = _desired_config(profile, selected_mode, home)
+    if preserve_root:
+        for key in ("model", "model_reasoning_effort"):
+            if key in parsed:
+                desired[""][key] = parsed[key]
+            else:
+                desired[""].pop(key, None)
     return _insert_managed_assignments(
         cleaned,
-        _desired_config(profile, selected_mode, home),
+        desired,
     )
 
 
@@ -411,6 +417,7 @@ def apply(
     *,
     mode: str | None = None,
     dry_run: bool = False,
+    preserve_root: bool = False,
 ) -> dict:
     home = Path(os.path.abspath(home.expanduser()))
     config_path = home / "config.toml"
@@ -451,6 +458,7 @@ def apply(
         home,
         mode=selected_mode,
         previous_profile=previous_profile,
+        preserve_root=preserve_root,
     )
     new_agents = build_agents(agents_text, profile, mode=selected_mode)
 
@@ -604,6 +612,7 @@ def main() -> int:
                 profile,
                 mode=args.mode,
                 dry_run=args.dry_run,
+                preserve_root=True,
             )
         elif args.command == "install":
             result = apply(

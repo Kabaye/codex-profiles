@@ -12,7 +12,6 @@ MARKER_END = "<!-- codex-profiles:end -->"
 class CompactRoutingInstructionsTests(unittest.TestCase):
     def test_size_and_markers(self):
         budgets = {
-            "strict-common": 2400,
             "private": 1900,
             "work": 2200,
         }
@@ -31,21 +30,24 @@ class CompactRoutingInstructionsTests(unittest.TestCase):
         self.assertFalse((ROOT / "lite").exists())
         self.assertFalse((ROOT / "scripts/filter_lite_catalog.py").exists())
 
-    def test_fixed_profiles_preserve_routing_contracts(self):
-        strict = (ROOT / "strict-common/agents-subset.md").read_text(encoding="utf-8")
-        for rule in ("GPT-6.1 Sol", "GPT-6 Luna / max", "four open child threads", "DECISION REQUIRED"):
-            with self.subTest(profile="strict-common", rule=rule):
-                self.assertIn(rule, strict)
-
     def test_work_and_private_personal_lanes(self):
         work = (ROOT / "work/agents-subset.md").read_text(encoding="utf-8")
         private = (ROOT / "private/agents-subset.md").read_text(encoding="utf-8")
-        for rule in ("ordinary work objectives", "это личная задача", "luna_worker", "sol_worker", "Sol-first", "automatic reviewer", "only when the user explicitly requests one"):
+        common_rules = (
+            "Use the user-selected root model and effort",
+            "luna_worker",
+            "sol_worker",
+            "Sol-first",
+            "three open child threads",
+            "Independent review only when the user explicitly requests one.",
+        )
+        for profile, source in (("private", private), ("work", work)):
+            for rule in common_rules:
+                with self.subTest(profile=profile, rule=rule):
+                    self.assertIn(rule, source)
+        for rule in ("ordinary work objectives", "это личная задача"):
             with self.subTest(profile="work", rule=rule):
                 self.assertIn(rule, work)
-        for rule in ("GPT-6 Astra", "Sol-first", "luna_worker", "sol_worker", "automatic reviewer", "only when the user explicitly requests one"):
-            with self.subTest(profile="private", rule=rule):
-                self.assertIn(rule, private)
 
 
 if __name__ == "__main__":

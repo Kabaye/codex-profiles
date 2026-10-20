@@ -6,11 +6,10 @@ Local Codex routing presets with an explicit separation between the **root profi
 
 | Profile | Default root | Default mode | Team workers | Team child cap |
 |---|---|---|---|---:|
-| `strict-common` | GPT-6.1 Sol xhigh | fixed team | GPT-6 Luna Max | 4 |
-| `private` | GPT-6 Astra xhigh | **solo** | GPT-6 Luna Max + GPT-6.1 Sol xhigh | 2 |
-| `work` | GPT-6.1 Sol xhigh | **solo** | GPT-6 Luna Max; GPT-6.1 Sol xhigh only in explicit personal lane | 2 |
+| `private` | GPT-6 Astra xhigh | **solo** | GPT-6 Luna Max + GPT-6.1 Sol xhigh | 3 |
+| `work` | GPT-6.1 Sol xhigh | **solo** | GPT-6 Luna Max; GPT-6.1 Sol xhigh only in explicit personal lane | 3 |
 
-The user's current root model and effort are authoritative. `work` does **not** restrict the root selector: the user may manually select Astra or another available root, and routing never changes that selection.
+Use the user's current root model and effort in both profiles.
 
 ### `solo`
 
@@ -29,20 +28,27 @@ Subagents therefore remain available through normal Codex behavior when the user
 
 `team` enables the repository's selective routing policy:
 
-- normally keep the task in the root;
-- normally use zero or one worker;
-- at most two open child threads for `private` and `work`;
-- every delegated spawn explicitly names `luna_worker` or `sol_worker`;
-- no generated `default`, `worker`, or `explorer` aliases exist;
-- no automatic reviewer is added; an independent reviewer is used only when the user explicitly requests one, while the root verifies delegated work and owns final acceptance.
+- delegate useful independent work, with up to three open child threads;
+- select `luna_worker` or `sol_worker` and give each its own files and self-contained task;
+- use `fork_turns = "none"`;
+- keep architecture, integration and final acceptance in the root;
+- assign independent review when the user explicitly requests it.
 
-`private/team` is **Sol-first for delegated implementation**. GPT-6.1 Sol xhigh handles substantial implementation, debugging, workflow/state changes, business or financial logic, contracts, migrations, cross-component behavior, adaptive UI work, and uncertain complexity. GPT-6 Luna Max is reserved for clearly mechanical, low-risk work with a settled specification; bounded scope or a small file count alone does not make a task a Luna task. If a Luna assignment grows materially, the root must reassess the model before continuing.
+`private/team` is **Sol-first**: Sol handles implementation, debugging and complex or uncertain tasks. Luna handles mechanical edits, exploration and routine checks; growing complexity moves to Sol.
 
-`work/team` uses GPT-6 Luna Max for ordinary work objectives. GPT-6.1 Sol xhigh becomes available only when the user explicitly marks the current objective as personal, for example `это личная задача`. In that personal lane, delegated implementation becomes Sol-first and Luna is restricted to clearly mechanical, low-risk work. That declaration applies only to the current coherent objective and direct follow-ups. Selecting Astra as the root does not activate the personal lane.
+`work/team` uses Luna for ordinary work objectives. An explicit `это личная задача` enables the personal lane for that objective and direct follow-ups, using the same Sol-first policy as private.
+
+## Global AGENTS.md
+
+`codex-config` combines its shared `AGENTS.md` with `private/AGENTS.md` or `work/AGENTS.md` inside its own managed block in `$CODEX_HOME/AGENTS.md`.
+
+In team mode, this repository adds the selected profile's `agents-subset.md` inside a separate `codex-profiles` block. Solo removes that routing block. Each manager preserves the other's block and unrelated user instructions.
+
+Worker TOMLs are installed separately under `$CODEX_HOME/agents`; their developer instructions belong to the worker. The bot rules from `codex-config/bots/AGENTS.md` go to `$HOME/Projects/AGENTS.md` separately.
 
 ## Model catalog
 
-`private`, `work`, and `strict-common` use the native Codex model catalog; no profile-specific catalog is generated. The retired `lite` profile is no longer installable. Switching from an older Lite installation to a supported profile removes its owned restricted catalog and roles.
+`private` and `work` use the native Codex model catalog; no profile-specific catalog is generated. The retired `lite` profile is no longer installable. Switching from an older Lite installation to a supported profile removes its owned restricted catalog and roles.
 
 ## Lifecycle
 
@@ -66,6 +72,8 @@ Switch `private` or `work` without reinstalling the root profile:
 python scripts/manage_profile.py mode team
 python scripts/manage_profile.py mode solo
 ```
+
+Mode updates preserve the configured root model and effort. An explicit `install PROFILE` applies that profile's defaults.
 
 Show state:
 

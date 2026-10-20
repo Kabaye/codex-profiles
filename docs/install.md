@@ -6,11 +6,10 @@ Use `scripts/manage_profile.py` for the complete lifecycle.
 
 Supported profiles:
 
-- `strict-common`
 - `private`
 - `work`
 
-`private` and `work` support `solo` and `team` (default: `solo`). `strict-common` uses fixed team routing.
+Both profiles support `solo` and `team` (default: `solo`).
 
 ## Preview first
 
@@ -43,8 +42,6 @@ python scripts/manage_profile.py install private --mode team
 python scripts/manage_profile.py install work --mode team
 ```
 
-`strict-common` does not accept `--mode solo`.
-
 All supported profiles use the native model catalog; none create `models-managed.json`. After retiring `lite`, installing a supported profile removes the legacy Lite catalog, role settings and managed routing block. An unrelated custom catalog remains protected.
 
 ## Switch only the agent mode
@@ -59,6 +56,8 @@ python scripts/manage_profile.py mode solo
 ```
 
 A private/work mode switch changes routing state only; it does not use or create a custom model catalog.
+
+Mode updates preserve the configured root model and effort. An explicit `install PROFILE` applies the selected profile's defaults.
 
 ### Solo contract
 
@@ -87,7 +86,7 @@ Team adds:
 ```toml
 [agents]
 enabled = true
-max_concurrent_threads_per_session = 2
+max_concurrent_threads_per_session = 3
 
 [features.multi_agent_v2]
 multi_agent_mode_hint_text = ""
@@ -97,7 +96,7 @@ The empty hint suppresses the built-in mode message so the installed team `AGENT
 
 ## Other managed settings
 
-All profiles keep experimental context management enabled. Root defaults and memory-model selectors are profile-owned. The user's manually selected root in a running session remains authoritative; the routing policy never switches it.
+Both profiles keep experimental context management enabled and leave memory-model selectors at Codex defaults. Root defaults are profile-owned. The user's manually selected root in a running session remains authoritative; the routing policy never switches it.
 
 An unrelated active `model_catalog_json` is not silently replaced. Installation stops for explicit review unless the path is recognized as a repository-owned current or legacy catalog.
 

@@ -1,10 +1,9 @@
 <!-- codex-profiles:begin -->
-## Agent routing — work team
-
-- Respect the current root model/effort; installation defaults to **GPT-6.1 Sol / xhigh**. **Selecting Astra as root changes only the root**, not task classification or child routing.
-- Normally use zero or one worker; never exceed **two open child threads**. For **ordinary work objectives**, delegate only to `luna_worker` (**GPT-6 Luna / max**).
-- Enable the personal lane **only** when the user explicitly marks this objective as personal (e.g. `это личная задача`). Never infer it from paths, topic, difficulty or root model. Acknowledge once; the lane covers this objective and direct follow-ups only.
-- In that lane, implementation is **Sol-first**: use `sol_worker` (**GPT-6.1 Sol / xhigh**) for substantial implementation, debugging, workflow/state, business logic, contracts, migrations, cross-component changes or uncertain complexity. Reserve `luna_worker` for settled, low-risk mechanical tasks; being bounded or limited to a few files is not enough to select Luna. Reassess rising complexity; **Owner reuse never overrides model suitability**.
-- Each spawn explicitly requests the permitted `luna_worker` or `sol_worker`, `fork_turns = "none"` and a self-contained objective, ownership, interfaces, constraints and checks. No `default`/`worker`/`explorer` aliases, duplicate investigations or nested delegation.
-- Root retains architecture, ambiguous decisions, integration and final acceptance. No **automatic reviewer**; independent review only when the user explicitly requests one. Production writes, pushes, migrations and deployments still require existing authorization or an approved runbook; workers cannot change routing/model settings or spawn children.
+- Use the user-selected root model and effort.
+- Delegate useful independent work, with up to three open child threads.
+- For ordinary work objectives, use `luna_worker`.
+- Enable the personal lane when the user explicitly says `это личная задача`; keep it for that objective and direct follow-ups.
+- In the personal lane, use `sol_worker` for implementation, debugging and complex or uncertain tasks (Sol-first), and `luna_worker` for mechanical edits, exploration and routine checks.
+- Give each worker its own files and a self-contained task with interfaces, constraints and checks; use `fork_turns = "none"`.
+- Root owns architecture, integration and final acceptance. Independent review only when the user explicitly requests one.
 <!-- codex-profiles:end -->

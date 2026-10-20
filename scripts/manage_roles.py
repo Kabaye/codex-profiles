@@ -12,7 +12,7 @@ import tempfile
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILES = {"strict-common", "private", "work"}
+PROFILES = {"private", "work"}
 RETIRED_PROFILES = {"lite"}  # Recognize installed legacy state only for cleanup.
 MODE_PROFILES = {"private", "work"}
 MODES = {"solo", "team"}
@@ -25,14 +25,10 @@ RESERVED_NAMES = {"luna_worker", "sol_worker", "default", "worker", "explorer"}
 def normalize_mode(profile: str, mode: str | None) -> str:
     if profile not in PROFILES:
         raise ValueError(f"Unknown profile: {profile}")
-    if profile in MODE_PROFILES:
-        selected = mode or "solo"
-        if selected not in MODES:
-            raise ValueError(f"Unknown mode for {profile}: {selected}")
-        return selected
-    if mode not in (None, "team"):
-        raise ValueError(f"{profile} has fixed team routing; mode switching is only supported for private/work")
-    return "team"
+    selected = mode or "solo"
+    if selected not in MODES:
+        raise ValueError(f"Unknown mode for {profile}: {selected}")
+    return selected
 
 
 def digest(data: bytes) -> str:
@@ -74,7 +70,6 @@ def desired_roles(profile: str, mode: str | None = None, root: Path = ROOT) -> d
         for path in sorted((root / profile / "agents").glob("*.toml"))
     }
     expected = {
-        "strict-common": {"luna-worker.toml"},
         "private": {"luna-worker.toml", "sol-worker.toml"},
         "work": {"luna-worker.toml", "sol-worker.toml"},
     }[profile]
