@@ -99,7 +99,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 self.assertNotIn("model_catalog_json", config)
                 self.assertIn(f"`{profile}`; agent mode: `solo`", (self.home / "AGENTS.md").read_text())
                 for name in ("WORK.md", "PRIVATE.md"):
-                    self.assertTrue((self.home / name).is_file())
+                    self.assertEqual((self.home / name).is_file(), profile == "work")
                 self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_private_team_switch_adds_only_explicit_luna_and_sol_roles(self):
@@ -124,7 +124,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             self.config()["features"]["multi_agent_v2"],
             {"multi_agent_mode_hint_text": ""},
         )
-        agents_text = (self.home / "PRIVATE.md").read_text(encoding="utf-8")
+        agents_text = (self.home / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn("luna_worker", agents_text)
         self.assertIn("sol_worker", agents_text)
         self.assertNotIn("three open child threads", agents_text)

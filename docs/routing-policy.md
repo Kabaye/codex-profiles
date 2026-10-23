@@ -1,10 +1,10 @@
 # Routing policy
 
-Common rules and target-path selection belong to `codex-config`; detailed routes below belong to the two `codex-profiles` sidecar blocks. `$HOME/Projects/private` selects private policy automatically. The active root profile controls default root settings; the active agent mode controls whether automatic routes apply. Preserve the user's selected root model and effort in either scope.
+Common rules belong to `codex-config`. In work, its target-path router selects the two policy sidecars: `$HOME/Projects/private` uses personal policy and other targets use work policy. Private keeps its personal account policy and native routing inline in `AGENTS.md`, with no path selection. The active root profile controls default root settings; the active agent mode controls whether automatic routes apply. Preserve the user's selected root model and effort in either scope.
 
 ## Solo and team
 
-Solo keeps native Codex delegation behavior. Both sidecars remain installed, but their automatic team routes do not apply.
+Solo keeps native Codex delegation behavior. Automatic team routes do not apply. The work sidecars remain installed; private keeps its single-file layout.
 
 Team delegates useful independent tasks. Give each worker bounded ownership, interfaces, constraints and checks; use `fork_turns = "none"` for native workers. Root owns architecture, integration and final acceptance. Independent review requires an explicit user request. Workers perform their own work and checks without nested delegation.
 

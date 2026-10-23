@@ -7,7 +7,7 @@ python -X utf8 scripts/manage_profile.py remove --dry-run
 python -X utf8 scripts/manage_profile.py remove
 ```
 
-Removal validates ownership, clears the `codex-profiles` blocks from `AGENTS.md`, `WORK.md` and `PRIVATE.md`, and deletes only documents that then contain no text. The `codex-config` blocks and all unrelated user prose remain. Changed/missing owned blocks stop removal before any write. Block hashes ignore changes made by the other instruction manager.
+Removal validates ownership, clears the `codex-profiles` blocks from the managed instruction documents, and deletes only documents that then contain no text. Work owns blocks in `AGENTS.md`, `WORK.md` and `PRIVATE.md`; private owns only its inline `AGENTS.md` block. Migration from an older split private installation also removes its recorded sidecar blocks. The `codex-config` blocks and all unrelated user prose remain. Changed/missing owned blocks stop removal before any write. Block hashes ignore changes made by the other instruction manager.
 
 Full removal also cleans profile-owned root/config/cap/hint/context/memory/catalog settings, recorded roles, role state, and historical recognized routing artifacts. It does not delete unmanaged roles created after installation. A solo role manifest can own an empty role set. An unowned legacy `agents.max_threads` is refused for explicit review.
 

@@ -74,10 +74,21 @@ def desired_docs(profile: str | None, mode: str | None) -> dict[str, str | None]
     if profile is None:
         return dict.fromkeys(DOCS)
     selected = manage_roles.normalize_mode(profile, mode)
+    private_policy = block((ROOT / "private" / "agents-subset.md").read_text(encoding="utf-8"))
+    if private_policy is None:
+        raise ValueError("Private routing source has no managed policy block")
+    if profile == "private":
+        return {
+            "AGENTS.md": private_policy.replace(
+                BEGIN, f"{BEGIN}\n- Active root profile: `{profile}`; agent mode: `{selected}`.", 1
+            ),
+            "WORK.md": None,
+            "PRIVATE.md": None,
+        }
     return {
         "AGENTS.md": metadata(profile, selected),
         "WORK.md": block((ROOT / "work" / "agents-subset.md").read_text(encoding="utf-8")),
-        "PRIVATE.md": block((ROOT / "private" / "agents-subset.md").read_text(encoding="utf-8")),
+        "PRIVATE.md": private_policy,
     }
 
 
@@ -147,8 +158,11 @@ def prepare(
                 raise ValueError(f"Unowned instruction block collision: {name}")
         if name == "AGENTS.md" and current is None and clean_legacy_agents is not None:
             text = clean_legacy_agents(text)
-        result = replace_block(text, desired[name])
-        target[path] = result.encode("utf-8") if result else None
+        if current is None and desired[name] is None:
+            target[path] = raw
+        else:
+            result = replace_block(text, desired[name])
+            target[path] = result.encode("utf-8") if result else None
         if desired[name] is not None:
             owned[name] = digest(desired[name])
 

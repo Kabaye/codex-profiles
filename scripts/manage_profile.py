@@ -400,7 +400,7 @@ def build_agents(text: str, profile: str | None, *, mode: str | None = None) -> 
 
     normalized = re.sub(r"\n{3,}", "\n\n", normalized).strip()
     selected_mode = manage_roles.normalize_mode(profile, mode) if profile is not None else None
-    desired = manage_instructions.metadata(profile, selected_mode) if profile is not None else None
+    desired = manage_instructions.desired_docs(profile, selected_mode)["AGENTS.md"]
     return manage_instructions.replace_block(normalized, desired)
 
 

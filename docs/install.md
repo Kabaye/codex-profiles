@@ -7,7 +7,7 @@ python -X utf8 scripts/manage_profile.py --home "$HOME/.codex" sync-instructions
 python -X utf8 scripts/manage_profile.py --home "$HOME/.codex" sync-instructions
 ```
 
-It reads installed profile/mode, builds adjacent `AGENTS.md`, `WORK.md`, `PRIVATE.md`, and records only owned block hashes. `config.toml`, roles, role state, MCP and auth files remain byte-identical. Install the corresponding `codex-config` instruction build as well. The home router selects `PRIVATE.md` for targets under `$HOME/Projects/private` automatically; the active root profile does not override target scope.
+It reads installed profile/mode and records only owned block hashes. Work builds adjacent `AGENTS.md`, `WORK.md` and `PRIVATE.md`; private keeps its full policy inline in `AGENTS.md`. `config.toml`, roles, role state, MCP and auth files remain byte-identical. Install the corresponding `codex-config` instruction build as well. Only in work, the home router selects `PRIVATE.md` for targets under `$HOME/Projects/private` and `WORK.md` elsewhere. Private always uses its personal policy.
 
 To install named OpenCode agents, explicitly supply an existing valid JSON config:
 
@@ -37,6 +37,6 @@ python -X utf8 scripts/manage_profile.py mode team
 python -X utf8 scripts/manage_profile.py mode solo
 ```
 
-Team enables native agents, sets `agents.max_concurrent_threads_per_session = 3` (excluding root), and sets `features.multi_agent_v2.multi_agent_mode_hint_text = ""`. A previously owned `agents.max_threads` alias is removed. Solo removes those overrides and custom roles; automatic routes are inactive while native delegation remains available. Both modes install both sidecars and short home metadata. Explicit install applies root defaults; mode and instruction sync preserve user selection.
+Team enables native agents, sets `agents.max_concurrent_threads_per_session = 3` (excluding root), and sets `features.multi_agent_v2.multi_agent_mode_hint_text = ""`. A previously owned `agents.max_threads` alias is removed. Solo removes those overrides and custom roles; automatic routes are inactive while native delegation remains available. Both modes retain the profile's layout: work split, private inline. Explicit install applies root defaults; mode and instruction sync preserve user selection.
 
 Fully restart Codex and begin a new chat/thread after any update. Restart OpenCode after merging definitions. Then inspect `status` and run the repository checks documented in [verification](verification.md). Existing chats are not valid evidence of newly installed instructions.

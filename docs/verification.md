@@ -7,14 +7,14 @@ python -X utf8 scripts/validate.py
 python -X utf8 -m unittest discover -s tests -v
 ```
 
-All lifecycle tests use temporary Codex homes and synthetic OpenCode JSON configs. They never read or mutate real global settings. Coverage includes both profiles × both modes, three-document builds, manager block ordering/preservation in either installation order, owned-block hashes, edited-block refusal, removal of empty sidecars, safe instruction-only legacy migration, byte-identical root/config/auth/role preservation during sync, optional named OpenCode merge/removal with unrelated-value preservation and collision refusal, canonical cap migration, destructive full-install role reset, retired profile/catalog cleanup, and rollback.
+All lifecycle tests use temporary Codex homes and synthetic OpenCode JSON configs. They never read or mutate real global settings. Coverage includes both profiles × both modes, work's split and private's inline layouts, migration from split private with foreign-content preservation, manager block ordering/preservation in either installation order, owned-block hashes, edited-block refusal, removal of empty sidecars, safe instruction-only legacy migration, byte-identical root/config/auth/role preservation during sync, optional named OpenCode merge/removal with unrelated-value preservation and collision refusal, canonical cap migration, destructive full-install role reset, retired profile/catalog cleanup, and rollback.
 
 ## Integration smoke test
 
 In a temporary home, install a profile to seed installed profile/mode, run each manager's instruction-only sync in both orders, and confirm:
 
-1. exactly `AGENTS.md`, `WORK.md`, `PRIVATE.md` are runtime Markdown instructions;
-2. each document has one config block followed by one profiles block;
+1. work uses `AGENTS.md`, `WORK.md`, `PRIVATE.md`; private uses only `AGENTS.md`;
+2. each active document has one config block followed by one profiles block;
 3. changing either manager's block does not invalidate the other manager's ownership hashes;
 4. unrelated user prose remains;
 5. repeated sync is idempotent;
@@ -22,7 +22,7 @@ In a temporary home, install a profile to seed installed profile/mode, run each 
 
 ## Live activation smoke test
 
-After full Codex restart and a new chat/thread, confirm `status` shows expected active profile/mode and no changed owned blocks. Inspect only nonsecret settings. Verify the home router selects `PRIVATE.md` automatically for a target under `$HOME/Projects/private`, even with active `work` root profile, and selects `WORK.md` for a work target. In solo, automatic team routes stay inactive and native explicit delegation remains available.
+After full Codex restart and a new chat/thread, confirm `status` shows expected active profile/mode and no changed owned blocks. Inspect only nonsecret settings. In work, verify the home router selects `PRIVATE.md` automatically for a target under `$HOME/Projects/private` and `WORK.md` for a work target. In private, verify the complete personal policy is inline in `AGENTS.md`, independent of target path. In solo, automatic team routes stay inactive and native explicit delegation remains available.
 
 In private/team, a substantive implementation uses native Sol and a routine bounded check uses native Luna. In work/team, source lookup uses the named read-only scout with corp-code-fast, current-code explanation uses the scout with corp-chat-max, and implementation uses named work-code with external Luna. Root accepts results, workers never delegate, and no independent review starts without user request.
 

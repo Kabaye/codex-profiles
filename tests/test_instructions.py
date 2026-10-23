@@ -41,20 +41,25 @@ class InstructionLifecycleTests(unittest.TestCase):
         }), encoding="utf-8")
         return path
 
-    def test_both_profiles_both_modes_build_exact_three_runtime_documents(self):
+    def test_only_work_profile_splits_instruction_documents_in_both_modes(self):
         for profile in ("private", "work"):
             for mode in ("solo", "team"):
                 with self.subTest(profile=profile, mode=mode):
                     self.install(profile, mode)
-                    self.assertEqual({p.name for p in self.home.glob("*.md")}, set(instructions.DOCS))
+                    expected = set(instructions.DOCS) if profile == "work" else {"AGENTS.md"}
+                    self.assertEqual({p.name for p in self.home.glob("*.md")}, expected)
                     home_text = (self.home / "AGENTS.md").read_text()
                     self.assertIn(f"`{profile}`; agent mode: `{mode}`", home_text)
                     self.assertNotIn("work-code", home_text)
-                    self.assertNotIn("sol_worker", home_text)
-                    for name in ("WORK.md", "PRIVATE.md"):
+                    self.assertEqual("sol_worker" in home_text, profile == "private")
+                    for name in (("WORK.md", "PRIVATE.md") if profile == "work" else ("AGENTS.md",)):
                         text = (self.home / name).read_text()
                         self.assertIn("In `solo` mode, retain native Codex delegation behavior", text)
                         self.assertIn("In `team` mode, delegate useful independent work", text)
+                    if profile == "private":
+                        self.assertNotIn("WORK.md", home_text)
+                        self.assertNotIn("PRIVATE.md", home_text)
+                        self.assertNotIn("work-scout", home_text)
 
     def test_block_order_preserves_config_and_user_prose_in_both_manager_orders(self):
         # Config first, profiles second.
@@ -104,8 +109,8 @@ class InstructionLifecycleTests(unittest.TestCase):
         (self.home / "profiles" / instructions.STATE).unlink()
         legacy = next(value for value in lifecycle._git_history_blocks() if value.startswith(instructions.BEGIN))
         (self.home / "AGENTS.md").write_text("user\n\n" + legacy)
-        (self.home / "WORK.md").unlink()
-        (self.home / "PRIVATE.md").unlink()
+        (self.home / "WORK.md").unlink(missing_ok=True)
+        (self.home / "PRIVATE.md").unlink(missing_ok=True)
         before = self.snapshot()
         result = lifecycle.sync_instructions(self.home)
         self.assertEqual(result["profile"], "private")
@@ -116,6 +121,75 @@ class InstructionLifecycleTests(unittest.TestCase):
                 self.assertEqual(after[name], data)
         self.assertIn("user", (self.home / "AGENTS.md").read_text())
         self.assertNotIn(legacy, (self.home / "AGENTS.md").read_text())
+
+    def seed_previous_split_private(self):
+        """Reproduce the previously published private layout with recorded ownership."""
+        self.install("private", "team")
+        previous = {
+            "AGENTS.md": instructions.metadata("private", "team"),
+            "WORK.md": instructions.block((instructions.ROOT / "work/agents-subset.md").read_text()),
+            "PRIVATE.md": instructions.block((instructions.ROOT / "private/agents-subset.md").read_text()),
+        }
+        for name, content in previous.items():
+            (self.home / name).write_text(content + "\n", encoding="utf-8")
+        state = instructions.load_state(self.home)
+        state["owned"] = {name: instructions.digest(value) for name, value in previous.items()}
+        (self.home / "profiles" / instructions.STATE).write_text(json.dumps(state), encoding="utf-8")
+
+    def test_private_sync_migrates_recorded_split_layout_without_changing_settings_or_roles(self):
+        self.seed_previous_split_private()
+        before = self.snapshot()
+        result = lifecycle.sync_instructions(self.home)
+        self.assertEqual(result["profile"], "private")
+        self.assertEqual(result["mode"], "team")
+        after = self.snapshot()
+        changed = {"AGENTS.md", "WORK.md", "PRIVATE.md", "profiles/" + instructions.STATE}
+        for name, data in before.items():
+            if Path(name).as_posix() not in changed:
+                self.assertEqual(after[name], data)
+        self.assertIn("sol_worker", (self.home / "AGENTS.md").read_text())
+        self.assertFalse((self.home / "WORK.md").exists())
+        self.assertFalse((self.home / "PRIVATE.md").exists())
+        self.assertEqual(set(instructions.load_state(self.home)["owned"]), {"AGENTS.md"})
+        self.assertEqual(instructions.status(self.home)["changed_blocks"], [])
+        settled = self.snapshot()
+        lifecycle.sync_instructions(self.home)
+        self.assertEqual(self.snapshot(), settled)
+
+    def test_private_migration_preserves_foreign_blocks_and_user_prose_in_sidecars(self):
+        self.seed_previous_split_private()
+        for name in instructions.DOCS:
+            path = self.home / name
+            path.write_text("user prefix\n\n" + self.config_block(name) + "\n\n"
+                            + path.read_text() + "\nuser suffix\n")
+        lifecycle.sync_instructions(self.home)
+        for name in instructions.DOCS:
+            text = (self.home / name).read_text()
+            self.assertIn(self.config_block(name), text)
+            self.assertIn("user prefix", text)
+            self.assertIn("user suffix", text)
+            if name == "AGENTS.md":
+                self.assertIn("sol_worker", text)
+                self.assertLess(text.index(instructions.CONFIG_END), text.index(instructions.BEGIN))
+            else:
+                self.assertNotIn(instructions.BEGIN, text)
+
+    def test_private_migration_refuses_edited_sidecar_before_any_write(self):
+        self.seed_previous_split_private()
+        path = self.home / "WORK.md"
+        path.write_text(path.read_text().replace("work-code", "user-edited-route"))
+        before = self.snapshot()
+        with self.assertRaisesRegex(ValueError, "instruction block changed"):
+            lifecycle.sync_instructions(self.home)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_private_sync_preserves_unmanaged_sidecars(self):
+        self.install("private", "solo")
+        for name in ("WORK.md", "PRIVATE.md"):
+            (self.home / name).write_text("unmanaged user document\n")
+        before = self.snapshot()
+        lifecycle.sync_instructions(self.home)
+        self.assertEqual(self.snapshot(), before)
 
     def test_unowned_modified_legacy_block_is_not_adopted(self):
         self.install()

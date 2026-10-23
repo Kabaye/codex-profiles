@@ -4,7 +4,7 @@ Builds routing instructions and native worker roles for `work` and `private` pro
 
 ## Instruction build
 
-Runtime instructions are exactly three adjacent documents under `$CODEX_HOME`:
+The `work` profile splits runtime instructions into three adjacent documents under `$CODEX_HOME`:
 
 | Document | `codex-config` owns | `codex-profiles` owns |
 |---|---|---|
@@ -12,18 +12,20 @@ Runtime instructions are exactly three adjacent documents under `$CODEX_HOME`:
 | `WORK.md` | Work account policy | Work routing and quota fallback chain |
 | `PRIVATE.md` | Personal account policy | Native Sol-first / Luna routing |
 
-Both sidecars are installed for either root profile. The router selects the policy from the target repository path: `$HOME/Projects/private` uses `PRIVATE.md` automatically, including while the active root profile is `work`. No declaration phrase is required. Detailed routing stays out of home `AGENTS.md`.
+In `work`, the router selects the policy from the target repository path: `$HOME/Projects/private` uses `PRIVATE.md` automatically, and other targets use `WORK.md`. No declaration phrase is required. Detailed routing stays out of the work home `AGENTS.md`.
+
+The `private` profile keeps shared rules, personal account policy and native worker routing together in `AGENTS.md`. It has no path router and installs no policy sidecars. A private instruction sync removes only previously owned sidecar blocks, preserving other managers' blocks and user prose.
 
 Each manager replaces only its own marker block. The canonical order is the `codex-config` block followed by the `codex-profiles` block; unrelated user prose remains. Instruction state stores hashes of owned blocks, so another manager's changes do not invalidate ownership. Changed or missing owned blocks stop updates/removal before writes; review those changes explicitly.
 
 ## Modes and routing
 
-Both profiles default to `solo`. Sidecars and active metadata exist in either mode.
+Both profiles default to `solo`. Instruction layout depends on the profile, independently of mode: work stays split; private stays inline.
 
 | Mode | Behavior |
 |---|---|
 | `solo` | Native Codex delegation; no automatic profile team routing, custom roles, cap or mode-hint override |
-| `team` | Automatic useful independent delegation through the selected sidecar; root owns architecture, integration and acceptance; review only on user request |
+| `team` | Automatic useful independent delegation through the profile's policy; root owns architecture, integration and acceptance; review only on user request |
 
 `private/team` uses native `sol_worker` for implementation, debugging and uncertain work, and native `luna_worker` for mechanical edits, exploration and routine checks. Workers cannot delegate. OpenCode is not used for these jobs.
 
@@ -40,7 +42,7 @@ python -X utf8 scripts/manage_profile.py --home "$HOME/.codex" sync-instructions
 python -X utf8 scripts/manage_profile.py --home "$HOME/.codex" sync-instructions
 ```
 
-The command reads the current installed profile/mode from `profiles/roles-state.json`. It updates only the three instruction documents and `profiles/instructions-state.json`. It can migrate an older managed home routing block. Install the matching instruction build from `codex-config` too so the common router and account policies are present.
+The command reads the current installed profile/mode from `profiles/roles-state.json`. It updates only that profile's managed instruction blocks and `profiles/instructions-state.json`. It can migrate an older managed home routing block or restore private's inline layout from a split installation. Install the matching instruction build from `codex-config` too so the common rules and account policies match the profile.
 
 Optionally merge the tracked [named OpenCode definitions](work/opencode-agents.json) into an **existing valid JSON** config by passing its exact path:
 
