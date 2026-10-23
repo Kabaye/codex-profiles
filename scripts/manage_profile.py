@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import lru_cache
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,7 @@ import tempfile
 import tomllib
 
 import manage_roles
+import manage_instructions
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILES = tuple(sorted(manage_roles.PROFILES))
@@ -136,10 +138,12 @@ def _prune_empty_managed_sections(text: str) -> str:
     return "\n".join(out).rstrip() + ("\n" if out else "")
 
 
-def _remove_managed_assignments(text: str, *, remove_catalog: bool) -> str:
+def _remove_managed_assignments(text: str, *, remove_catalog: bool, remove_legacy_cap: bool = False) -> str:
     remove = {section: set(keys) for section, keys in OWNED_KEYS.items()}
     for section, keys in LEGACY_KEYS.items():
         remove.setdefault(section, set()).update(keys)
+    if remove_legacy_cap:
+        remove["agents"].add("max_threads")
     if not remove_catalog:
         remove[""].discard("model_catalog_json")
 
@@ -266,7 +270,11 @@ def build_config(
     else:
         remove_catalog = catalog is not None
 
-    cleaned = _remove_managed_assignments(text, remove_catalog=remove_catalog)
+    if "max_threads" in parsed.get("agents", {}) and previous_profile is None:
+        raise ValueError("Unowned legacy agents.max_threads requires explicit review")
+    cleaned = _remove_managed_assignments(
+        text, remove_catalog=remove_catalog, remove_legacy_cap=previous_profile is not None
+    )
     if profile is None:
         if cleaned.strip():
             tomllib.loads(cleaned)
@@ -321,6 +329,7 @@ def _strip_marked_regions(text: str, begin: str, end: str) -> str:
     return "\n".join(kept)
 
 
+@lru_cache(maxsize=1)
 def _git_history_blocks() -> list[str]:
     if not (ROOT / ".git").exists() or shutil.which("git") is None:
         return []
@@ -371,7 +380,7 @@ def build_agents(text: str, profile: str | None, *, mode: str | None = None) -> 
     for begin, end in ((BEGIN, END), (LEGACY_BEGIN, LEGACY_END)):
         normalized = _strip_marked_regions(normalized, begin, end)
 
-    for block in sorted(_git_history_blocks(), key=len, reverse=True):
+    for block in sorted(_git_history_blocks() if normalized.strip() else [], key=len, reverse=True):
         normalized = normalized.replace(block, "")
 
     lines = normalized.splitlines()
@@ -390,18 +399,15 @@ def build_agents(text: str, profile: str | None, *, mode: str | None = None) -> 
         )
 
     normalized = re.sub(r"\n{3,}", "\n\n", normalized).strip()
-    install_block = False
-    if profile is not None:
-        selected_mode = manage_roles.normalize_mode(profile, mode)
-        install_block = (
-            profile not in manage_roles.MODE_PROFILES or selected_mode == "team"
-        )
-    if install_block:
-        block = _extract_marked(
-            (ROOT / profile / "agents-subset.md").read_text(encoding="utf-8")
-        )
-        normalized = f"{normalized}\n\n{block}" if normalized else block
-    return normalized.rstrip() + ("\n" if normalized else "")
+    selected_mode = manage_roles.normalize_mode(profile, mode) if profile is not None else None
+    desired = manage_instructions.metadata(profile, selected_mode) if profile is not None else None
+    return manage_instructions.replace_block(normalized, desired)
+
+
+def _known_instruction_blocks() -> list[str]:
+    return _git_history_blocks() + [
+        manage_instructions.metadata(profile, mode) for profile in PROFILES for mode in MODES
+    ]
 
 
 def _apply_text(path: Path, text: str) -> None:
@@ -418,19 +424,16 @@ def apply(
     mode: str | None = None,
     dry_run: bool = False,
     preserve_root: bool = False,
+    opencode_config: Path | None = None,
 ) -> dict:
     home = Path(os.path.abspath(home.expanduser()))
     config_path = home / "config.toml"
-    agents_path = home / "AGENTS.md"
     catalog_path = home / MANAGED_CATALOG
     legacy_lite_path = home / LEGACY_LITE_CATALOG
     legacy_models_path = home / "models.json"
 
     config_text = (
         config_path.read_text(encoding="utf-8-sig") if config_path.exists() else ""
-    )
-    agents_text = (
-        agents_path.read_text(encoding="utf-8-sig") if agents_path.exists() else ""
     )
     parsed_config = tomllib.loads(config_text) if config_text.strip() else {}
     configured_catalog = parsed_config.get("model_catalog_json")
@@ -460,7 +463,11 @@ def apply(
         previous_profile=previous_profile,
         preserve_root=preserve_root,
     )
-    new_agents = build_agents(agents_text, profile, mode=selected_mode)
+    instruction_plan = manage_instructions.prepare(
+        home, profile, selected_mode, opencode_config=opencode_config,
+        clean_legacy_agents=lambda text: build_agents(text, None),
+        legacy_blocks=_known_instruction_blocks,
+    )
 
     # Active profiles use the native model catalog. Former Lite catalog files
     # are removed on install, switch, or uninstall.
@@ -476,15 +483,12 @@ def apply(
 
     current_config = config_path.read_bytes() if config_path.exists() else None
     desired_config = new_config.encode("utf-8") if new_config.strip() else None
-    current_agents = agents_path.read_bytes() if agents_path.exists() else None
-    desired_agents = new_agents.encode("utf-8") if new_agents.strip() else None
     current_catalog = catalog_path.read_bytes() if catalog_path.exists() else None
 
     changes: list[str] = []
     if desired_config != current_config:
         changes.append("config.toml")
-    if desired_agents != current_agents:
-        changes.append("AGENTS.md")
+    changes.extend(instruction_plan["files"])
     if catalog_bytes != current_catalog:
         changes.append(MANAGED_CATALOG)
     if legacy_lite_path.exists():
@@ -506,12 +510,12 @@ def apply(
 
     old: dict[Path, bytes | None] = {
         config_path: current_config,
-        agents_path: current_agents,
         catalog_path: current_catalog,
         legacy_lite_path: (
             legacy_lite_path.read_bytes() if legacy_lite_path.exists() else None
         ),
     }
+    old.update(instruction_plan["old"])
     if legacy_models_owned:
         old[legacy_models_path] = (
             legacy_models_path.read_bytes() if legacy_models_path.exists() else None
@@ -519,7 +523,7 @@ def apply(
 
     try:
         _apply_text(config_path, new_config)
-        _apply_text(agents_path, new_agents)
+        manage_instructions.commit(instruction_plan)
         if catalog_bytes is None:
             catalog_path.unlink(missing_ok=True)
         else:
@@ -552,6 +556,24 @@ def _state(home: Path) -> dict | None:
     return manage_roles.load_state(home.expanduser() / "profiles" / "roles-state.json")
 
 
+def sync_instructions(home: Path, *, dry_run: bool = False, opencode_config: Path | None = None) -> dict:
+    """Read installed profile/mode; never rewrite config, role files or role state."""
+    home = Path(os.path.abspath(home.expanduser()))
+    state = _state(home)
+    if state is None or state["profile"] not in PROFILES:
+        raise ValueError("Install a supported managed profile before syncing instructions")
+    plan = manage_instructions.prepare(
+        home, state["profile"], state["mode"], opencode_config=opencode_config,
+        clean_legacy_agents=lambda text: build_agents(text, None),
+        legacy_blocks=_known_instruction_blocks,
+    )
+    report = {"profile": state["profile"], "mode": state["mode"], "dry_run": dry_run,
+              "files": plan["files"], "roles": []}
+    if not dry_run:
+        manage_instructions.commit(plan)
+    return report
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -567,17 +589,24 @@ def main() -> int:
     install.add_argument("profile", choices=PROFILES)
     install.add_argument("--mode", choices=MODES)
     install.add_argument("--dry-run", action="store_true")
+    install.add_argument("--opencode-config", type=Path, help="Merge only named agents into an existing OpenCode JSON config")
 
     mode_cmd = sub.add_parser(
         "mode", help="Switch private/work between native solo and selective team"
     )
     mode_cmd.add_argument("mode", choices=MODES)
     mode_cmd.add_argument("--dry-run", action="store_true")
+    mode_cmd.add_argument("--opencode-config", type=Path)
 
     remove = sub.add_parser(
         "remove", help="Remove all repository-owned Codex profile artifacts"
     )
     remove.add_argument("--dry-run", action="store_true")
+    remove.add_argument("--opencode-config", type=Path, help="Remove owned named agents from this existing JSON config")
+
+    sync = sub.add_parser("sync-instructions", help="Sync only instruction blocks for the installed profile/mode")
+    sync.add_argument("--dry-run", action="store_true")
+    sync.add_argument("--opencode-config", type=Path, help="Merge only named agents into an existing OpenCode JSON config")
 
     sub.add_parser("status", help="Show the active managed profile and mode")
 
@@ -592,6 +621,7 @@ def main() -> int:
                     {
                         "profile": state.get("profile") if state else None,
                         "mode": state.get("mode") if state else None,
+                        "instructions": manage_instructions.status(home),
                     },
                     indent=2,
                 )
@@ -613,6 +643,7 @@ def main() -> int:
                 mode=args.mode,
                 dry_run=args.dry_run,
                 preserve_root=True,
+                opencode_config=args.opencode_config,
             )
         elif args.command == "install":
             result = apply(
@@ -620,12 +651,16 @@ def main() -> int:
                 args.profile,
                 mode=args.mode,
                 dry_run=args.dry_run,
+                opencode_config=args.opencode_config,
             )
+        elif args.command == "sync-instructions":
+            result = sync_instructions(home, dry_run=args.dry_run, opencode_config=args.opencode_config)
         else:
             result = apply(
                 home,
                 None,
                 dry_run=args.dry_run,
+                opencode_config=args.opencode_config,
             )
     except (
         OSError,

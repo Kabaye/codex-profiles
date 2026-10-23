@@ -97,7 +97,9 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 self.assertNotIn("agents", config)
                 self.assertNotIn("multi_agent_v2", config.get("features", {}))
                 self.assertNotIn("model_catalog_json", config)
-                self.assertFalse((self.home / "AGENTS.md").exists())
+                self.assertIn(f"`{profile}`; agent mode: `solo`", (self.home / "AGENTS.md").read_text())
+                for name in ("WORK.md", "PRIVATE.md"):
+                    self.assertTrue((self.home / name).is_file())
                 self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_private_team_switch_adds_only_explicit_luna_and_sol_roles(self):
@@ -122,10 +124,10 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             self.config()["features"]["multi_agent_v2"],
             {"multi_agent_mode_hint_text": ""},
         )
-        agents_text = (self.home / "AGENTS.md").read_text(encoding="utf-8")
+        agents_text = (self.home / "PRIVATE.md").read_text(encoding="utf-8")
         self.assertIn("luna_worker", agents_text)
         self.assertIn("sol_worker", agents_text)
-        self.assertIn("three open child threads", agents_text)
+        self.assertNotIn("three open child threads", agents_text)
         self.assertIn("Sol-first", agents_text)
         self.assertIn("Independent review only when the user explicitly requests one.", agents_text)
         self.assertNotIn("profile-default", agents_text)
@@ -138,20 +140,21 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(solo["mode"], "solo")
         self.assertEqual(self.role_names(), set())
-        self.assertFalse((self.home / "AGENTS.md").exists())
+        self.assertIn("agent mode: `solo`", (self.home / "AGENTS.md").read_text())
         self.assertNotIn("agents", self.config())
         self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
-    def test_work_team_keeps_luna_default_and_explicit_personal_sol_lane(self):
+    def test_work_team_routes_opencode_with_quota_fallbacks(self):
         self.install("work", mode="team")
-        text = (self.home / "AGENTS.md").read_text(encoding="utf-8")
-        self.assertIn("ordinary work objectives", text)
+        text = (self.home / "WORK.md").read_text(encoding="utf-8")
+        self.assertIn("work-scout", text)
         self.assertIn("luna_worker", text)
-        self.assertIn("это личная задача", text)
-        self.assertIn("sol_worker", text)
+        self.assertIn("work-code", text)
+        self.assertNotIn("это личная задача", text)
+        self.assertNotIn("sol_worker", text)
         self.assertIn("Use the user-selected root model and effort", text)
-        self.assertIn("Sol-first", text)
+        self.assertIn("Cloud quota-exhaustion", text)
         self.assertIn("Independent review only when the user explicitly requests one.", text)
         self.assertEqual(
             self.config()["agents"],
@@ -184,12 +187,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         worker_path = self.home / "agents" / "sol-worker.toml"
         worker_path.write_bytes(worker_path.read_bytes() + b"# former version\n")
         agents_path = self.home / "AGENTS.md"
-        agents_path.write_text(
-            agents_path.read_text(encoding="utf-8").replace(
-                "three open child threads", "two open child threads"
-            ),
-            encoding="utf-8",
-        )
 
         for mode in ("team", "solo", "team"):
             with self.subTest(mode=mode):
@@ -208,11 +205,11 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                         worker_path.read_bytes(),
                         roles.desired_roles("private", "team")["sol-worker.toml"],
                     )
-                    self.assertIn("three open child threads", agents_path.read_text(encoding="utf-8"))
+                    self.assertIn("agent mode: `team`", agents_path.read_text(encoding="utf-8"))
                 else:
                     self.assertNotIn("agents", config)
                     self.assertEqual(self.role_names(), set())
-                    self.assertFalse(agents_path.exists())
+                    self.assertIn("agent mode: `solo`", agents_path.read_text(encoding="utf-8"))
 
     def test_explicit_reinstall_applies_profile_root_defaults(self):
         self.install("private", mode="team")
@@ -267,7 +264,10 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
 
         self.assertEqual(lifecycle._state(self.home)["profile"], "lite")
-        result = self.install("work", mode="team")
+        # Synthetic legacy fixture is explicitly supplied as a known published block.
+        legacy_block = lifecycle._extract_marked((self.home / "AGENTS.md").read_text(encoding="utf-8"))
+        with patch.object(lifecycle, "_known_instruction_blocks", return_value=[legacy_block]):
+            result = self.install("work", mode="team")
         self.assertEqual(result["profile"], "work")
         self.assertEqual(self.state()["profile"], "work")
         self.assertEqual(self.role_names(), {"luna-worker.toml", "sol-worker.toml"})

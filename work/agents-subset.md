@@ -1,9 +1,10 @@
 <!-- codex-profiles:begin -->
-- Use the user-selected root model and effort.
-- Delegate useful independent work, with up to three open child threads.
-- For ordinary work objectives, use `luna_worker`.
-- Enable the personal lane when the user explicitly says `это личная задача`; keep it for that objective and direct follow-ups.
-- In the personal lane, use `sol_worker` for implementation, debugging and complex or uncertain tasks (Sol-first), and `luna_worker` for mechanical edits, exploration and routine checks.
-- Give each worker its own files and a self-contained task with interfaces, constraints and checks; use `fork_turns = "none"`.
-- Root owns architecture, integration and final acceptance. Independent review only when the user explicitly requests one.
+- Use the user-selected root model and effort. Root owns architecture, integration and final acceptance. Independent review only when the user explicitly requests one.
+- In `solo` mode, retain native Codex delegation behavior; do not apply the automatic team routes below. In `team` mode, delegate useful independent work through these routes.
+- For file lookup and source discovery, run OpenCode named primary agent `work-scout` with `--model litellm/corp-code-fast`. For explanations of current code, flow tracing and configuration comparisons, use the same agent with `--model litellm/corp-chat-max`. Both routes are read-only; verify findings against source before acceptance. Start with a bounded question and focused files; the scout has a 16-step maximum, so split larger investigations into bounded questions. Allow 120 seconds per scout question; stop stalled CLI jobs and report partial evidence.
+- For implementation, debugging and tests, run OpenCode named primary agent `work-code` with `--model litellm/global.openai.gpt-6-luna`. Only an explicit Cloud quota-exhaustion response permits fallback to native `luna_worker`; only explicit native quota exhaustion permits fallback to Cursor. Authentication, network, tool, context and validation failures are not quota exhaustion: resolve or report them without advancing the chain.
+- Direct invocation: `opencode run --dir "REPO_PATH" --agent work-code --model litellm/global.openai.gpt-6-luna --format json "BOUNDED_TASK"`; replace the quoted path/task. For scouting, select `work-scout` and its model above. Discover the installed Cursor CLI and its supported flags, then invoke it directly without wrappers; do not guess its executable name or arguments.
+- Cursor defaults to `auto`. An exact user-selected Cursor model stays on Cursor; do not translate it to another provider or model.
+- Keep at most three delegated jobs open across OpenCode CLI processes, native child threads and Cursor jobs combined; root is excluded. The native thread cap alone does not cover CLI jobs.
+- Give every worker its own files and a self-contained task with interfaces, constraints and checks. For native workers use `fork_turns = "none"`. Workers complete their own assignment and checks directly; no nested delegation, `task` calls or skill-driven delegation.
 <!-- codex-profiles:end -->

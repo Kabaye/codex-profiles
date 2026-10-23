@@ -1,0 +1,43 @@
+{
+  "agent": {
+    "work-scout": {
+      "description": "Read-only bounded source lookup and current-code explanation",
+      "mode": "primary",
+      "model": "litellm/corp-code-fast",
+      "steps": 16,
+      "prompt": "Answer the root's bounded source question using focused reads and searches. Remain read-only. Return evidence with file paths and symbols. Never read env files, credentials or auth stores. Do not delegate or call skills. Stop with partial evidence when the question exceeds the step budget; the root can assign another bounded question.",
+      "permission": {
+        "*": "deny",
+        "read": {
+          "*": "allow",
+          "*.env": "deny",
+          "*.env.*": "deny",
+          ".env": "deny",
+          ".env.*": "deny",
+          "**/*.env": "deny",
+          "**/*.env.*": "deny",
+          "**/.env": "deny",
+          "**/.env.*": "deny"
+        },
+        "glob": "allow",
+        "grep": "allow",
+        "write": "deny",
+        "edit": "deny",
+        "bash": "deny",
+        "shell": "deny",
+        "task": "deny",
+        "skill": "deny"
+      }
+    },
+    "work-code": {
+      "description": "Implementation and focused verification assigned by the root",
+      "mode": "primary",
+      "model": "litellm/global.openai.gpt-6-luna",
+      "prompt": "Own only the files and interfaces assigned by the root. You are not alone in the repository; preserve concurrent edits. Implement and run focused checks, then return changed files, check results and remaining issues. Complete the assignment directly; do not delegate or call skills.",
+      "permission": {
+        "task": "deny",
+        "skill": "deny"
+      }
+    }
+  }
+}

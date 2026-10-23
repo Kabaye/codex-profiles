@@ -1,23 +1,33 @@
 # Routing policy
-## Defaults
 
-| Profile | Root default | Mode | Team routing |
-|---|---|---|---|
-| `private` | GPT-6 Astra xhigh | solo | Sol-first implementation; Luna for mechanical edits, exploration and checks |
-| `work` | GPT-6.1 Sol xhigh | solo | Luna for work; Sol-first for explicitly personal tasks |
+Common rules and target-path selection belong to `codex-config`; detailed routes below belong to the two `codex-profiles` sidecar blocks. `$HOME/Projects/private` selects private policy automatically. The active root profile controls default root settings; the active agent mode controls whether automatic routes apply. Preserve the user's selected root model and effort in either scope.
 
-Use the user's selected root model and effort.
-## Solo
-Solo uses native Codex delegation. The profile installs its base settings and leaves custom roles, routing instructions and the child-thread cap to Codex.
-## Team
-- Delegate useful independent work, with up to three open child threads.
-- Select the named `luna_worker` or `sol_worker` with `fork_turns = "none"`.
-- Give each worker its own files, goal, interfaces, constraints and checks.
-- Keep architecture, integration and final acceptance in the root.
-- Assign independent review when the user explicitly requests it.
-### Private
-Use Sol for implementation, debugging and complex or uncertain tasks. Use Luna for mechanical edits, exploration and routine checks; move growing complexity to Sol.
-### Work
-Use Luna for ordinary work objectives. An explicit `это личная задача` enables the personal lane for the current objective and direct follow-ups, using the private Sol-first policy. A new unrelated objective uses ordinary work routing.
-## Role configuration
-Luna uses GPT-6 Luna / max; Sol uses GPT-6.1 Sol / xhigh. Each worker completes its assignment directly, performs focused checks and returns results to the root. Both profiles use the native Codex model catalog.
+## Solo and team
+
+Solo keeps native Codex delegation behavior. Both sidecars remain installed, but their automatic team routes do not apply.
+
+Team delegates useful independent tasks. Give each worker bounded ownership, interfaces, constraints and checks; use `fork_turns = "none"` for native workers. Root owns architecture, integration and final acceptance. Independent review requires an explicit user request. Workers perform their own work and checks without nested delegation.
+
+## Work
+
+| Assignment | Named agent | Explicit model |
+|---|---|---|
+| File lookup / source discovery, read-only | OpenCode `work-scout` | `litellm/corp-code-fast` |
+| Current-code explanations / flow tracing, read-only | OpenCode `work-scout` | `litellm/corp-chat-max` |
+| Implementation / debugging / checks | OpenCode `work-code` | `litellm/global.openai.gpt-6-luna` |
+| Explicit Cloud quota exhaustion | Native `luna_worker` | GPT-6 Luna / max |
+| Explicit native quota exhaustion | Cursor | `auto` unless user selected an exact Cursor model |
+
+Example invocation shapes (replace the quoted assignment with a bounded task):
+
+```powershell
+opencode run --agent work-scout --model litellm/corp-code-fast "Locate the assigned source entry points"
+opencode run --agent work-scout --model litellm/corp-chat-max "Explain the assigned current-code flow with evidence"
+opencode run --agent work-code --model litellm/global.openai.gpt-6-luna "Implement and verify the assigned change"
+```
+
+Scout uses deny-by-default tool permissions, read/glob/grep only, env-file read denies, and a 16-step initial bound. Allow 120 seconds per scout question, stop stalled CLI jobs and return partial evidence. Split larger scouting questions. Validate evidence before root acceptance. Authentication, network, context, tool or validation errors do not advance the quota chain. Exact user-chosen Cursor models stay on Cursor. Keep at most three open delegated jobs across CLI/native/Cursor combined, excluding root.
+
+## Private
+
+Use native `sol_worker` (GPT-6.1 Sol / xhigh) for implementation, debugging and complex or uncertain tasks (Sol-first). Use native `luna_worker` (GPT-6 Luna / max) for mechanical edits, exploration and routine checks; move growing complexity to Sol. Do not use OpenCode for these jobs. The native concurrency bound is configured in TOML rather than duplicated in the private instructions.

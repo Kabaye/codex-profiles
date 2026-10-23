@@ -148,17 +148,19 @@ def validate(
             "Use the user-selected root model and effort" in text,
             f"{name}: user-selected root policy missing",
         )
-        check("three open child threads" in text, f"{name}: team cap policy missing")
-        check("Sol-first" in text, f"{name}: Sol-first personal routing policy missing")
         check(
             "Independent review only when the user explicitly requests one." in text,
             f"{name}: explicit independent-review policy missing",
         )
-        for role_name in TEAM_ROLES[name]:
+        for role_name in ({"sol_worker", "luna_worker"} if name == "private" else {"luna_worker"}):
             check(role_name in text, f"{name}: explicit {role_name} routing missing")
         if name == "work":
-            check("ordinary work objectives" in text, "work: ordinary work routing missing")
-            check("это личная задача" in text, "work: explicit personal-lane declaration missing")
+            for route in ("work-scout", "work-code", "corp-code-fast", "corp-chat-max", "litellm/global.openai.gpt-6-luna", "quota", "Cursor"):
+                check(route in text, f"work: {route} route missing")
+            check("private" not in text.lower() and "personal" not in text.lower(), "work: unrelated scenario leaked into routing")
+        else:
+            check("Sol-first" in text, "private: Sol-first routing policy missing")
+            check("three" not in text, "private: numeric cap belongs in config")
         if profile is None or profile == name:
             required.add((root_model, root_effort))
             if name in {"private", "work"}:

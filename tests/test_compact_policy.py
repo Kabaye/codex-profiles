@@ -13,7 +13,7 @@ class CompactRoutingInstructionsTests(unittest.TestCase):
     def test_size_and_markers(self):
         budgets = {
             "private": 1900,
-            "work": 2200,
+            "work": 3000,
         }
         for profile, limit in budgets.items():
             with self.subTest(profile=profile):
@@ -30,24 +30,33 @@ class CompactRoutingInstructionsTests(unittest.TestCase):
         self.assertFalse((ROOT / "lite").exists())
         self.assertFalse((ROOT / "scripts/filter_lite_catalog.py").exists())
 
-    def test_work_and_private_personal_lanes(self):
+    def test_work_and_private_routes(self):
         work = (ROOT / "work/agents-subset.md").read_text(encoding="utf-8")
         private = (ROOT / "private/agents-subset.md").read_text(encoding="utf-8")
         common_rules = (
             "Use the user-selected root model and effort",
             "luna_worker",
-            "sol_worker",
-            "Sol-first",
-            "three open child threads",
             "Independent review only when the user explicitly requests one.",
+            "solo",
+            "team",
+            "no nested delegation",
         )
         for profile, source in (("private", private), ("work", work)):
             for rule in common_rules:
                 with self.subTest(profile=profile, rule=rule):
                     self.assertIn(rule, source)
-        for rule in ("ordinary work objectives", "это личная задача"):
+        for rule in ("work-scout", "work-code", "corp-code-fast", "corp-chat-max", "litellm/global.openai.gpt-6-luna", "Cursor", "quota"):
             with self.subTest(profile="work", rule=rule):
                 self.assertIn(rule, work)
+        self.assertIn("Sol-first", private)
+        self.assertIn("sol_worker", private)
+        self.assertNotIn("three", private)
+        self.assertNotIn("private", work.lower())
+        self.assertNotIn("personal", work.lower())
+        self.assertNotIn("это личная задача", work)
+        self.assertIn('opencode run --dir "REPO_PATH" --agent work-code --model litellm/global.openai.gpt-6-luna --format json "BOUNDED_TASK"', work)
+        self.assertIn("installed Cursor CLI", work)
+        self.assertIn("without wrappers", work)
 
 
 if __name__ == "__main__":
