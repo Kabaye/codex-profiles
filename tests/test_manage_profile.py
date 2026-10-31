@@ -90,8 +90,8 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 result = self.install(profile)
                 self.assertEqual(result["mode"], "solo")
                 self.assertEqual(self.state()["mode"], "solo")
-                self.assertEqual(self.state()["owned"], {})
-                self.assertEqual(self.role_names(), set())
+                self.assertEqual(set(self.state()["owned"]), {"terra-computer.toml"})
+                self.assertEqual(self.role_names(), {"terra-computer.toml"})
 
                 config = self.config()
                 self.assertNotIn("agents", config)
@@ -102,7 +102,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                     self.assertEqual((self.home / name).is_file(), profile == "work")
                 self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
-    def test_private_team_switch_adds_only_explicit_luna_and_sol_roles(self):
+    def test_private_team_switch_adds_terra_plus_explicit_luna_and_sol_roles(self):
         self.install("private")
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
@@ -114,7 +114,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(team["mode"], "team")
         self.assertEqual(
             self.role_names(),
-            {"luna-worker.toml", "sol-worker.toml"},
+            {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
         )
         self.assertEqual(
             self.config()["agents"],
@@ -139,7 +139,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             mode="solo",
         )
         self.assertEqual(solo["mode"], "solo")
-        self.assertEqual(self.role_names(), set())
+        self.assertEqual(self.role_names(), {"terra-computer.toml"})
         self.assertIn("agent mode: `solo`", (self.home / "AGENTS.md").read_text())
         self.assertNotIn("agents", self.config())
         self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
@@ -162,7 +162,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(
             self.role_names(),
-            {"luna-worker.toml", "sol-worker.toml"},
+            {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
         )
 
     def test_install_team_directly_and_then_switch_profile_defaults_back_to_solo(self):
@@ -171,7 +171,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.install("work")
         self.assertEqual(self.state()["profile"], "work")
         self.assertEqual(self.state()["mode"], "solo")
-        self.assertEqual(self.role_names(), set())
+        self.assertEqual(self.role_names(), {"terra-computer.toml"})
 
     def test_mode_refresh_preserves_selected_root_and_updates_team_artifacts(self):
         self.install("private", mode="team")
@@ -208,7 +208,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                     self.assertIn("agent mode: `team`", agents_path.read_text(encoding="utf-8"))
                 else:
                     self.assertNotIn("agents", config)
-                    self.assertEqual(self.role_names(), set())
+                    self.assertEqual(self.role_names(), {"terra-computer.toml"})
                     self.assertIn("agent mode: `solo`", agents_path.read_text(encoding="utf-8"))
 
     def test_explicit_reinstall_applies_profile_root_defaults(self):
@@ -311,7 +311,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.install("private")
         self.assertFalse(legacy.exists())
         self.assertFalse(old_lite.exists())
-        self.assertEqual(self.role_names(), set())
+        self.assertEqual(self.role_names(), {"terra-computer.toml"})
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_remove_cleans_managed_catalog_and_preserves_unrelated_text(self):
