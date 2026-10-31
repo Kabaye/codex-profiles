@@ -14,7 +14,7 @@ The `work` profile splits runtime instructions into three adjacent documents und
 
 In `work`, the router selects the policy from the target repository path: `$HOME/Projects/private` uses `PRIVATE.md` automatically, and other targets use `WORK.md`. No declaration phrase is required. Detailed routing stays out of the work home `AGENTS.md`.
 
-Work's personal-sidecar routing is sourced from `work/personal-agents-subset.md`, not from the separate private profile.
+Work's personal-sidecar routing is sourced from `work/personal-agents-subset.md`, not from the separate private profile. The single shared GUI routing fragment lives in `shared/agents-subset.md` and is assembled into work's `WORK.md` and `PRIVATE.md`, and into the separate private installation's global `AGENTS.md`. Neither profile source duplicates the Terra routing rule.
 
 The `private` profile keeps shared rules, personal account policy and native worker routing together in `AGENTS.md`. It has no path router and installs no policy sidecars. A private instruction sync removes only previously owned sidecar blocks, preserving other managers' blocks and user prose.
 
