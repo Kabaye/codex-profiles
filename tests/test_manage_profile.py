@@ -270,7 +270,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             result = self.install("work", mode="team")
         self.assertEqual(result["profile"], "work")
         self.assertEqual(self.state()["profile"], "work")
-        self.assertEqual(self.role_names(), {"luna-worker.toml", "sol-worker.toml"})
+        self.assertEqual(self.role_names(), {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"})
         self.assertFalse(catalog.exists())
         self.assertFalse((self.home / lifecycle.LEGACY_LITE_CATALOG).exists())
         self.assertNotIn("model_catalog_json", self.config())
