@@ -14,7 +14,7 @@ The `work` profile splits runtime instructions into three adjacent documents und
 
 In `work`, the router selects the policy from the target repository path: `$HOME/Projects/private` uses `PRIVATE.md` automatically, and other targets use `WORK.md`. No declaration phrase is required. Detailed routing stays out of the work home `AGENTS.md`.
 
-The `private` profile keeps shared rules, personal account policy and native worker routing together in `AGENTS.md`. It has no path router and installs no policy sidecars. A private instruction sync removes only previously owned sidecar blocks, preserving other managers' blocks and user prose.
+Work's personal-sidecar routing is sourced from `work/personal-agents-subset.md`, not from the separate private profile.\n\nThe `private` profile keeps shared rules, personal account policy and native worker routing together in `AGENTS.md`. It has no path router and installs no policy sidecars. A private instruction sync removes only previously owned sidecar blocks, preserving other managers' blocks and user prose.
 
 Each manager replaces only its own marker block. The canonical order is the `codex-config` block followed by the `codex-profiles` block; unrelated user prose remains. Instruction state stores hashes of owned blocks, so another manager's changes do not invalidate ownership. Changed or missing owned blocks stop updates/removal before writes; review those changes explicitly.
 
@@ -24,14 +24,14 @@ Both profiles default to `solo`. Instruction layout depends on the profile, inde
 
 | Mode | Behavior |
 |---|---|
-| `solo` | Native Codex delegation; no automatic profile team routing, custom roles, cap or mode-hint override |
-| `team` | Automatic useful independent delegation through the profile's policy; root owns architecture, integration and acceptance; review only on user request |
+| `solo` | Native Codex delegation, with only the shared Terra computer-use specialist installed; no other automatic team routes, cap, or mode-hint override |
+| `team` | Automatic useful independent delegation plus the shared Terra computer-use specialist; root owns architecture, integration and acceptance; review only on user request |
 
 `private/team` uses native `sol_worker` for implementation, debugging and uncertain work, and native `luna_worker` for mechanical edits, exploration and routine checks. Workers cannot delegate. OpenCode is not used for these jobs.
 
 `work/team` uses named OpenCode primary agents: `work-scout` with `litellm/corp-code-fast` for file lookup or `litellm/corp-chat-max` for current-code explanations, both read-only; `work-code` with `litellm/global.openai.gpt-6-luna` for implementation and checks. Only explicit Cloud quota exhaustion permits native `luna_worker`, then only explicit native quota exhaustion permits Cursor. Automatic Cursor jobs explicitly use `auto-smart[optimize_for=cost]` (Auto Cost), with Max Mode off and exploration inheriting the parent model. If unavailable, stop instead of choosing another model; a different Cursor model requires an exact user request. Network/authentication/validation failures do not advance this chain.
 
-The native team cap is `agents.max_concurrent_threads_per_session = 3`, excluding the root. Work policy also bounds all open delegated CLI/native/Cursor jobs together because the native cap does not cover external processes. The native config key is documented in [official OpenAI documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents#global-settings); `agents.max_threads` is a legacy alias. Full lifecycle commands migrate a previously owned alias; an unowned alias requires explicit review.
+The `terra_computer` role (`gpt-6.1-terra`, medium) is shared by both installations and both modes, and is selected only for live visual computer-use actions when Browser/Computer Use tools are accessible. Non-GUI tasks retain existing routing. It requires Codex CLI 0.159.0+ and model availability; without the UI tools it cannot click.\n\nThe native team cap is `agents.max_concurrent_threads_per_session = 3`, excluding the root. Work policy also bounds all open delegated CLI/native/Cursor jobs together because the native cap does not cover external processes. The native config key is documented in [official OpenAI documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents#global-settings); `agents.max_threads` is a legacy alias. Full lifecycle commands migrate a previously owned alias; an unowned alias requires explicit review.
 
 ## Safe instruction-only activation
 
@@ -71,7 +71,7 @@ python -X utf8 scripts/manage_profile.py remove
 
 `install`, `mode` and `remove` also maintain the new instruction documents and accept `--opencode-config PATH`. Mode changes preserve the configured root model/effort; explicit installation applies profile defaults (private: GPT-6 Astra xhigh; work: GPT-6.1 Sol xhigh). Both use the native catalog.
 
-Full `install` and `mode` retain the existing role-reset contract: every top-level `agents/*.toml` is deleted before writing the destination set. Team installs `luna-worker.toml` and `sol-worker.toml`; solo installs none. Use `sync-instructions` for instruction updates that must preserve unrelated roles. Removal validates recorded ownership and leaves unmanaged roles and prose intact. No persistent backup is created; rollback bytes exist only in process.
+Full `install` and `mode` retain the existing role-reset contract: every top-level `agents/*.toml` is deleted before writing the destination set. Team installs `luna-worker.toml`, `sol-worker.toml`, and `terra-computer.toml`; solo installs only `terra-computer.toml`. Use `sync-instructions` for instruction updates that must preserve unrelated roles. Removal validates recorded ownership and leaves unmanaged roles and prose intact. No persistent backup is created; rollback bytes exist only in process.
 
 ## Validation
 
