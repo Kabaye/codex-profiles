@@ -29,22 +29,46 @@ class TerraComputerRoutingTests(unittest.TestCase):
                     self.assertEqual(terra["model_reasoning_effort"], "medium")
                     self.assertIs(terra["agents"]["enabled"], False)
 
-    def test_live_gui_policy_in_both_installations(self):
-        work = instructions.desired_docs("work", "solo")
-        private = instructions.desired_docs("private", "solo")
-        self.assertIn("terra_computer", work["WORK.md"])
-        self.assertIn("terra_computer", work["PRIVATE.md"])
-        self.assertIn("terra_computer", private["AGENTS.md"])
-        self.assertNotIn("work-code", private["AGENTS.md"])
+    def test_live_gui_policy_is_composed_once_in_both_profiles_and_modes(self):
+        shared = (ROOT / "shared" / "agents-subset.md").read_text(encoding="utf-8").strip()
+        self.assertEqual(shared.count("terra_computer"), 1)
+        for source in ("work/agents-subset.md", "work/personal-agents-subset.md",
+                       "private/agents-subset.md"):
+            with self.subTest(source=source):
+                self.assertNotIn("terra_computer", (ROOT / source).read_text(encoding="utf-8"))
+
+        for mode in ("solo", "team"):
+            work = instructions.desired_docs("work", mode)
+            private = instructions.desired_docs("private", mode)
+            for policy in (work["WORK.md"], work["PRIVATE.md"], private["AGENTS.md"]):
+                with self.subTest(mode=mode, policy=policy[:80]):
+                    self.assertEqual(policy.count(shared), 1)
+                    self.assertEqual(policy.count("terra_computer"), 1)
+                    self.assertEqual(policy.count(instructions.BEGIN), 1)
+                    self.assertEqual(policy.count(instructions.END), 1)
+            self.assertNotIn("terra_computer", work["AGENTS.md"])
+            self.assertNotIn("work-code", private["AGENTS.md"])
 
     def test_work_personal_routing_has_independent_source(self):
-        expected = instructions.block(
-            (ROOT / "work" / "personal-agents-subset.md").read_text(encoding="utf-8")
-        )
+        source = (ROOT / "work" / "personal-agents-subset.md").read_text(encoding="utf-8")
         work_personal = instructions.desired_docs("work", "team")["PRIVATE.md"]
-        self.assertEqual(work_personal, expected)
-        self.assertIsNotNone(work_personal)
+        shared = (ROOT / "shared" / "agents-subset.md").read_text(encoding="utf-8").strip()
+        self.assertIn("Use `sol_worker`", work_personal)
+        self.assertIn("Use `luna_worker`", work_personal)
+        self.assertIn(shared, work_personal)
         self.assertNotIn("work-scout", work_personal)
+        self.assertNotIn("terra_computer", source)
+
+    def test_shared_fragment_rejects_managed_markers(self):
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        with TemporaryDirectory() as tmp:
+            shared_file = Path(tmp) / "shared" / "agents-subset.md"
+            shared_file.parent.mkdir()
+            shared_file.write_text(instructions.BEGIN + "\ninvalid", encoding="utf-8")
+            with patch.object(instructions, "ROOT", Path(tmp)):
+                with self.assertRaisesRegex(ValueError, "Shared agent routing"):
+                    instructions.desired_docs("work", "solo")
 
 
 if __name__ == "__main__":
