@@ -27,7 +27,7 @@ python -X utf8 scripts/manage_profile.py install work --mode team --dry-run
 python -X utf8 scripts/manage_profile.py install work --mode team
 ```
 
-Both profiles default to solo. **Complete installation and mode switching reset every top-level `agents/*.toml`.** This existing behavior is useful for deliberate profile/role replacement, but use `sync-instructions` for activation that must preserve local roles. An unrelated custom model catalog is refused.
+Both profiles default to solo, with the shared `terra-computer.toml` installed in both modes. Terra needs Codex CLI 0.159.0+ and an accessible Browser/Computer Use tool in the parent session. **Complete installation and mode switching reset every top-level `agents/*.toml`.** This existing behavior is useful for deliberate profile/role replacement, but use `sync-instructions` for activation that must preserve local roles. An unrelated custom model catalog is refused.
 
 Change mode while preserving root model/effort:
 
@@ -37,6 +37,6 @@ python -X utf8 scripts/manage_profile.py mode team
 python -X utf8 scripts/manage_profile.py mode solo
 ```
 
-Team enables native agents, sets `agents.max_concurrent_threads_per_session = 3` (excluding root), and sets `features.multi_agent_v2.multi_agent_mode_hint_text = ""`. A previously owned `agents.max_threads` alias is removed. Solo removes those overrides and custom roles; automatic routes are inactive while native delegation remains available. Both modes retain the profile's layout: work split, private inline. Explicit install applies root defaults; mode and instruction sync preserve user selection.
+Team enables native agents, sets `agents.max_concurrent_threads_per_session = 3` (excluding root), and sets `features.multi_agent_v2.multi_agent_mode_hint_text = ""`. A previously owned `agents.max_threads` alias is removed. Solo removes those overrides and team-only Luna/Sol roles, retaining only the shared `terra_computer` GUI specialist. Team routing remains inactive while the explicit visual computer-use route can still delegate to Terra. Both modes retain the profile's layout: work split, private inline. Explicit install applies root defaults; mode and instruction sync preserve user selection.
 
 Fully restart Codex and begin a new chat/thread after any update. Restart OpenCode after merging definitions. Then inspect `status` and run the repository checks documented in [verification](verification.md). Existing chats are not valid evidence of newly installed instructions.
