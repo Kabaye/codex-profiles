@@ -14,7 +14,9 @@ The `work` profile splits runtime instructions into three adjacent documents und
 
 In `work`, the router selects the policy from the target repository path: `$HOME/Projects/private` uses `PRIVATE.md` automatically, and other targets use `WORK.md`. No declaration phrase is required. Detailed routing stays out of the work home `AGENTS.md`.
 
-Work's personal-sidecar routing is sourced from `work/personal-agents-subset.md`, not from the separate private profile.\n\nThe `private` profile keeps shared rules, personal account policy and native worker routing together in `AGENTS.md`. It has no path router and installs no policy sidecars. A private instruction sync removes only previously owned sidecar blocks, preserving other managers' blocks and user prose.
+Work's personal-sidecar routing is sourced from `work/personal-agents-subset.md`, not from the separate private profile.
+
+The `private` profile keeps shared rules, personal account policy and native worker routing together in `AGENTS.md`. It has no path router and installs no policy sidecars. A private instruction sync removes only previously owned sidecar blocks, preserving other managers' blocks and user prose.
 
 Each manager replaces only its own marker block. The canonical order is the `codex-config` block followed by the `codex-profiles` block; unrelated user prose remains. Instruction state stores hashes of owned blocks, so another manager's changes do not invalidate ownership. Changed or missing owned blocks stop updates/removal before writes; review those changes explicitly.
 
@@ -31,7 +33,9 @@ Both profiles default to `solo`. Instruction layout depends on the profile, inde
 
 `work/team` uses named OpenCode primary agents: `work-scout` with `litellm/corp-code-fast` for file lookup or `litellm/corp-chat-max` for current-code explanations, both read-only; `work-code` with `litellm/global.openai.gpt-6-luna` for implementation and checks. Only explicit Cloud quota exhaustion permits native `luna_worker`, then only explicit native quota exhaustion permits Cursor. Automatic Cursor jobs explicitly use `auto-smart[optimize_for=cost]` (Auto Cost), with Max Mode off and exploration inheriting the parent model. If unavailable, stop instead of choosing another model; a different Cursor model requires an exact user request. Network/authentication/validation failures do not advance this chain.
 
-The `terra_computer` role (`gpt-6.1-terra`, medium) is shared by both installations and both modes, and is selected only for live visual computer-use actions when Browser/Computer Use tools are accessible. Non-GUI tasks retain existing routing. It requires Codex CLI 0.159.0+ and model availability; without the UI tools it cannot click.\n\nThe native team cap is `agents.max_concurrent_threads_per_session = 3`, excluding the root. Work policy also bounds all open delegated CLI/native/Cursor jobs together because the native cap does not cover external processes. The native config key is documented in [official OpenAI documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents#global-settings); `agents.max_threads` is a legacy alias. Full lifecycle commands migrate a previously owned alias; an unowned alias requires explicit review.
+The `terra_computer` role (`gpt-6.1-terra`, medium) is shared by both installations and both modes, and is selected only for live visual computer-use actions when Browser/Computer Use tools are accessible. Non-GUI tasks retain existing routing. It requires Codex CLI 0.159.0+ and model availability; without the UI tools it cannot click.
+
+The native team cap is `agents.max_concurrent_threads_per_session = 3`, excluding the root. Work policy also bounds all open delegated CLI/native/Cursor jobs together because the native cap does not cover external processes. The native config key is documented in [official OpenAI documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents#global-settings); `agents.max_threads` is a legacy alias. Full lifecycle commands migrate a previously owned alias; an unowned alias requires explicit review.
 
 ## Safe instruction-only activation
 
