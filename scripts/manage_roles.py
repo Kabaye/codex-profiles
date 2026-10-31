@@ -16,10 +16,10 @@ PROFILES = {"private", "work"}
 RETIRED_PROFILES = {"lite"}  # Recognize installed legacy state only for cleanup.
 MODE_PROFILES = {"private", "work"}
 MODES = {"solo", "team"}
-ROLE_FILES = {"luna-worker.toml", "sol-worker.toml"}
+ROLE_FILES = {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"}
 LEGACY_ALIAS_FILES = {"profile-default.toml", "profile-worker.toml", "profile-explorer.toml"}
 OWNABLE = ROLE_FILES | LEGACY_ALIAS_FILES
-RESERVED_NAMES = {"luna_worker", "sol_worker", "default", "worker", "explorer"}
+RESERVED_NAMES = {"luna_worker", "sol_worker", "terra_computer", "default", "worker", "explorer"}
 
 
 def normalize_mode(profile: str, mode: str | None) -> str:
@@ -63,16 +63,17 @@ def atomic_write(path: Path, data: bytes) -> None:
 
 def desired_roles(profile: str, mode: str | None = None, root: Path = ROOT) -> dict[str, bytes]:
     selected = normalize_mode(profile, mode)
-    if profile in MODE_PROFILES and selected == "solo":
-        return {}
+    # One shared GUI specialist is installed for both profiles and modes.
+    sources = [root / "shared" / "agents" / "terra-computer.toml"]
+    if selected == "team":
+        sources.extend(sorted((root / profile / "agents").glob("*.toml")))
     result = {
         path.name: path.read_bytes().replace(b"\r\n", b"\n")
-        for path in sorted((root / profile / "agents").glob("*.toml"))
+        for path in sources
     }
-    expected = {
-        "private": {"luna-worker.toml", "sol-worker.toml"},
-        "work": {"luna-worker.toml", "sol-worker.toml"},
-    }[profile]
+    expected = {"terra-computer.toml"}
+    if selected == "team":
+        expected.update({"luna-worker.toml", "sol-worker.toml"})
     if set(result) != expected:
         raise ValueError(f"Unexpected role set for {profile}: {', '.join(sorted(result))}")
     for filename, data in result.items():
