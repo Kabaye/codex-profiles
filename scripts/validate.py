@@ -21,10 +21,12 @@ TEAM_ROLES = {
     "private": {
         "luna_worker": ("gpt-6-luna", "max"),
         "sol_worker": ("gpt-6.1-sol", "xhigh"),
+        "terra_computer": ("gpt-6.1-terra", "medium"),
     },
     "work": {
         "luna_worker": ("gpt-6-luna", "max"),
         "sol_worker": ("gpt-6.1-sol", "xhigh"),
+        "terra_computer": ("gpt-6.1-terra", "medium"),
     },
 }
 
@@ -100,8 +102,8 @@ def validate(
         check(config.get("memories", {}) == {}, f"{name}: memory routing drift")
 
         actual_roles: dict[str, tuple[str, str]] = {}
-        for path in (root / name / "agents").glob("*.toml"):
-            role = tomllib.loads(path.read_text(encoding="utf-8"))
+        for filename, raw in manage_roles.desired_roles(name, "team", root).items():
+            role = tomllib.loads(raw.decode("utf-8"))
             role_name = role.get("name")
             check(role_name not in actual_roles, f"{name}: duplicate role {role_name}")
             actual_roles[role_name] = (
@@ -119,9 +121,7 @@ def validate(
         check(actual_roles == TEAM_ROLES[name], f"{name}: unexpected/missing team role")
 
         team_files = set(manage_roles.desired_roles(name, "team", root))
-        expected_files = {
-            "luna-worker.toml"
-        } | ({"sol-worker.toml"} if name in {"private", "work"} else set())
+        expected_files = {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"}
         check(team_files == expected_files, f"{name}: explicit team role files drift")
         check(
             not any(filename.startswith("profile-") for filename in team_files),
@@ -129,8 +129,8 @@ def validate(
         )
         if name in manage_roles.MODE_PROFILES:
             check(
-                manage_roles.desired_roles(name, "solo", root) == {},
-                f"{name}: solo must install no custom roles",
+                set(manage_roles.desired_roles(name, "solo", root)) == {"terra-computer.toml"},
+                f"{name}: solo must install only the global computer-use specialist",
             )
 
         text = (root / name / "agents-subset.md").read_text(encoding="utf-8")
@@ -152,7 +152,7 @@ def validate(
             "Independent review only when the user explicitly requests one." in text,
             f"{name}: explicit independent-review policy missing",
         )
-        for role_name in ({"sol_worker", "luna_worker"} if name == "private" else {"luna_worker"}):
+        for role_name in ({"sol_worker", "luna_worker", "terra_computer"} if name == "private" else {"luna_worker", "terra_computer"}):
             check(role_name in text, f"{name}: explicit {role_name} routing missing")
         if name == "work":
             for route in ("work-scout", "work-code", "corp-code-fast", "corp-chat-max", "litellm/global.openai.gpt-6-luna", "quota", "Cursor"):
@@ -166,6 +166,7 @@ def validate(
             if name in {"private", "work"}:
                 required.add(("gpt-6-luna", "max"))
                 required.add(("gpt-6.1-sol", "xhigh"))
+                required.add(("gpt-6.1-terra", "medium"))
 
     if catalog is not None:
         errors.extend(_catalog_errors(catalog, required))
