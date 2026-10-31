@@ -81,6 +81,16 @@ def validate(
                 f"shared {operation} guide does not use unified profile lifecycle",
             )
 
+    shared_path = root / "shared" / "agents-subset.md"
+    shared = shared_path.read_text(encoding="utf-8").strip() if shared_path.is_file() else ""
+    check(shared.count("terra_computer") == 1, "shared: Terra GUI routing must have one source")
+    check(BEGIN not in shared and END not in shared, "shared: fragment must have no managed markers")
+    personal_work_path = root / "work" / "personal-agents-subset.md"
+    check(personal_work_path.is_file(), "work: personal routing source missing")
+    if personal_work_path.is_file():
+        check("terra_computer" not in personal_work_path.read_text(encoding="utf-8"),
+              "work: personal routing must use the shared GUI fragment")
+
     for name, (root_model, root_effort) in ROOTS.items():
         config = tomllib.loads((root / name / "config.toml").read_text(encoding="utf-8"))
         check(
@@ -152,8 +162,10 @@ def validate(
             "Independent review only when the user explicitly requests one." in text,
             f"{name}: explicit independent-review policy missing",
         )
-        for role_name in ({"sol_worker", "luna_worker", "terra_computer"} if name == "private" else {"luna_worker", "terra_computer"}):
+        for role_name in ({"sol_worker", "luna_worker"} if name == "private" else {"luna_worker"}):
             check(role_name in text, f"{name}: explicit {role_name} routing missing")
+        check("terra_computer" not in text,
+              f"{name}: Terra GUI routing must remain in the shared fragment")
         if name == "work":
             for route in ("work-scout", "work-code", "corp-code-fast", "corp-chat-max", "litellm/global.openai.gpt-6-luna", "quota", "Cursor"):
                 check(route in text, f"work: {route} route missing")
