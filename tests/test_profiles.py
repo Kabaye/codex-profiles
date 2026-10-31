@@ -28,13 +28,16 @@ class ProfileStaticTests(unittest.TestCase):
     def test_static_profiles(self):
         self.assertEqual(presets.validate(), [])
 
-    def test_private_and_work_solo_have_no_custom_roles(self):
+    def test_private_and_work_solo_keep_only_shared_gui_role(self):
         for profile in ("private", "work"):
             with self.subTest(profile=profile):
-                self.assertEqual(roles.desired_roles(profile, "solo"), {})
+                self.assertEqual(
+                    set(roles.desired_roles(profile, "solo")),
+                    {"terra-computer.toml"},
+                )
                 self.assertEqual(
                     set(roles.desired_roles(profile, "team")),
-                    {"luna-worker.toml", "sol-worker.toml"},
+                    {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
                 )
 
     def test_team_profiles_keep_explicit_roles_without_aliases(self):
@@ -66,24 +69,32 @@ class ProfileStaticTests(unittest.TestCase):
         (agents / "sol-advisor.toml").write_text('name = "sol_advisor"\n')
         result = roles.manage(self.home, "private", mode="solo")
         self.assertIn("sol-advisor.toml", result["changed_roles"])
-        self.assertEqual(self.snapshot(), {})
+        self.assertEqual(set(self.snapshot()), {"terra-computer.toml"})
         state = json.loads((self.home / "profiles" / "roles-state.json").read_text())
         self.assertEqual(state["version"], 2)
         self.assertEqual(state["profile"], "private")
         self.assertEqual(state["mode"], "solo")
-        self.assertEqual(state["owned"], {})
+        self.assertEqual(
+            state["owned"],
+            {"terra-computer.toml": roles.digest(self.snapshot()["terra-computer.toml"])},
+        )
 
     def test_team_then_solo_replaces_exact_role_set(self):
         roles.manage(self.home, "private", mode="team")
         self.assertEqual(
             set(self.snapshot()),
-            {"luna-worker.toml", "sol-worker.toml"},
+            {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
         )
         roles.manage(self.home, "private", mode="solo")
-        self.assertEqual(self.snapshot(), {})
+        self.assertEqual(set(self.snapshot()), {"terra-computer.toml"})
 
     def test_remove_accepts_solo_manifest_with_empty_owned_set(self):
-        roles.manage(self.home, "private", mode="solo")
+        control = self.home / "profiles"
+        control.mkdir(parents=True)
+        (control / "roles-state.json").write_text(
+            json.dumps({"version": 2, "profile": "private", "mode": "solo", "owned": {}}),
+            encoding="utf-8",
+        )
         result = roles.manage(self.home, None)
         self.assertEqual(result["changed_roles"], [])
         self.assertFalse((self.home / "profiles" / "roles-state.json").exists())
