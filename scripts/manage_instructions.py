@@ -74,7 +74,9 @@ def desired_docs(profile: str | None, mode: str | None) -> dict[str, str | None]
     if profile is None:
         return dict.fromkeys(DOCS)
     selected = manage_roles.normalize_mode(profile, mode)
-    private_policy = block((ROOT / "private" / "agents-subset.md").read_text(encoding="utf-8"))
+    personal_source = ROOT / ("private/agents-subset.md" if profile == "private"
+                              else "work/personal-agents-subset.md")
+    private_policy = block(personal_source.read_text(encoding="utf-8"))
     if private_policy is None:
         raise ValueError("Private routing source has no managed policy block")
     if profile == "private":
