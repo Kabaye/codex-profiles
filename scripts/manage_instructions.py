@@ -70,18 +70,34 @@ def metadata(profile: str, mode: str) -> str:
     )
 
 
+def _compose_policy(source: Path, shared: str) -> str:
+    """Insert the common specialist route into one owned block, without duplication."""
+    policy = block(source.read_text(encoding="utf-8"))
+    if policy is None:
+        raise ValueError(f"Profile routing source has no managed policy block: {source}")
+    anchor_lines = [
+        line for line in policy.splitlines()
+        if line.startswith("- In `solo` mode, retain native Codex delegation behavior;")
+    ]
+    if len(anchor_lines) != 1:
+        raise ValueError(f"Profile routing source has no unique mode anchor: {source}")
+    anchor = anchor_lines[0] + "\n"
+    return policy.replace(anchor, anchor + shared + "\n", 1)
+
+
 def desired_docs(profile: str | None, mode: str | None) -> dict[str, str | None]:
     if profile is None:
         return dict.fromkeys(DOCS)
     selected = manage_roles.normalize_mode(profile, mode)
+    shared = normalize((ROOT / "shared" / "agents-subset.md").read_text(encoding="utf-8")).strip()
+    if not shared or BEGIN in shared or END in shared:
+        raise ValueError("Shared agent routing must be a nonempty, unmarked fragment")
     personal_source = ROOT / ("private/agents-subset.md" if profile == "private"
                               else "work/personal-agents-subset.md")
-    private_policy = block(personal_source.read_text(encoding="utf-8"))
-    if private_policy is None:
-        raise ValueError("Private routing source has no managed policy block")
+    personal_policy = _compose_policy(personal_source, shared)
     if profile == "private":
         return {
-            "AGENTS.md": private_policy.replace(
+            "AGENTS.md": personal_policy.replace(
                 BEGIN, f"{BEGIN}\n- Active root profile: `{profile}`; agent mode: `{selected}`.", 1
             ),
             "WORK.md": None,
@@ -89,8 +105,8 @@ def desired_docs(profile: str | None, mode: str | None) -> dict[str, str | None]
         }
     return {
         "AGENTS.md": metadata(profile, selected),
-        "WORK.md": block((ROOT / "work" / "agents-subset.md").read_text(encoding="utf-8")),
-        "PRIVATE.md": private_policy,
+        "WORK.md": _compose_policy(ROOT / "work" / "agents-subset.md", shared),
+        "PRIVATE.md": personal_policy,
     }
 
 
