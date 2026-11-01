@@ -35,7 +35,7 @@ Both profiles default to `solo`. Instruction layout depends on the profile, inde
 
 The `terra_computer` role (`gpt-6.1-terra`, medium) is shared by both installations and both modes, and is selected only for live visual computer-use actions when Browser/Computer Use tools are accessible. Non-GUI tasks retain existing routing. It requires Codex CLI 0.159.0+ and model availability; without the UI tools it cannot click.
 
-The native team cap is `agents.max_concurrent_threads_per_session = 3`, excluding the root. Work policy also bounds all open delegated CLI/native/Cursor jobs together because the native cap does not cover external processes. The native config key is documented in [official OpenAI documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents#global-settings); `agents.max_threads` is a legacy alias. Full lifecycle commands migrate a previously owned alias; an unowned alias requires explicit review.
+The native team cap is `agents.max_concurrent_threads_per_session = 2`, excluding the root. The shared policy prefers one active delegated job and allows a second only when worthwhile; the same two-job budget covers native threads and external OpenCode CLI/Cursor jobs because the native cap does not cover external processes. The native config key is documented in [official OpenAI documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents#global-settings); `agents.max_threads` is a legacy alias. Full lifecycle commands migrate a previously owned alias; an unowned alias requires explicit review.
 
 ## Safe instruction-only activation
 
