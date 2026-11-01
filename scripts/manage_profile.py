@@ -224,7 +224,7 @@ def _desired_config(
         if mode == "team":
             source["agents"] = {
                 "enabled": True,
-                "max_concurrent_threads_per_session": 3,
+                "max_concurrent_threads_per_session": 2,
             }
             features = source.setdefault("features", {})
             features["multi_agent_v2"] = {"multi_agent_mode_hint_text": ""}
