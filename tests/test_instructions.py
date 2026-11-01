@@ -328,7 +328,7 @@ class InstructionLifecycleTests(unittest.TestCase):
         path.write_text(path.read_text().replace("max_concurrent_threads_per_session", "max_threads"))
         self.install()
         text = path.read_text()
-        self.assertIn("max_concurrent_threads_per_session = 3", text)
+        self.assertIn("max_concurrent_threads_per_session = 2", text)
         self.assertNotIn("max_threads", text)
 
     def test_unowned_legacy_cap_is_preserved_by_refusal(self):
