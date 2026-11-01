@@ -32,6 +32,8 @@ class TerraComputerRoutingTests(unittest.TestCase):
     def test_live_gui_policy_is_composed_once_in_both_profiles_and_modes(self):
         shared = (ROOT / "shared" / "agents-subset.md").read_text(encoding="utf-8").strip()
         self.assertEqual(shared.count("terra_computer"), 1)
+        self.assertIn("Prefer one active delegated worker", shared)
+        self.assertIn("never have more than two delegated jobs", shared)
         for source in ("work/agents-subset.md", "work/personal-agents-subset.md",
                        "private/agents-subset.md"):
             with self.subTest(source=source):
