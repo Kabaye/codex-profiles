@@ -118,7 +118,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(
             self.config()["agents"],
-            {"enabled": True, "max_concurrent_threads_per_session": 3},
+            {"enabled": True, "max_concurrent_threads_per_session": 2},
         )
         self.assertEqual(
             self.config()["features"]["multi_agent_v2"],
@@ -158,7 +158,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertIn("Independent review only when the user explicitly requests one.", text)
         self.assertEqual(
             self.config()["agents"],
-            {"enabled": True, "max_concurrent_threads_per_session": 3},
+            {"enabled": True, "max_concurrent_threads_per_session": 2},
         )
         self.assertEqual(
             self.role_names(),
@@ -181,7 +181,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             'unrelated_top = "keep"\n'
             '[agents]\n'
             'enabled = true\n'
-            'max_concurrent_threads_per_session = 2\n',
+            'max_concurrent_threads_per_session = 4\n',
             encoding="utf-8",
         )
         worker_path = self.home / "agents" / "sol-worker.toml"
@@ -199,7 +199,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 if mode == "team":
                     self.assertEqual(
                         config["agents"],
-                        {"enabled": True, "max_concurrent_threads_per_session": 3},
+                        {"enabled": True, "max_concurrent_threads_per_session": 2},
                     )
                     self.assertEqual(
                         worker_path.read_bytes(),
