@@ -84,6 +84,8 @@ def validate(
     shared_path = root / "shared" / "agents-subset.md"
     shared = shared_path.read_text(encoding="utf-8").strip() if shared_path.is_file() else ""
     check(shared.count("terra_computer") == 1, "shared: Terra GUI routing must have one source")
+    check("Prefer one active delegated worker" in shared and "never have more than two delegated jobs" in shared,
+          "shared: conservative one-default/two-maximum delegation budget missing")
     check(BEGIN not in shared and END not in shared, "shared: fragment must have no managed markers")
     personal_work_path = root / "work" / "personal-agents-subset.md"
     check(personal_work_path.is_file(), "work: personal routing source missing")
