@@ -49,17 +49,40 @@ class InstructionLifecycleTests(unittest.TestCase):
                     expected = set(instructions.DOCS) if profile == "work" else {"AGENTS.md"}
                     self.assertEqual({p.name for p in self.home.glob("*.md")}, expected)
                     home_text = (self.home / "AGENTS.md").read_text()
-                    self.assertIn(f"`{profile}`; agent mode: `{mode}`", home_text)
+                    self.assertIn(f"Active root profile: `{profile}`.", home_text)
+                    self.assertNotIn("agent mode:", home_text)
                     self.assertNotIn("work-code", home_text)
-                    self.assertEqual("sol_worker" in home_text, profile == "private")
+                    self.assertEqual("sol_worker" in home_text, profile == "private" and mode == "team")
                     for name in (("WORK.md", "PRIVATE.md") if profile == "work" else ("AGENTS.md",)):
                         text = (self.home / name).read_text()
-                        self.assertIn("In `solo` mode, use native delegation", text)
-                        self.assertIn("in `team` mode, use the routes below", text)
+                        self.assertNotIn("`solo`", text)
+                        self.assertNotIn("`team`", text)
+                        if mode == "solo":
+                            for route in ("sol_worker", "luna_worker", "work-code", "work-scout", "Cursor"):
+                                self.assertNotIn(route, text)
+                        else:
+                            self.assertIn("luna_worker", text)
                     if profile == "private":
                         self.assertNotIn("WORK.md", home_text)
                         self.assertNotIn("PRIVATE.md", home_text)
                         self.assertNotIn("work-scout", home_text)
+
+    def test_solo_assembly_works_without_any_team_sources(self):
+        source = Path(self.tmp.name) / "solo-only-source"
+        shared = source / "shared"
+        shared.mkdir(parents=True)
+        (shared / "agents-subset.md").write_text("- Common specialist rule.\n")
+        (shared / "solo-agents-subset.md").write_text(
+            f"{instructions.BEGIN}\n- Native behavior fixture.\n{instructions.END}\n"
+        )
+        with patch.object(instructions, "ROOT", source):
+            for profile in ("private", "work"):
+                with self.subTest(profile=profile):
+                    docs = instructions.desired_docs(profile, "solo")
+                    policies = (docs["WORK.md"], docs["PRIVATE.md"]) if profile == "work" else (docs["AGENTS.md"],)
+                    for text in policies:
+                        self.assertIn("Native behavior fixture.", text)
+                        self.assertEqual(text.count("Common specialist rule."), 1)
 
     def test_block_order_preserves_config_and_user_prose_in_both_manager_orders(self):
         # Config first, profiles second.
@@ -108,7 +131,10 @@ class InstructionLifecycleTests(unittest.TestCase):
         """Reproduce the previously published private layout with recorded ownership."""
         self.install("private", "team")
         previous = {
-            "AGENTS.md": instructions.metadata("private", "team"),
+            "AGENTS.md": (
+                f"{instructions.BEGIN}\n- Active root profile: `private`; agent mode: `team`.\n"
+                f"- Use the user-selected root model and effort.\n{instructions.END}"
+            ),
             "WORK.md": instructions.block((instructions.ROOT / "work/agents-subset.md").read_text()),
             "PRIVATE.md": instructions.block((instructions.ROOT / "private/agents-subset.md").read_text()),
         }

@@ -88,6 +88,7 @@ def validate(
     check("Prefer one active worker" in shared and "at most two delegated jobs" in shared,
           "shared: conservative one-default/two-maximum delegation budget missing")
     check(BEGIN not in shared and END not in shared, "shared: fragment must have no managed markers")
+    check((root / "shared" / "solo-agents-subset.md").is_file(), "shared: solo routing source missing")
     personal_work_path = root / "work" / "personal-agents-subset.md"
     check(personal_work_path.is_file(), "work: personal routing source missing")
     if personal_work_path.is_file():

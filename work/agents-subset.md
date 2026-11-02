@@ -1,6 +1,5 @@
 <!-- codex-profiles:begin -->
 - Use the user-selected root model and effort. Root owns architecture, integration and final acceptance. Independent review only when the user explicitly requests one.
-- In `solo` mode, use native delegation; in `team` mode, use the routes below.
 - Use OpenCode `work-code` with `--model litellm/global.openai.gpt-6-luna` for bounded implementation, debugging and checks by default. Give it owned files, a contract, acceptance criteria and a stop boundary; review source before assigning corrections.
 - Use read-only OpenCode `work-scout` with `--model litellm/corp-code-fast` only for a specific unresolved path/symbol or local-fact question; scouting is optional. Root handles deeper flow/contract analysis without automatically adding another corporate model. Verify claims against source; separate facts, inference and unread scope.
 - Bound each scout to focused paths, 16 steps and 120 seconds; return partial evidence on exhaustion. Budget the whole task, including scouts, retries, coordination and review; do not silently extend it or allow self-assigned repair loops.

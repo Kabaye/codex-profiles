@@ -406,7 +406,9 @@ def build_agents(text: str, profile: str | None, *, mode: str | None = None) -> 
 
 def _known_instruction_blocks() -> list[str]:
     return _git_history_blocks() + [
-        manage_instructions.metadata(profile, mode) for profile in PROFILES for mode in MODES
+        f"{BEGIN}\n- Active root profile: `{profile}`; agent mode: `{mode}`.\n"
+        f"- Use the user-selected root model and effort.\n{END}"
+        for profile in PROFILES for mode in MODES
     ]
 
 

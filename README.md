@@ -11,6 +11,8 @@ Configures Codex root models, native agent roles and task routing for the **work
 
 On a work computer, `WORK.md` routes corporate tasks and `PRIVATE.md` routes personal tasks. Their routing sources are `work/agents-subset.md` and **`work/personal-agents-subset.md`**, respectively; the latter is independent of `private/agents-subset.md` used by the separate private installation. `scripts/manage_instructions.py` assembles the single shared GUI/budget fragment from `shared/agents-subset.md` into the applicable policy exactly once.
 
+Team uses those profile-specific routing sources; solo uses only `shared/solo-agents-subset.md`. The manager selects the source before assembly. Runtime instruction blocks contain only the selected rules, with no mode labels or solo/team conditions; the selected mode remains in the manager's state files.
+
 Root model/effort selected by the user remain authoritative. Running `mode` or `sync-instructions` preserves them; an explicit fresh `install` applies the profile defaults.
 
 ## Agent selection

@@ -61,10 +61,10 @@ def replace_block(text: str, desired: str | None) -> str:
     return text + ("\n" if text else "")
 
 
-def metadata(profile: str, mode: str) -> str:
+def metadata(profile: str) -> str:
     return (
         f"{BEGIN}\n"
-        f"- Active root profile: `{profile}`; agent mode: `{mode}`.\n"
+        f"- Active root profile: `{profile}`.\n"
         "- Use the user-selected root model and effort.\n"
         f"{END}"
     )
@@ -75,14 +75,7 @@ def _compose_policy(source: Path, shared: str) -> str:
     policy = block(source.read_text(encoding="utf-8"))
     if policy is None:
         raise ValueError(f"Profile routing source has no managed policy block: {source}")
-    anchor_lines = [
-        line for line in policy.splitlines()
-        if line.startswith("- In `solo` mode,")
-    ]
-    if len(anchor_lines) != 1:
-        raise ValueError(f"Profile routing source has no unique mode anchor: {source}")
-    anchor = anchor_lines[0] + "\n"
-    return policy.replace(anchor, anchor + shared + "\n", 1)
+    return policy.replace(BEGIN, f"{BEGIN}\n{shared}", 1)
 
 
 def desired_docs(profile: str | None, mode: str | None) -> dict[str, str | None]:
@@ -92,20 +85,24 @@ def desired_docs(profile: str | None, mode: str | None) -> dict[str, str | None]
     shared = normalize((ROOT / "shared" / "agents-subset.md").read_text(encoding="utf-8")).strip()
     if not shared or BEGIN in shared or END in shared:
         raise ValueError("Shared agent routing must be a nonempty, unmarked fragment")
-    personal_source = ROOT / ("private/agents-subset.md" if profile == "private"
-                              else "work/personal-agents-subset.md")
+    solo_source = ROOT / "shared" / "solo-agents-subset.md"
+    personal_source = solo_source if selected == "solo" else ROOT / (
+        "private/agents-subset.md" if profile == "private" else "work/personal-agents-subset.md"
+    )
     personal_policy = _compose_policy(personal_source, shared)
     if profile == "private":
         return {
             "AGENTS.md": personal_policy.replace(
-                BEGIN, f"{BEGIN}\n- Active root profile: `{profile}`; agent mode: `{selected}`.", 1
+                BEGIN, f"{BEGIN}\n- Active root profile: `{profile}`.", 1
             ),
             "WORK.md": None,
             "PRIVATE.md": None,
         }
     return {
-        "AGENTS.md": metadata(profile, selected),
-        "WORK.md": _compose_policy(ROOT / "work" / "agents-subset.md", shared),
+        "AGENTS.md": metadata(profile),
+        "WORK.md": _compose_policy(
+            solo_source if selected == "solo" else ROOT / "work" / "agents-subset.md", shared
+        ),
         "PRIVATE.md": personal_policy,
     }
 

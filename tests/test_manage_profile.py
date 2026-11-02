@@ -60,7 +60,10 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 self.assertNotIn("agents", config)
                 self.assertNotIn("multi_agent_v2", config.get("features", {}))
                 self.assertNotIn("model_catalog_json", config)
-                self.assertIn(f"`{profile}`; agent mode: `solo`", (self.home / "AGENTS.md").read_text())
+                agents_text = (self.home / "AGENTS.md").read_text()
+                self.assertIn(f"Active root profile: `{profile}`.", agents_text)
+                self.assertNotIn("sol_worker", agents_text)
+                self.assertNotIn("agent mode:", agents_text)
                 for name in ("WORK.md", "PRIVATE.md"):
                     self.assertEqual((self.home / name).is_file(), profile == "work")
                 self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
@@ -102,7 +105,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(solo["mode"], "solo")
         self.assertEqual(self.role_names(), {"terra-computer.toml"})
-        self.assertIn("agent mode: `solo`", (self.home / "AGENTS.md").read_text())
+        self.assertNotIn("sol_worker", (self.home / "AGENTS.md").read_text())
         self.assertNotIn("agents", self.config())
         self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
@@ -168,11 +171,11 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                         worker_path.read_bytes(),
                         roles.desired_roles("private", "team")["sol-worker.toml"],
                     )
-                    self.assertIn("agent mode: `team`", agents_path.read_text(encoding="utf-8"))
+                    self.assertIn("sol_worker", agents_path.read_text(encoding="utf-8"))
                 else:
                     self.assertNotIn("agents", config)
                     self.assertEqual(self.role_names(), {"terra-computer.toml"})
-                    self.assertIn("agent mode: `solo`", agents_path.read_text(encoding="utf-8"))
+                    self.assertNotIn("sol_worker", agents_path.read_text(encoding="utf-8"))
 
     def test_unrelated_custom_catalog_is_refused(self):
         self.home.mkdir()
