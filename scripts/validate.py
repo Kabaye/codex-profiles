@@ -72,13 +72,14 @@ def validate(
 
     check((root / "scripts" / "manage_profile.py").is_file(), "unified profile lifecycle manager missing")
     check(set(ROOTS) == set(manage_roles.PROFILES), "public profile registry drift")
-    for operation in ("install", "remove"):
-        guide = root / "docs" / f"{operation}.md"
-        check(guide.is_file(), f"shared {operation} guide missing")
-        if guide.is_file():
+    guide = root / "README.md"
+    check(guide.is_file(), "profile lifecycle README missing")
+    if guide.is_file():
+        instructions = guide.read_text(encoding="utf-8")
+        for command in ("install", "remove", "sync-instructions", "mode", "status"):
             check(
-                "scripts/manage_profile.py" in guide.read_text(encoding="utf-8"),
-                f"shared {operation} guide does not use unified profile lifecycle",
+                f"scripts/manage_profile.py {command}" in instructions,
+                f"README omits unified {command} lifecycle command",
             )
 
     shared_path = root / "shared" / "agents-subset.md"
