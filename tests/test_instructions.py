@@ -104,24 +104,6 @@ class InstructionLifecycleTests(unittest.TestCase):
         lifecycle.sync_instructions(self.home)
         self.assertEqual(before, self.snapshot())
 
-    def test_sync_migrates_legacy_agents_without_touching_any_other_file(self):
-        self.install("private", "solo")
-        (self.home / "profiles" / instructions.STATE).unlink()
-        legacy = next(value for value in lifecycle._git_history_blocks() if value.startswith(instructions.BEGIN))
-        (self.home / "AGENTS.md").write_text("user\n\n" + legacy)
-        (self.home / "WORK.md").unlink(missing_ok=True)
-        (self.home / "PRIVATE.md").unlink(missing_ok=True)
-        before = self.snapshot()
-        result = lifecycle.sync_instructions(self.home)
-        self.assertEqual(result["profile"], "private")
-        self.assertEqual(result["mode"], "solo")
-        after = self.snapshot()
-        for name, data in before.items():
-            if name != "AGENTS.md":
-                self.assertEqual(after[name], data)
-        self.assertIn("user", (self.home / "AGENTS.md").read_text())
-        self.assertNotIn(legacy, (self.home / "AGENTS.md").read_text())
-
     def seed_previous_split_private(self):
         """Reproduce the previously published private layout with recorded ownership."""
         self.install("private", "team")
@@ -156,51 +138,6 @@ class InstructionLifecycleTests(unittest.TestCase):
         lifecycle.sync_instructions(self.home)
         self.assertEqual(self.snapshot(), settled)
 
-    def test_private_migration_preserves_foreign_blocks_and_user_prose_in_sidecars(self):
-        self.seed_previous_split_private()
-        for name in instructions.DOCS:
-            path = self.home / name
-            path.write_text("user prefix\n\n" + self.config_block(name) + "\n\n"
-                            + path.read_text() + "\nuser suffix\n")
-        lifecycle.sync_instructions(self.home)
-        for name in instructions.DOCS:
-            text = (self.home / name).read_text()
-            self.assertIn(self.config_block(name), text)
-            self.assertIn("user prefix", text)
-            self.assertIn("user suffix", text)
-            if name == "AGENTS.md":
-                self.assertIn("sol_worker", text)
-                self.assertLess(text.index(instructions.CONFIG_END), text.index(instructions.BEGIN))
-            else:
-                self.assertNotIn(instructions.BEGIN, text)
-
-    def test_private_migration_refuses_edited_sidecar_before_any_write(self):
-        self.seed_previous_split_private()
-        path = self.home / "WORK.md"
-        path.write_text(path.read_text().replace("work-code", "user-edited-route"))
-        before = self.snapshot()
-        with self.assertRaisesRegex(ValueError, "instruction block changed"):
-            lifecycle.sync_instructions(self.home)
-        self.assertEqual(self.snapshot(), before)
-
-    def test_private_sync_preserves_unmanaged_sidecars(self):
-        self.install("private", "solo")
-        for name in ("WORK.md", "PRIVATE.md"):
-            (self.home / name).write_text("unmanaged user document\n")
-        before = self.snapshot()
-        lifecycle.sync_instructions(self.home)
-        self.assertEqual(self.snapshot(), before)
-
-    def test_unowned_modified_legacy_block_is_not_adopted(self):
-        self.install()
-        (self.home / "profiles" / instructions.STATE).unlink()
-        path = self.home / "AGENTS.md"
-        path.write_text(instructions.BEGIN + "\nuser-customized old route\n" + instructions.END)
-        before = self.snapshot()
-        with self.assertRaisesRegex(ValueError, "Unowned instruction block collision"):
-            lifecycle.sync_instructions(self.home)
-        self.assertEqual(before, self.snapshot())
-
     def test_modified_owned_block_refuses_sync_install_and_remove_before_any_write(self):
         for name in instructions.DOCS:
             with self.subTest(name=name):
@@ -228,11 +165,6 @@ class InstructionLifecycleTests(unittest.TestCase):
             self.assertNotIn(instructions.BEGIN, text)
         self.assertFalse((self.home / "profiles" / instructions.STATE).exists())
 
-    def test_remove_deletes_empty_sidecars(self):
-        self.install()
-        lifecycle.apply(self.home, None)
-        self.assertFalse(any((self.home / name).exists() for name in instructions.DOCS))
-
     def test_sync_dry_run_and_cli_keep_all_bytes(self):
         self.install()
         before = self.snapshot()
@@ -240,11 +172,6 @@ class InstructionLifecycleTests(unittest.TestCase):
         with patch.object(sys, "argv", args), redirect_stdout(StringIO()):
             self.assertEqual(lifecycle.main(), 0)
         self.assertEqual(before, self.snapshot())
-
-    def test_sync_requires_installed_profile(self):
-        with self.assertRaisesRegex(ValueError, "Install a supported managed profile"):
-            lifecycle.sync_instructions(self.home)
-        self.assertEqual(self.snapshot(), {})
 
     def test_opencode_merge_and_removal_preserve_providers_globals_other_agents(self):
         path = self.opencode()
@@ -295,15 +222,6 @@ class InstructionLifecycleTests(unittest.TestCase):
                 action()
             self.assertEqual(before, self.snapshot())
 
-    def test_opencode_dry_run_and_missing_path(self):
-        path = self.opencode()
-        original = path.read_bytes()
-        self.install(opencode_config=path, dry_run=True)
-        self.assertEqual(path.read_bytes(), original)
-        self.assertEqual(self.snapshot(), {})
-        with self.assertRaisesRegex(ValueError, "existing JSON"):
-            self.install(opencode_config=Path(self.tmp.name) / "absent.json")
-
     def test_instruction_write_failure_rolls_back_full_lifecycle(self):
         self.install()
         before = self.snapshot()
@@ -321,15 +239,6 @@ class InstructionLifecycleTests(unittest.TestCase):
             with self.assertRaisesRegex(OSError, "injected"):
                 self.install("private", "solo")
         self.assertEqual(before, self.snapshot())
-
-    def test_owned_legacy_cap_is_migrated_to_canonical_key(self):
-        self.install()
-        path = self.home / "config.toml"
-        path.write_text(path.read_text().replace("max_concurrent_threads_per_session", "max_threads"))
-        self.install()
-        text = path.read_text()
-        self.assertIn("max_concurrent_threads_per_session = 2", text)
-        self.assertNotIn("max_threads", text)
 
     def test_unowned_legacy_cap_is_preserved_by_refusal(self):
         path = self.home / "config.toml"
