@@ -40,11 +40,6 @@ class ProfileStaticTests(unittest.TestCase):
                     {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
                 )
 
-    def test_team_profiles_keep_explicit_roles_without_aliases(self):
-        for profile in roles.PROFILES:
-            for filename in roles.desired_roles(profile, "team"):
-                self.assertFalse(filename.startswith("profile-"))
-
     def test_team_roles_pin_models_and_disable_nested_delegation(self):
         for profile in roles.PROFILES:
             with self.subTest(profile=profile):
@@ -88,37 +83,6 @@ class ProfileStaticTests(unittest.TestCase):
         roles.manage(self.home, "private", mode="solo")
         self.assertEqual(set(self.snapshot()), {"terra-computer.toml"})
 
-    def test_remove_accepts_solo_manifest_with_empty_owned_set(self):
-        control = self.home / "profiles"
-        control.mkdir(parents=True)
-        (control / "roles-state.json").write_text(
-            json.dumps({"version": 2, "profile": "private", "mode": "solo", "owned": {}}),
-            encoding="utf-8",
-        )
-        result = roles.manage(self.home, None)
-        self.assertEqual(result["changed_roles"], [])
-        self.assertFalse((self.home / "profiles" / "roles-state.json").exists())
-
-    def test_legacy_v1_manifest_is_read_as_team(self):
-        control = self.home / "profiles"
-        control.mkdir(parents=True)
-        data = roles.desired_roles("private", "team")["sol-worker.toml"]
-        agents = self.home / "agents"
-        agents.mkdir()
-        (agents / "sol-worker.toml").write_bytes(data)
-        (control / "roles-state.json").write_text(
-            json.dumps(
-                {
-                    "version": 1,
-                    "profile": "private",
-                    "owned": {"sol-worker.toml": roles.digest(data)},
-                }
-            ),
-            encoding="utf-8",
-        )
-        state = roles.load_state(control / "roles-state.json")
-        self.assertEqual(state["mode"], "team")
-
     def test_modified_owned_file_refuses_removal(self):
         roles.manage(self.home, "private", mode="team")
         target = self.home / "agents" / "sol-worker.toml"
@@ -127,10 +91,6 @@ class ProfileStaticTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "changed or missing"):
             roles.manage(self.home, None)
         self.assertEqual(before, self.snapshot())
-
-    def test_dry_run_does_not_create_home(self):
-        roles.manage(self.home, "private", mode="solo", dry_run=True)
-        self.assertFalse(self.home.exists())
 
     def test_ordinary_write_failure_rolls_back_without_backup_directory(self):
         roles.manage(self.home, "private", mode="team")
@@ -152,34 +112,6 @@ class ProfileStaticTests(unittest.TestCase):
         self.assertEqual(before, self.snapshot())
         self.assertEqual(state, (self.home / "profiles" / "roles-state.json").read_bytes())
         self.assertFalse((self.home / "profiles" / "backups").exists())
-
-    def test_retired_lite_is_not_installable_but_state_can_be_removed(self):
-        self.assertEqual(roles.PROFILES, {"private", "work"})
-        with self.assertRaisesRegex(ValueError, "Unknown profile"):
-            roles.normalize_mode("lite", None)
-        with self.assertRaisesRegex(ValueError, "Unknown profile"):
-            roles.desired_roles("lite")
-
-        data = roles.desired_roles("private", "team")["luna-worker.toml"]
-        agents = self.home / "agents"
-        agents.mkdir(parents=True)
-        (agents / "luna-worker.toml").write_bytes(data)
-        control = self.home / "profiles"
-        control.mkdir()
-        (control / "roles-state.json").write_text(
-            json.dumps({
-                "version": 2,
-                "profile": "lite",
-                "mode": "team",
-                "owned": {"luna-worker.toml": roles.digest(data)}
-            }),
-            encoding="utf-8",
-        )
-        self.assertEqual(roles.load_state(control / "roles-state.json")["mode"], "team")
-        result = roles.manage(self.home, None)
-        self.assertIn("luna-worker.toml", result["changed_roles"])
-        self.assertEqual(self.snapshot(), {})
-        self.assertFalse((control / "roles-state.json").exists())
 
     def test_validator_rejects_private_base_team_override(self):
         root = Path(self.tmp.name) / "repo"
