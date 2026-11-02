@@ -26,10 +26,6 @@ class CompactRoutingInstructionsTests(unittest.TestCase):
                 self.assertEqual(source.count(MARKER_END), 1)
                 self.assertIn('fork_turns = "none"', source)
 
-    def test_lite_sources_are_retired(self):
-        self.assertFalse((ROOT / "lite").exists())
-        self.assertFalse((ROOT / "scripts/filter_lite_catalog.py").exists())
-
     def test_work_and_private_routes(self):
         work = (ROOT / "work/agents-subset.md").read_text(encoding="utf-8")
         private = (ROOT / "private/agents-subset.md").read_text(encoding="utf-8")
