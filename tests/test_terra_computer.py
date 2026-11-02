@@ -27,7 +27,7 @@ class TerraComputerRoutingTests(unittest.TestCase):
                     terra = tomllib.loads(selected["terra-computer.toml"].decode("utf-8"))
                     self.assertEqual(terra["name"], "terra_computer")
                     self.assertEqual(terra["model"], "gpt-6.1-terra")
-                    self.assertEqual(terra["model_reasoning_effort"], "medium")
+                    self.assertEqual(terra["model_reasoning_effort"], "high")
                     self.assertIs(terra["agents"]["enabled"], False)
 
     def test_live_gui_policy_is_composed_once_in_both_profiles_and_modes(self):
