@@ -5,6 +5,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import manage_instructions as instructions
 import manage_profile as lifecycle
+import profile_sources
 
 
 class InstructionLifecycleTests(unittest.TestCase):
@@ -41,6 +43,17 @@ class InstructionLifecycleTests(unittest.TestCase):
         }), encoding="utf-8")
         return path
 
+    def source_fixture(self, name, files):
+        source = Path(self.tmp.name) / name
+        source.mkdir()
+        data = profile_sources.load(instructions.ROOT)
+        (source / "manifest.json").write_text(json.dumps(data), encoding="utf-8")
+        for filename, text in files.items():
+            path = source / filename
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        return source
+
     def test_only_work_profile_splits_instruction_documents_in_both_modes(self):
         for profile in ("private", "work"):
             for mode in ("solo", "team"):
@@ -68,13 +81,12 @@ class InstructionLifecycleTests(unittest.TestCase):
                         self.assertNotIn("work-scout", home_text)
 
     def test_solo_assembly_works_without_any_team_sources(self):
-        source = Path(self.tmp.name) / "solo-only-source"
-        shared = source / "shared"
-        shared.mkdir(parents=True)
-        (shared / "agents-subset.md").write_text("- Common specialist rule.\n")
-        (shared / "solo-agents-subset.md").write_text(
-            f"{instructions.BEGIN}\n- Native behavior fixture.\n{instructions.END}\n"
-        )
+        source = self.source_fixture("solo-only-source", {
+            "shared/AGENTS.md": "- Common specialist rule.\n",
+            "profiles/private/AGENTS.md": "- Fixture profile private.\n",
+            "profiles/work/AGENTS.md": "- Fixture profile work.\n- Fixture root rule.\n",
+            "modes/solo/AGENTS.md": "- Native behavior fixture.\n",
+        })
         with patch.object(instructions, "ROOT", source):
             for profile in ("private", "work"):
                 with self.subTest(profile=profile):
@@ -83,6 +95,71 @@ class InstructionLifecycleTests(unittest.TestCase):
                     for text in policies:
                         self.assertIn("Native behavior fixture.", text)
                         self.assertEqual(text.count("Common specialist rule."), 1)
+                    if profile == "private":
+                        self.assertIn("Fixture profile private.", docs["AGENTS.md"])
+                        self.assertNotIn("Fixture root rule.", docs["AGENTS.md"])
+                    else:
+                        self.assertIn("Fixture profile work.", docs["AGENTS.md"])
+                        self.assertIn("Fixture root rule.", docs["AGENTS.md"])
+
+    def test_team_selects_generic_and_work_sources_without_reading_solo(self):
+        source = self.source_fixture("team-only-source", {
+            "shared/AGENTS.md": "- Common fixture rule.\n",
+            "profiles/private/AGENTS.md": "- Profile fixture private.\n",
+            "profiles/work/AGENTS.md": "- Profile fixture work.\n- Metadata fixture.\n",
+            "modes/team/AGENTS.md": "- Generic fixture.\n",
+            "profiles/work/team-agents-subset.md": "- Corporate fixture.\n",
+        })
+        generic = source / "modes" / "team" / "AGENTS.md"
+        with patch.object(instructions, "ROOT", source):
+            work = instructions.desired_docs("work", "team")
+            private = instructions.desired_docs("private", "team")
+            self.assertIn("Corporate fixture.", work["WORK.md"])
+            self.assertNotIn("Generic fixture.", work["WORK.md"])
+            self.assertIn("Generic fixture.", work["PRIVATE.md"])
+            self.assertNotIn("Corporate fixture.", work["PRIVATE.md"])
+            self.assertIn("Generic fixture.", private["AGENTS.md"])
+            self.assertNotIn("Corporate fixture.", private["AGENTS.md"])
+            self.assertIn("Profile fixture private.", private["AGENTS.md"])
+            self.assertNotIn("Metadata fixture.", private["AGENTS.md"])
+            self.assertIn("Metadata fixture.", work["AGENTS.md"])
+            for text in (work["WORK.md"], work["PRIVATE.md"], private["AGENTS.md"]):
+                self.assertEqual(text.count("Common fixture rule."), 1)
+            generic.write_text(generic.read_text().replace("Generic fixture.", "Updated fixture."), encoding="utf-8")
+            self.assertIn("Updated fixture.", instructions.desired_docs("private", "team")["AGENTS.md"])
+
+    def test_git_history_recognizes_unowned_composed_block_after_source_moves(self):
+        source = Path(self.tmp.name) / "historical-repo"
+        (source / ".git").mkdir(parents=True)
+        old_policy = f"{instructions.BEGIN}\n- Historical generic fixture.\n{instructions.END}"
+        old_common = "- Historical shared fixture."
+        published = old_policy.replace(instructions.BEGIN, f"{instructions.BEGIN}\n{old_common}", 1)
+        published = published.replace(
+            instructions.BEGIN,
+            f"{instructions.BEGIN}\n- Active root profile: `private`.", 1,
+        )
+        sources = {"private/agents-subset.md": old_policy, "shared/agents-subset.md": old_common}
+
+        def git(command, **kwargs):
+            if command[3] == "log":
+                self.assertIn("private/agents-subset.md", command)
+                self.assertIn("team/agents-subset.md", command)
+                return subprocess.CompletedProcess(command, 0, stdout="fixture-revision\n")
+            path = command[4].split(":", 1)[1]
+            if path not in sources:
+                raise subprocess.CalledProcessError(128, command)
+            return subprocess.CompletedProcess(command, 0, stdout=sources[path])
+
+        lifecycle._git_history_blocks.cache_clear()
+        self.addCleanup(lifecycle._git_history_blocks.cache_clear)
+        (self.home / "AGENTS.md").write_text(published + "\n", encoding="utf-8")
+        with patch.object(lifecycle, "ROOT", source), patch.object(lifecycle.shutil, "which", return_value="git"), \
+                patch.object(lifecycle.subprocess, "run", side_effect=git):
+            self.assertIn(published, lifecycle._known_instruction_blocks())
+            plan = instructions.prepare(self.home, "private", "team", legacy_blocks=lifecycle._known_instruction_blocks)
+            instructions.commit(plan)
+        self.assertIn("sol_worker", (self.home / "AGENTS.md").read_text())
+        self.assertNotIn("Historical generic fixture.", (self.home / "AGENTS.md").read_text())
 
     def test_block_order_preserves_config_and_user_prose_in_both_manager_orders(self):
         # Config first, profiles second.
@@ -135,8 +212,8 @@ class InstructionLifecycleTests(unittest.TestCase):
                 f"{instructions.BEGIN}\n- Active root profile: `private`; agent mode: `team`.\n"
                 f"- Use the user-selected root model and effort.\n{instructions.END}"
             ),
-            "WORK.md": instructions.block((instructions.ROOT / "work/agents-subset.md").read_text()),
-            "PRIVATE.md": instructions.block((instructions.ROOT / "private/agents-subset.md").read_text()),
+            "WORK.md": instructions.BEGIN + "\n" + (instructions.ROOT / "profiles/work/team-agents-subset.md").read_text().strip() + "\n" + instructions.END,
+            "PRIVATE.md": instructions.BEGIN + "\n" + (instructions.ROOT / "modes/team/AGENTS.md").read_text().strip() + "\n" + instructions.END,
         }
         for name, content in previous.items():
             (self.home / name).write_text(content + "\n", encoding="utf-8")
@@ -249,9 +326,10 @@ class InstructionLifecycleTests(unittest.TestCase):
 
 class OpenCodeSourceTests(unittest.TestCase):
     def test_scout_has_enforced_deny_by_default_and_code_retains_inherited_permissions(self):
-        fragment = json.loads((instructions.ROOT / "work" / "opencode-agents.json").read_text())
+        data = profile_sources.load(instructions.ROOT)
+        fragment = json.loads((instructions.ROOT / data["opencode_agents"]).read_text())
         self.assertEqual(set(fragment), {"agent"})
-        self.assertEqual(set(fragment["agent"]), instructions.AGENT_NAMES)
+        self.assertEqual(set(fragment["agent"]), {"work-code", "work-scout"})
         scout = fragment["agent"]["work-scout"]
         code = fragment["agent"]["work-code"]
         self.assertEqual(scout["mode"], "primary")

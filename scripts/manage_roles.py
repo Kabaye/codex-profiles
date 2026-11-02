@@ -11,24 +11,23 @@ import shutil
 import tempfile
 import tomllib
 
+import profile_sources
+
 ROOT = Path(__file__).resolve().parents[1]
-PROFILES = {"private", "work"}
+MANIFEST = profile_sources.load(ROOT)
+PROFILES = set(MANIFEST["profiles"])
 RETIRED_PROFILES = {"lite"}  # Recognize installed legacy state only for cleanup.
-MODE_PROFILES = {"private", "work"}
-MODES = {"solo", "team"}
-ROLE_FILES = {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"}
+MODE_PROFILES = {name for name, modes in MANIFEST["profiles"].items() if len(modes) > 1}
+MODES = {name for modes in MANIFEST["profiles"].values() for name in modes}
+ROLE_FILES = profile_sources.role_files(MANIFEST)
+LEGACY_ROLE_FILES = {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"}
 LEGACY_ALIAS_FILES = {"profile-default.toml", "profile-worker.toml", "profile-explorer.toml"}
-OWNABLE = ROLE_FILES | LEGACY_ALIAS_FILES
-RESERVED_NAMES = {"luna_worker", "sol_worker", "terra_computer", "default", "worker", "explorer"}
+OWNABLE = ROLE_FILES | LEGACY_ROLE_FILES | LEGACY_ALIAS_FILES
+RESERVED_NAMES = {Path(name).stem.replace("-", "_") for name in ROLE_FILES | LEGACY_ROLE_FILES} | {"default", "worker", "explorer"}
 
 
-def normalize_mode(profile: str, mode: str | None) -> str:
-    if profile not in PROFILES:
-        raise ValueError(f"Unknown profile: {profile}")
-    selected = mode or "solo"
-    if selected not in MODES:
-        raise ValueError(f"Unknown mode for {profile}: {selected}")
-    return selected
+def normalize_mode(profile: str, mode: str | None, root: Path = ROOT) -> str:
+    return profile_sources.recipe(profile_sources.load(root), profile, mode)[0]
 
 
 def digest(data: bytes) -> str:
@@ -62,20 +61,11 @@ def atomic_write(path: Path, data: bytes) -> None:
 
 
 def desired_roles(profile: str, mode: str | None = None, root: Path = ROOT) -> dict[str, bytes]:
-    selected = normalize_mode(profile, mode)
-    # One shared GUI specialist is installed for both profiles and modes.
-    sources = [root / "shared" / "agents" / "terra-computer.toml"]
-    if selected == "team":
-        sources.extend(sorted((root / profile / "agents").glob("*.toml")))
+    _, item = profile_sources.recipe(profile_sources.load(root), profile, mode)
     result = {
-        path.name: path.read_bytes().replace(b"\r\n", b"\n")
-        for path in sources
+        Path(source).name: profile_sources.source_bytes(root, source)
+        for source in item["roles"]
     }
-    expected = {"terra-computer.toml"}
-    if selected == "team":
-        expected.update({"luna-worker.toml", "sol-worker.toml"})
-    if set(result) != expected:
-        raise ValueError(f"Unexpected role set for {profile}: {', '.join(sorted(result))}")
     for filename, data in result.items():
         role = tomllib.loads(data.decode("utf-8"))
         if not all(
@@ -146,7 +136,7 @@ def manage(
     if lock.exists() or legacy_lock.exists():
         raise ValueError("Another role operation may be active; review roles.lock before retrying")
 
-    selected_mode = normalize_mode(profile, mode) if profile is not None else None
+    selected_mode = normalize_mode(profile, mode, root) if profile is not None else None
     regular(manifest)
     state = load_state(manifest) if profile is None else None
     current: dict[str, bytes] = {}

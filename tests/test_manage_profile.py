@@ -14,6 +14,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import manage_profile as lifecycle
 import manage_roles as roles
+import profile_sources
 
 
 class UnifiedProfileLifecycleTests(unittest.TestCase):
@@ -224,6 +225,44 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         result = self.install("private", dry_run=True)
         self.assertEqual(result["mode"], "solo")
         self.assertFalse(self.home.exists())
+
+    def test_config_merges_common_and_selected_mode_source_values(self):
+        source = Path(self.tmp.name) / "sources"
+        for name in ("shared", "modes/solo", "modes/team"):
+            (source / name).mkdir(parents=True)
+        (source / "manifest.json").write_text(json.dumps(profile_sources.load(lifecycle.ROOT)), encoding="utf-8")
+        (source / "shared" / "config.toml").write_text(
+            'model = "fixture-root"\nmodel_reasoning_effort = "high"\n'
+            '[features.context_management]\nexperimental_mode = true\n', encoding="utf-8"
+        )
+        (source / "modes" / "solo" / "config.toml").write_text("# Native defaults.\n", encoding="utf-8")
+        team_source = source / "modes" / "team" / "config.toml"
+        team_source.write_text(
+            '[agents]\nenabled = true\n'
+            'max_concurrent_threads_per_session = 7\n'
+            '[features.multi_agent_v2]\nmulti_agent_mode_hint_text = "fixture hint"\n', encoding="utf-8"
+        )
+        with patch.object(lifecycle, "ROOT", source):
+            for profile in ("private", "work"):
+                with self.subTest(profile=profile):
+                    config = tomllib.loads(lifecycle.build_config("", profile, self.home, mode="team"))
+                    self.assertEqual(config["model"], "fixture-root")
+                    self.assertEqual(config["model_reasoning_effort"], "high")
+                    self.assertEqual(config["agents"]["max_concurrent_threads_per_session"], 7)
+                    self.assertIs(config["features"]["context_management"]["experimental_mode"], True)
+                    self.assertEqual(config["features"]["multi_agent_v2"]["multi_agent_mode_hint_text"], "fixture hint")
+            team_source.write_text(team_source.read_text().replace("= 7", "= 5"), encoding="utf-8")
+            refreshed = tomllib.loads(lifecycle.build_config("", "private", self.home, mode="team"))
+            self.assertEqual(refreshed["agents"]["max_concurrent_threads_per_session"], 5)
+            team_source.unlink()
+            solo = tomllib.loads(lifecycle.build_config("", "work", self.home, mode="solo"))
+            self.assertEqual(solo["model_reasoning_effort"], "high")
+            self.assertNotIn("agents", solo)
+            self.assertNotIn("multi_agent_v2", solo["features"])
+            config_source = source / "shared" / "config.toml"
+            config_source.write_text('unowned_setting = "fixture"\n' + config_source.read_text(), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "unsupported managed keys: unowned_setting"):
+                lifecycle.build_config("", "work", self.home, mode="solo")
 
 
 if __name__ == "__main__":

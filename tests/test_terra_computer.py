@@ -1,4 +1,4 @@
-"""Terra's global GUI role and independent per-installation routing sources."""
+"""Terra's global GUI role and composed profile/mode routing sources."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import manage_instructions as instructions
 import manage_roles as roles
+import profile_sources
 
 
 class TerraComputerRoutingTests(unittest.TestCase):
@@ -30,12 +31,11 @@ class TerraComputerRoutingTests(unittest.TestCase):
                     self.assertIs(terra["agents"]["enabled"], False)
 
     def test_live_gui_policy_is_composed_once_in_both_profiles_and_modes(self):
-        shared = (ROOT / "shared" / "agents-subset.md").read_text(encoding="utf-8").strip()
+        shared = (ROOT / "shared" / "AGENTS.md").read_text(encoding="utf-8").strip()
         self.assertEqual(shared.count("terra_computer"), 1)
         self.assertIn("Prefer one active worker", shared)
         self.assertIn("at most two delegated jobs", shared)
-        for source in ("work/agents-subset.md", "work/personal-agents-subset.md",
-                       "private/agents-subset.md"):
+        for source in ("profiles/work/team-agents-subset.md", "modes/solo/AGENTS.md", "modes/team/AGENTS.md"):
             with self.subTest(source=source):
                 self.assertNotIn("terra_computer", (ROOT / source).read_text(encoding="utf-8"))
 
@@ -51,10 +51,10 @@ class TerraComputerRoutingTests(unittest.TestCase):
             self.assertNotIn("terra_computer", work["AGENTS.md"])
             self.assertNotIn("work-code", private["AGENTS.md"])
 
-    def test_work_personal_routing_has_independent_source(self):
-        source = (ROOT / "work" / "personal-agents-subset.md").read_text(encoding="utf-8")
+    def test_work_personal_routing_uses_generic_team_source(self):
+        source = (ROOT / "modes" / "team" / "AGENTS.md").read_text(encoding="utf-8")
         work_personal = instructions.desired_docs("work", "team")["PRIVATE.md"]
-        shared = (ROOT / "shared" / "agents-subset.md").read_text(encoding="utf-8").strip()
+        shared = (ROOT / "shared" / "AGENTS.md").read_text(encoding="utf-8").strip()
         self.assertIn("Use `sol_worker`", work_personal)
         self.assertIn("Use `luna_worker`", work_personal)
         self.assertIn(shared, work_personal)
@@ -65,11 +65,15 @@ class TerraComputerRoutingTests(unittest.TestCase):
         from tempfile import TemporaryDirectory
         from unittest.mock import patch
         with TemporaryDirectory() as tmp:
-            shared_file = Path(tmp) / "shared" / "agents-subset.md"
+            shared_file = Path(tmp) / "shared" / "AGENTS.md"
             shared_file.parent.mkdir()
             shared_file.write_text(instructions.BEGIN + "\ninvalid", encoding="utf-8")
+            data = profile_sources.load(ROOT)
+            data["profiles"] = {"work": {"solo": {"config": [], "roles": [], "instructions": {"AGENTS.md": ["shared/AGENTS.md"]}}}}
+            import json
+            (Path(tmp) / "manifest.json").write_text(json.dumps(data), encoding="utf-8")
             with patch.object(instructions, "ROOT", Path(tmp)):
-                with self.assertRaisesRegex(ValueError, "Shared agent routing"):
+                with self.assertRaisesRegex(ValueError, "unmarked fragments"):
                     instructions.desired_docs("work", "solo")
 
 

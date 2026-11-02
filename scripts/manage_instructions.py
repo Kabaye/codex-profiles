@@ -9,15 +9,27 @@ import re
 import tempfile
 
 import manage_roles
+import profile_sources
 
 ROOT = Path(__file__).resolve().parents[1]
-BEGIN = "<!-- codex-profiles:begin -->"
-END = "<!-- codex-profiles:end -->"
+MANIFEST = profile_sources.load(ROOT)
+BEGIN = MANIFEST["markers"]["begin"]
+END = MANIFEST["markers"]["end"]
 CONFIG_BEGIN = "<!-- codex-config:begin -->"
 CONFIG_END = "<!-- codex-config:end -->"
-DOCS = ("AGENTS.md", "WORK.md", "PRIVATE.md")
+LEGACY_DOCS = ("AGENTS.md", "WORK.md", "PRIVATE.md")
+DOCS = tuple(dict.fromkeys((*profile_sources.documents(MANIFEST), *LEGACY_DOCS)))
 STATE = "instructions-state.json"
-AGENT_NAMES = {"work-scout", "work-code"}
+
+
+def opencode_definitions() -> dict:
+    data = json.loads(profile_sources.source_text(ROOT, profile_sources.load(ROOT)["opencode_agents"]))
+    agents = data.get("agent") if isinstance(data, dict) else None
+    if (not isinstance(agents, dict) or not agents
+            or any(not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z0-9_-]*", name)
+                   or not isinstance(value, dict) for name, value in agents.items())):
+        raise ValueError("OpenCode source must declare named agent objects")
+    return agents
 
 
 def normalize(text: str) -> str:
@@ -61,50 +73,14 @@ def replace_block(text: str, desired: str | None) -> str:
     return text + ("\n" if text else "")
 
 
-def metadata(profile: str) -> str:
-    return (
-        f"{BEGIN}\n"
-        f"- Active root profile: `{profile}`.\n"
-        "- Use the user-selected root model and effort.\n"
-        f"{END}"
-    )
-
-
-def _compose_policy(source: Path, shared: str) -> str:
-    """Insert the common specialist route into one owned block, without duplication."""
-    policy = block(source.read_text(encoding="utf-8"))
-    if policy is None:
-        raise ValueError(f"Profile routing source has no managed policy block: {source}")
-    return policy.replace(BEGIN, f"{BEGIN}\n{shared}", 1)
-
-
 def desired_docs(profile: str | None, mode: str | None) -> dict[str, str | None]:
+    data = profile_sources.load(ROOT)
+    docs = dict.fromkeys(dict.fromkeys((*profile_sources.documents(data), *LEGACY_DOCS)))
     if profile is None:
-        return dict.fromkeys(DOCS)
-    selected = manage_roles.normalize_mode(profile, mode)
-    shared = normalize((ROOT / "shared" / "agents-subset.md").read_text(encoding="utf-8")).strip()
-    if not shared or BEGIN in shared or END in shared:
-        raise ValueError("Shared agent routing must be a nonempty, unmarked fragment")
-    solo_source = ROOT / "shared" / "solo-agents-subset.md"
-    personal_source = solo_source if selected == "solo" else ROOT / (
-        "private/agents-subset.md" if profile == "private" else "work/personal-agents-subset.md"
-    )
-    personal_policy = _compose_policy(personal_source, shared)
-    if profile == "private":
-        return {
-            "AGENTS.md": personal_policy.replace(
-                BEGIN, f"{BEGIN}\n- Active root profile: `{profile}`.", 1
-            ),
-            "WORK.md": None,
-            "PRIVATE.md": None,
-        }
-    return {
-        "AGENTS.md": metadata(profile),
-        "WORK.md": _compose_policy(
-            solo_source if selected == "solo" else ROOT / "work" / "agents-subset.md", shared
-        ),
-        "PRIVATE.md": personal_policy,
-    }
+        return docs
+    _, item = profile_sources.recipe(data, profile, mode)
+    docs.update(profile_sources.instructions(ROOT, data, item))
+    return docs
 
 
 def load_state(home: Path) -> dict | None:
@@ -126,7 +102,7 @@ def load_state(home: Path) -> dict | None:
         if (not isinstance(opencode, dict) or not isinstance(opencode.get("path"), str)
                 or not Path(opencode["path"]).is_absolute()
                 or not isinstance(opencode.get("owned"), dict)
-                or not set(opencode["owned"]) <= AGENT_NAMES):
+                or not set(opencode["owned"]) <= set(opencode_definitions())):
             raise ValueError("Unsafe OpenCode ownership state")
     for sha in list(owned.values()) + list((opencode or {}).get("owned", {}).values()):
         if not isinstance(sha, str) or not re.fullmatch("[0-9a-f]{64}", sha):
@@ -156,7 +132,7 @@ def prepare(
     old: dict[Path, bytes | None] = {}
     target: dict[Path, bytes | None] = {}
     owned = {}
-    for name in DOCS:
+    for name in desired:
         path = home / name
         raw = _read(path)
         old[path] = raw
@@ -195,7 +171,7 @@ def prepare(
         data = json.loads(raw.decode("utf-8-sig"))
         if not isinstance(data, dict) or not isinstance(data.get("agent", {}), dict):
             raise ValueError("OpenCode config must contain an object and optional agent object")
-        definitions = json.loads((ROOT / "work" / "opencode-agents.json").read_text(encoding="utf-8"))["agent"]
+        definitions = opencode_definitions()
         agents = data.get("agent", {})
         prior_owned = (previous_opencode or {}).get("owned", {})
         for name, sha in prior_owned.items():

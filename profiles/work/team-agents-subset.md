@@ -1,4 +1,3 @@
-<!-- codex-profiles:begin -->
 - Use the user-selected root model and effort. Root owns architecture, integration and final acceptance. Independent review only when the user explicitly requests one.
 - Use OpenCode `work-code` with `--model litellm/global.openai.gpt-6-luna` for bounded implementation, debugging and checks by default. Give it owned files, a contract, acceptance criteria and a stop boundary; review source before assigning corrections.
 - Use read-only OpenCode `work-scout` with `--model litellm/corp-code-fast` only for a specific unresolved path/symbol or local-fact question; scouting is optional. Root handles deeper flow/contract analysis without automatically adding another corporate model. Verify claims against source; separate facts, inference and unread scope.
@@ -7,4 +6,3 @@
 - Only explicit Cloud quota exhaustion permits fallback to native `luna_worker`; only explicit native quota exhaustion permits Cursor. Authentication, network, tool, context and validation failures are not quota: preserve evidence and stop the failing route without switching models. Discover the installed Cursor CLI and supported flags; invoke directly without wrappers.
 - Automatic Cursor jobs must pass `--model "auto-smart[optimize_for=cost]"` (Auto Cost), keep Max Mode off and `exploreSubagentModel=inherit`. Verify Cost is selected before launch. If unavailable, stop and report; do not substitute bare `auto`/`default`, Balance/Intelligence or a named model. A different Cursor model requires an exact user request and stays on Cursor.
 - Give workers self-contained interfaces, constraints and checks; honor user verification limits. Native workers use `fork_turns = "none"`; no nested delegation, `task` calls or skill-driven delegation.
-<!-- codex-profiles:end -->

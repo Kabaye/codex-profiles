@@ -40,6 +40,14 @@ class ProfileStaticTests(unittest.TestCase):
                     {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
                 )
 
+    def test_team_roles_are_identical_shared_bytes_for_both_profiles(self):
+        private = roles.desired_roles("private", "team")
+        self.assertEqual(private, roles.desired_roles("work", "team"))
+        for filename, raw in private.items():
+            self.assertEqual(raw, (roles.ROOT / "shared" / "agents" / filename).read_bytes().replace(b"\r\n", b"\n"))
+        luna = tomllib.loads(private["luna-worker.toml"].decode("utf-8"))
+        self.assertEqual((luna["model"], luna["model_reasoning_effort"]), ("gpt-6-luna", "medium"))
+
     def test_install_solo_purges_existing_top_level_role_tomls(self):
         agents = self.home / "agents"
         agents.mkdir(parents=True)
@@ -95,25 +103,45 @@ class ProfileStaticTests(unittest.TestCase):
         self.assertEqual(state, (self.home / "profiles" / "roles-state.json").read_bytes())
         self.assertFalse((self.home / "profiles" / "backups").exists())
 
-    def test_validator_rejects_private_base_team_override(self):
+    def test_validator_rejects_unsafe_manifest_source(self):
         root = Path(self.tmp.name) / "repo"
         shutil.copytree(
             presets.ROOT,
             root,
             ignore=shutil.ignore_patterns(".git", "temp", "__pycache__", "*.pyc"),
         )
-        target = root / "private" / "config.toml"
-        target.write_text(
-            target.read_text(encoding="utf-8")
-            + '\n[agents]\nenabled = true\nmax_concurrent_threads_per_session = 3\n',
-            encoding="utf-8",
-        )
+        target = root / "manifest.json"
+        data = json.loads(target.read_text(encoding="utf-8"))
+        data["profiles"]["private"]["solo"]["config"] = ["../outside.toml"]
+        target.write_text(json.dumps(data), encoding="utf-8")
         self.assertTrue(
             any(
-                error.startswith("private: base config must leave native agents untouched")
+                "Unsafe manifest source path" in error
                 for error in presets.validate(root=root)
             )
         )
+
+    def test_validator_reads_model_requirements_from_shared_sources(self):
+        root = Path(self.tmp.name) / "repo"
+        shutil.copytree(
+            presets.ROOT, root,
+            ignore=shutil.ignore_patterns(".git", "temp", "__pycache__", "*.pyc"),
+        )
+        config = root / "shared" / "config.toml"
+        config.write_text(
+            config.read_text(encoding="utf-8").replace('model = "gpt-6.1-sol"', 'model = "fixture-root"'),
+            encoding="utf-8",
+        )
+        catalog = {"models": [
+            {"slug": model, "supported_reasoning_levels": [{"effort": effort}]}
+            for model, effort in (
+                ("fixture-root", "xhigh"), ("gpt-6.1-sol", "xhigh"),
+                ("gpt-6-luna", "medium"), ("gpt-6.1-terra", "medium"),
+            )
+        ]}
+        self.assertEqual(presets.validate(root=root, catalog=catalog), [])
+        catalog["models"] = [model for model in catalog["models"] if model["slug"] != "fixture-root"]
+        self.assertIn("Model metadata does not confirm fixture-root / xhigh", presets.validate(root=root, catalog=catalog))
 
 
 if __name__ == "__main__":

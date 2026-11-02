@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "opencode_agents": "profiles/work/opencode-agents.json",
+  "markers": {
+    "begin": "<!-- codex-profiles:begin -->",
+    "end": "<!-- codex-profiles:end -->"
+  },
+  "profiles": {
+    "private": {
+      "solo": {
+        "config": [
+          "shared/config.toml",
+          "modes/solo/config.toml"
+        ],
+        "roles": [
+          "shared/agents/terra-computer.toml"
+        ],
+        "instructions": {
+          "AGENTS.md": [
+            "profiles/private/AGENTS.md",
+            "shared/AGENTS.md",
+            "modes/solo/AGENTS.md"
+          ]
+        }
+      },
+      "team": {
+        "config": [
+          "shared/config.toml",
+          "modes/team/config.toml"
+        ],
+        "roles": [
+          "shared/agents/luna-worker.toml",
+          "shared/agents/sol-worker.toml",
+          "shared/agents/terra-computer.toml"
+        ],
+        "instructions": {
+          "AGENTS.md": [
+            "profiles/private/AGENTS.md",
+            "shared/AGENTS.md",
+            "modes/team/AGENTS.md"
+          ]
+        }
+      }
+    },
+    "work": {
+      "solo": {
+        "config": [
+          "shared/config.toml",
+          "modes/solo/config.toml"
+        ],
+        "roles": [
+          "shared/agents/terra-computer.toml"
+        ],
+        "instructions": {
+          "AGENTS.md": [
+            "profiles/work/AGENTS.md"
+          ],
+          "WORK.md": [
+            "shared/AGENTS.md",
+            "modes/solo/AGENTS.md"
+          ],
+          "PRIVATE.md": [
+            "shared/AGENTS.md",
+            "modes/solo/AGENTS.md"
+          ]
+        }
+      },
+      "team": {
+        "config": [
+          "shared/config.toml",
+          "modes/team/config.toml"
+        ],
+        "roles": [
+          "shared/agents/luna-worker.toml",
+          "shared/agents/sol-worker.toml",
+          "shared/agents/terra-computer.toml"
+        ],
+        "instructions": {
+          "AGENTS.md": [
+            "profiles/work/AGENTS.md"
+          ],
+          "WORK.md": [
+            "shared/AGENTS.md",
+            "profiles/work/team-agents-subset.md"
+          ],
+          "PRIVATE.md": [
+            "shared/AGENTS.md",
+            "modes/team/AGENTS.md"
+          ]
+        }
+      }
+    }
+  }
+}

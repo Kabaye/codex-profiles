@@ -1,0 +1,2 @@
+- Active root profile: `work`.
+- Use the user-selected root model and effort.

@@ -15,12 +15,13 @@ import tomllib
 
 import manage_roles
 import manage_instructions
+import profile_sources
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILES = tuple(sorted(manage_roles.PROFILES))
 MODES = tuple(sorted(manage_roles.MODES))
-BEGIN = "<!-- codex-profiles:begin -->"
-END = "<!-- codex-profiles:end -->"
+BEGIN = manage_instructions.BEGIN
+END = manage_instructions.END
 LEGACY_BEGIN = "<!-- codex-routing-rules:begin -->"
 LEGACY_END = "<!-- codex-routing-rules:end -->"
 MANAGED_COMMENT = "# codex-profiles: managed profile keys"
@@ -30,7 +31,8 @@ ASSIGN_RE = re.compile(r"^\s*([A-Za-z0-9_-]+)\s*=")
 MANAGED_CATALOG = "models-managed.json"
 LEGACY_LITE_CATALOG = "models-lite.json"
 
-OWNED_KEYS = {
+# Cleanup compatibility for keys installed before manifest-driven assembly.
+LEGACY_OWNED_KEYS = {
     "": {"model", "model_reasoning_effort", "model_catalog_json"},
     "agents": {
         "enabled",
@@ -115,7 +117,7 @@ def _flatten(data: dict) -> dict[str, dict[str, object]]:
 
 def _prune_empty_managed_sections(text: str) -> str:
     lines = _normalize(text).splitlines()
-    managed_sections = set(OWNED_KEYS) | set(LEGACY_KEYS)
+    managed_sections = set(LEGACY_OWNED_KEYS) | set(LEGACY_KEYS)
     managed_sections.discard("")
     out: list[str] = []
     index = 0
@@ -139,7 +141,7 @@ def _prune_empty_managed_sections(text: str) -> str:
 
 
 def _remove_managed_assignments(text: str, *, remove_catalog: bool, remove_legacy_cap: bool = False) -> str:
-    remove = {section: set(keys) for section, keys in OWNED_KEYS.items()}
+    remove = {section: set(keys) for section, keys in LEGACY_OWNED_KEYS.items()}
     for section, keys in LEGACY_KEYS.items():
         remove.setdefault(section, set()).update(keys)
     if remove_legacy_cap:
@@ -217,23 +219,19 @@ def _insert_managed_assignments(
 def _desired_config(
     profile: str, mode: str, home: Path
 ) -> dict[str, dict[str, object]]:
-    source = tomllib.loads(
-        (ROOT / profile / "config.toml").read_text(encoding="utf-8")
-    )
-    if profile in manage_roles.MODE_PROFILES:
-        if mode == "team":
-            source["agents"] = {
-                "enabled": True,
-                "max_concurrent_threads_per_session": 2,
-            }
-            features = source.setdefault("features", {})
-            features["multi_agent_v2"] = {"multi_agent_mode_hint_text": ""}
-        else:
-            source.pop("agents", None)
-            features = source.get("features")
-            if isinstance(features, dict):
-                features.pop("multi_agent_v2", None)
+    _, item = profile_sources.recipe(profile_sources.load(ROOT), profile, mode)
+    source = profile_sources.config(ROOT, item)
+    validate_config_keys(source)
     return _flatten(source)
+
+
+def validate_config_keys(source: dict) -> None:
+    """Only emit keys whose existing lifecycle can safely replace and remove."""
+    for section, values in _flatten(source).items():
+        unknown = set(values) - LEGACY_OWNED_KEYS.get(section, set())
+        if unknown:
+            names = ", ".join(f"{section}.{key}".lstrip(".") for key in sorted(unknown))
+            raise ValueError(f"Config source has unsupported managed keys: {names}")
 
 
 def _profile_catalog(value: object, home: Path) -> bool:
@@ -280,7 +278,7 @@ def build_config(
             tomllib.loads(cleaned)
         return cleaned
 
-    selected_mode = manage_roles.normalize_mode(profile, mode)
+    selected_mode = manage_roles.normalize_mode(profile, mode, ROOT)
     desired = _desired_config(profile, selected_mode, home)
     if preserve_root:
         for key in ("model", "model_reasoning_effort"):
@@ -333,7 +331,21 @@ def _strip_marked_regions(text: str, begin: str, end: str) -> str:
 def _git_history_blocks() -> list[str]:
     if not (ROOT / ".git").exists() or shutil.which("git") is None:
         return []
-    paths = [f"{profile}/agents-subset.md" for profile in PROFILES]
+    # Keep old paths explicit: renamed sources must still identify installed,
+    # unowned blocks from every published layout.
+    policy_paths = (
+        "private/agents-subset.md", "work/agents-subset.md",
+        "work/personal-agents-subset.md", "shared/solo-agents-subset.md",
+        "solo/agents-subset.md", "team/agents-subset.md", "work/team-agents-subset.md",
+    )
+    try:
+        current = profile_sources.load(ROOT)
+        current_paths = {source for modes in current["profiles"].values() for item in modes.values()
+                         for sources in item["instructions"].values() for source in sources}
+    except (OSError, ValueError):
+        current_paths = set()  # Historical cleanup also works in older checkouts.
+    paths = tuple(dict.fromkeys((*policy_paths, "shared/agents-subset.md",
+                                "shared/profile-agents-subset.md", "manifest.json", *sorted(current_paths))))
     try:
         proc = subprocess.run(
             ["git", "-C", str(ROOT), "log", "--all", "--format=%H", "--", *paths],
@@ -350,7 +362,8 @@ def _git_history_blocks() -> list[str]:
     )
     blocks: list[str] = []
     for commit in commits:
-        for profile, path in zip(PROFILES, paths):
+        sources: dict[str, str] = {}
+        for path in paths:
             try:
                 shown = subprocess.run(
                     ["git", "-C", str(ROOT), "show", f"{commit}:{path}"],
@@ -365,13 +378,48 @@ def _git_history_blocks() -> list[str]:
             normalized = _normalize(shown).strip()
             if not normalized:
                 continue
+            sources[path] = normalized
+        common = sources.get("shared/agents-subset.md", "")
+        metadata = sources.get("shared/profile-agents-subset.md")
+        for profile in PROFILES:
+            if metadata is not None:
+                blocks.append(metadata.replace("{{PROFILE}}", profile))
+        for path in policy_paths:
+            normalized = sources.get(path)
+            if normalized is None:
+                continue
             if BEGIN in normalized and END in normalized:
                 try:
-                    blocks.append(_extract_marked(normalized))
+                    policy = _extract_marked(normalized)
                 except ValueError:
-                    pass
+                    continue
+                blocks.append(policy)
+                if common and BEGIN not in common and END not in common:
+                    composed = policy.replace(BEGIN, f"{BEGIN}\n{common}", 1)
+                    blocks.append(composed)
+                    if path in {"private/agents-subset.md", "shared/solo-agents-subset.md",
+                                "solo/agents-subset.md", "team/agents-subset.md"}:
+                        profile_line = (
+                            next(line for line in metadata.splitlines() if "{{PROFILE}}" in line)
+                            .replace("{{PROFILE}}", "private")
+                            if metadata is not None and "{{PROFILE}}" in metadata
+                            else _legacy_metadata("private").splitlines()[1]
+                        )
+                        blocks.append(composed.replace(BEGIN, f"{BEGIN}\n{profile_line}", 1))
             else:
                 blocks.append(normalized)
+        if "manifest.json" in sources:
+            try:
+                historical = json.loads(sources["manifest.json"])
+                markers = historical["markers"]
+                for modes in historical["profiles"].values():
+                    for item in modes.values():
+                        for names in item["instructions"].values():
+                            if all(name in sources for name in names):
+                                blocks.append("\n".join((markers["begin"],
+                                                         *(sources[name].strip() for name in names), markers["end"])))
+            except (ValueError, KeyError, TypeError):
+                pass
     return list(dict.fromkeys(blocks))
 
 
@@ -404,11 +452,17 @@ def build_agents(text: str, profile: str | None, *, mode: str | None = None) -> 
     return manage_instructions.replace_block(normalized, desired)
 
 
+def _legacy_metadata(profile: str, mode: str | None = None) -> str:
+    """Fingerprint only metadata emitted before literal source-file assembly."""
+    identity = f"- Active root profile: `{profile}`"
+    identity += f"; agent mode: `{mode}`." if mode is not None else "."
+    return f"{BEGIN}\n{identity}\n- Use the user-selected root model and effort.\n{END}"
+
+
 def _known_instruction_blocks() -> list[str]:
     return _git_history_blocks() + [
-        f"{BEGIN}\n- Active root profile: `{profile}`; agent mode: `{mode}`.\n"
-        f"- Use the user-selected root model and effort.\n{END}"
-        for profile in PROFILES for mode in MODES
+        _legacy_metadata(profile, mode) for profile in ("private", "work")
+        for mode in (None, "solo", "team")
     ]
 
 
@@ -455,7 +509,7 @@ def apply(
     previous_profile = role_state.get("profile") if role_state else None
 
     selected_mode = (
-        manage_roles.normalize_mode(profile, mode) if profile is not None else None
+        manage_roles.normalize_mode(profile, mode, ROOT) if profile is not None else None
     )
     new_config = build_config(
         config_text,

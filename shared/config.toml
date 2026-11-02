@@ -5,4 +5,3 @@ model_reasoning_effort = "xhigh"
 [features.context_management]
 experimental_mode = true
 
-# Retain Codex/provider memory defaults.

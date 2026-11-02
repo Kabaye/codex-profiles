@@ -7,28 +7,12 @@ import json
 from pathlib import Path
 import tomllib
 
+import manage_profile
 import manage_roles
+import profile_sources
 
 ROOT = Path(__file__).resolve().parents[1]
-BEGIN = "<!-- codex-profiles:begin -->"
-END = "<!-- codex-profiles:end -->"
-
-ROOTS = {
-    "private": ("gpt-6.1-sol", "xhigh"),
-    "work": ("gpt-6.1-sol", "xhigh"),
-}
-TEAM_ROLES = {
-    "private": {
-        "luna_worker": ("gpt-6-luna", "medium"),
-        "sol_worker": ("gpt-6.1-sol", "xhigh"),
-        "terra_computer": ("gpt-6.1-terra", "medium"),
-    },
-    "work": {
-        "luna_worker": ("gpt-6-luna", "max"),
-        "sol_worker": ("gpt-6.1-sol", "xhigh"),
-        "terra_computer": ("gpt-6.1-terra", "medium"),
-    },
-}
+PROFILES = tuple(sorted(manage_roles.PROFILES))
 
 def _catalog_errors(
     catalog: dict,
@@ -63,7 +47,11 @@ def validate(
 ) -> list[str]:
     errors: list[str] = []
     required: set[tuple[str, str]] = set()
-    if profile is not None and profile not in ROOTS:
+    try:
+        data = profile_sources.load(root)
+    except (OSError, ValueError, UnicodeError) as exc:
+        return [str(exc)]
+    if profile is not None and profile not in data["profiles"]:
         return [f"Unknown profile: {profile}"]
 
     def check(condition: bool, message: str) -> None:
@@ -71,7 +59,6 @@ def validate(
             errors.append(message)
 
     check((root / "scripts" / "manage_profile.py").is_file(), "unified profile lifecycle manager missing")
-    check(set(ROOTS) == set(manage_roles.PROFILES), "public profile registry drift")
     guide = root / "README.md"
     check(guide.is_file(), "profile lifecycle README missing")
     if guide.is_file():
@@ -82,104 +69,35 @@ def validate(
                 f"README omits unified {command} lifecycle command",
             )
 
-    shared_path = root / "shared" / "agents-subset.md"
-    shared = shared_path.read_text(encoding="utf-8").strip() if shared_path.is_file() else ""
-    check(shared.count("terra_computer") == 1, "shared: Terra GUI routing must have one source")
-    check("Prefer one active worker" in shared and "at most two delegated jobs" in shared,
-          "shared: conservative one-default/two-maximum delegation budget missing")
-    check(BEGIN not in shared and END not in shared, "shared: fragment must have no managed markers")
-    check((root / "shared" / "solo-agents-subset.md").is_file(), "shared: solo routing source missing")
-    personal_work_path = root / "work" / "personal-agents-subset.md"
-    check(personal_work_path.is_file(), "work: personal routing source missing")
-    if personal_work_path.is_file():
-        check("terra_computer" not in personal_work_path.read_text(encoding="utf-8"),
-              "work: personal routing must use the shared GUI fragment")
-
-    for name, (root_model, root_effort) in ROOTS.items():
-        config = tomllib.loads((root / name / "config.toml").read_text(encoding="utf-8"))
-        check(
-            config.get("model") == root_model
-            and config.get("model_reasoning_effort") == root_effort,
-            f"{name}: root pin drift",
-        )
-        check(
-            config.get("features", {}).get("context_management")
-            == {"experimental_mode": True},
-            f"{name}: experimental context management drift",
-        )
-        if name in manage_roles.MODE_PROFILES:
-            check("agents" not in config, f"{name}: base config must leave native agents untouched in solo")
-            check(
-                "multi_agent_v2" not in config.get("features", {}),
-                f"{name}: base config must not suppress native multi-agent mode in solo",
-            )
-        check(config.get("memories", {}) == {}, f"{name}: memory routing drift")
-
-        actual_roles: dict[str, tuple[str, str]] = {}
-        for filename, raw in manage_roles.desired_roles(name, "team", root).items():
-            role = tomllib.loads(raw.decode("utf-8"))
-            role_name = role.get("name")
-            check(role_name not in actual_roles, f"{name}: duplicate role {role_name}")
-            actual_roles[role_name] = (
-                role.get("model"),
-                role.get("model_reasoning_effort"),
-            )
-            check(
-                bool(role.get("description")) and bool(role.get("developer_instructions")),
-                f"{name}: incomplete role {role_name}",
-            )
-            check(
-                role.get("agents", {}).get("enabled") is False,
-                f"{name}: nested delegation enabled",
-            )
-        check(actual_roles == TEAM_ROLES[name], f"{name}: unexpected/missing team role")
-
-        team_files = set(manage_roles.desired_roles(name, "team", root))
-        expected_files = {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"}
-        check(team_files == expected_files, f"{name}: explicit team role files drift")
-        check(
-            not any(filename.startswith("profile-") for filename in team_files),
-            f"{name}: generated routing aliases must not exist",
-        )
-        if name in manage_roles.MODE_PROFILES:
-            check(
-                set(manage_roles.desired_roles(name, "solo", root)) == {"terra-computer.toml"},
-                f"{name}: solo must install only the global computer-use specialist",
-            )
-
-        text = (root / name / "agents-subset.md").read_text(encoding="utf-8")
-        stripped = text.strip()
-        check(
-            text.count(BEGIN) == 1 and text.count(END) == 1,
-            f"{name}: routing marker drift",
-        )
-        check(
-            stripped.startswith(BEGIN) and stripped.endswith(END),
-            f"{name}: profile instructions exist outside the managed lifecycle block",
-        )
-        check('fork_turns = "none"' in text, f"{name}: explicit bounded fork policy missing")
-        check(
-            "Use the user-selected root model and effort" in text,
-            f"{name}: user-selected root policy missing",
-        )
-        check(
-            "Independent review only when the user explicitly requests one." in text,
-            f"{name}: explicit independent-review policy missing",
-        )
-        for role_name in ({"sol_worker", "luna_worker"} if name == "private" else {"luna_worker"}):
-            check(role_name in text, f"{name}: explicit {role_name} routing missing")
-        check("terra_computer" not in text,
-              f"{name}: Terra GUI routing must remain in the shared fragment")
-        if name == "work":
-            for route in ("work-scout", "work-code", "corp-code-fast", "litellm/global.openai.gpt-6-luna", "quota", "Cursor"):
-                check(route in text, f"work: {route} route missing")
-            check("corp-chat-max" not in text, "work: retired corporate analysis route restored")
-            check("private" not in text.lower() and "personal" not in text.lower(), "work: unrelated scenario leaked into routing")
-        else:
-            check("three" not in text, "private: numeric cap belongs in config")
-        if profile is None or profile == name:
-            required.add((root_model, root_effort))
-            required.update(TEAM_ROLES[name].values())
+    for name, modes in data["profiles"].items():
+        for mode, item in modes.items():
+            label = f"{name}/{mode}"
+            try:
+                config = profile_sources.config(root, item)
+                manage_profile.validate_config_keys(config)
+                for values in manage_profile._flatten(config).values():
+                    for value in values.values():
+                        manage_profile._render(value)
+                profile_sources.instructions(root, data, item)
+                selected_roles = manage_roles.desired_roles(name, mode, root)
+                pairs = set()
+                for filename, raw in selected_roles.items():
+                    role = tomllib.loads(raw.decode("utf-8"))
+                    check(role["name"] == Path(filename).stem.replace("-", "_"),
+                          f"{label}: role filename/name mismatch: {filename}")
+                    pairs.add((role["model"], role["model_reasoning_effort"]))
+                if "model" in config and "model_reasoning_effort" in config:
+                    pairs.add((config["model"], config["model_reasoning_effort"]))
+                if profile is None or profile == name:
+                    required.update(pairs)
+            except (OSError, ValueError, UnicodeError) as exc:
+                errors.append(f"{label}: {exc}")
+    try:
+        opencode = json.loads(profile_sources.source_text(root, data["opencode_agents"]))
+        check(isinstance(opencode, dict) and isinstance(opencode.get("agent"), dict),
+              "OpenCode source must contain named agents")
+    except (OSError, ValueError, UnicodeError) as exc:
+        errors.append(f"OpenCode source: {exc}")
 
     if catalog is not None:
         errors.extend(_catalog_errors(catalog, required))
@@ -189,7 +107,7 @@ def validate(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models", type=Path, help="Unmodified JSON from `codex debug models --bundled`")
-    parser.add_argument("--profile", choices=sorted(ROOTS), help="Limit live metadata requirements")
+    parser.add_argument("--profile", choices=PROFILES, help="Limit live metadata requirements")
     args = parser.parse_args()
     try:
         raw = json.loads(args.models.read_text(encoding="utf-8-sig")) if args.models else None
@@ -200,7 +118,7 @@ def main() -> int:
         print("\n".join(errors))
         return 1
     print(
-        "PASS: two static profiles"
+        "PASS: manifest profile recipes"
         + (" and supplied model metadata" if raw else "")
     )
     print("Not a Codex runtime, account entitlement, quota or model-behavior test.")
