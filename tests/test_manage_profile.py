@@ -108,16 +108,25 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
-    def test_work_team_routes_opencode_with_quota_fallbacks(self):
+    def test_work_team_keeps_opencode_default_with_quota_fallback_and_optional_scouts(self):
         self.install("work", mode="team")
         text = (self.home / "WORK.md").read_text(encoding="utf-8")
+        self.assertIn("Use OpenCode `work-code` with `--model litellm/global.openai.gpt-6-luna` for bounded implementation, debugging and checks by default.", text)
+        self.assertIn("Use read-only OpenCode `work-scout` with `--model litellm/corp-code-fast`", text)
+        self.assertIn("scouting is optional", text)
+        self.assertIn("Root handles deeper flow/contract analysis", text)
+        self.assertNotIn("corp-chat-max", text)
+        self.assertNotIn("Use native `luna_worker`", text)
+        self.assertNotIn("implementation requires an explicit user request", text)
         self.assertIn("work-scout", text)
         self.assertIn("luna_worker", text)
         self.assertIn("work-code", text)
         self.assertNotIn("это личная задача", text)
         self.assertNotIn("sol_worker", text)
         self.assertIn("Use the user-selected root model and effort", text)
-        self.assertIn("Cloud quota-exhaustion", text)
+        self.assertIn("Only explicit Cloud quota exhaustion permits fallback to native `luna_worker`", text)
+        self.assertIn("only explicit native quota exhaustion permits Cursor", text)
+        self.assertIn("Authentication, network, tool, context and validation failures are not quota", text)
         self.assertIn("Independent review only when the user explicitly requests one.", text)
         self.assertEqual(
             self.config()["agents"],

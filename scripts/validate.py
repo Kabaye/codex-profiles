@@ -170,8 +170,9 @@ def validate(
         check("terra_computer" not in text,
               f"{name}: Terra GUI routing must remain in the shared fragment")
         if name == "work":
-            for route in ("work-scout", "work-code", "corp-code-fast", "corp-chat-max", "litellm/global.openai.gpt-6-luna", "quota", "Cursor"):
+            for route in ("work-scout", "work-code", "corp-code-fast", "litellm/global.openai.gpt-6-luna", "quota", "Cursor"):
                 check(route in text, f"work: {route} route missing")
+            check("corp-chat-max" not in text, "work: retired corporate analysis route restored")
             check("private" not in text.lower() and "personal" not in text.lower(), "work: unrelated scenario leaked into routing")
         else:
             check("Sol-first" in text, "private: Sol-first routing policy missing")
