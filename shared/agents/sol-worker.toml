@@ -1,7 +1,7 @@
 name = "sol_worker"
 description = "Implementation, debugging and complex or uncertain tasks."
 model = "gpt-6.1-sol"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 
 developer_instructions = """
 Own the assigned implementation, debugging or complex behavior through a working, verified result.
