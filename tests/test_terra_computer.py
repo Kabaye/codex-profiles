@@ -35,30 +35,34 @@ class TerraComputerRoutingTests(unittest.TestCase):
         self.assertEqual(shared.count("terra_computer"), 1)
         self.assertIn("Prefer one active worker", shared)
         self.assertIn("at most two delegated jobs", shared)
-        for source in ("profiles/work/team-agents-subset.md", "modes/solo/AGENTS.md", "modes/team/AGENTS.md"):
+        for source in ("profiles/private/AGENTS.md", "profiles/work/AGENTS.md", "modes/solo/AGENTS.md", "modes/team/AGENTS.md"):
             with self.subTest(source=source):
                 self.assertNotIn("terra_computer", (ROOT / source).read_text(encoding="utf-8"))
 
         for mode in ("solo", "team"):
             work = instructions.desired_docs("work", mode)
             private = instructions.desired_docs("private", mode)
-            for policy in (work["WORK.md"], work["PRIVATE.md"], private["AGENTS.md"]):
+            for policy in (work["AGENTS.md"], private["AGENTS.md"]):
                 with self.subTest(mode=mode, policy=policy[:80]):
                     self.assertEqual(policy.count(shared), 1)
                     self.assertEqual(policy.count("terra_computer"), 1)
                     self.assertEqual(policy.count(instructions.BEGIN), 1)
                     self.assertEqual(policy.count(instructions.END), 1)
-            self.assertNotIn("terra_computer", work["AGENTS.md"])
             self.assertNotIn("work-code", private["AGENTS.md"])
+            for docs in (work, private):
+                self.assertIsNone(docs["WORK.md"])
+                self.assertIsNone(docs["PRIVATE.md"])
 
-    def test_work_personal_routing_uses_generic_team_source(self):
+    def test_work_native_routing_uses_generic_team_source(self):
         source = (ROOT / "modes" / "team" / "AGENTS.md").read_text(encoding="utf-8")
-        work_personal = instructions.desired_docs("work", "team")["PRIVATE.md"]
+        work_policy = instructions.desired_docs("work", "team")["AGENTS.md"]
         shared = (ROOT / "shared" / "AGENTS.md").read_text(encoding="utf-8").strip()
-        self.assertIn("Use `sol_worker`", work_personal)
-        self.assertIn("Use `luna_worker`", work_personal)
-        self.assertIn(shared, work_personal)
-        self.assertNotIn("work-scout", work_personal)
+        self.assertIn(source.strip(), work_policy)
+        self.assertIn("Use `sol_worker`", work_policy)
+        self.assertIn("Use `luna_worker`", work_policy)
+        self.assertIn(shared, work_policy)
+        self.assertIn("work-scout", work_policy)
+        self.assertNotIn("work-scout", source)
         self.assertNotIn("terra_computer", source)
 
     def test_shared_fragment_rejects_managed_markers(self):

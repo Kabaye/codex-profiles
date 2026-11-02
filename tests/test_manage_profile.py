@@ -66,7 +66,9 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 self.assertNotIn("sol_worker", agents_text)
                 self.assertNotIn("agent mode:", agents_text)
                 for name in ("WORK.md", "PRIVATE.md"):
-                    self.assertEqual((self.home / name).is_file(), profile == "work")
+                    self.assertFalse((self.home / name).is_file())
+                self.assertEqual("work-code" in agents_text, profile == "work")
+                self.assertEqual("work-scout" in agents_text, profile == "work")
                 self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_private_team_switch_adds_terra_plus_explicit_luna_and_sol_roles(self):
@@ -111,34 +113,32 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
-    def test_work_team_keeps_opencode_default_with_quota_fallback_and_optional_scouts(self):
-        self.install("work", mode="team")
-        text = (self.home / "WORK.md").read_text(encoding="utf-8")
-        self.assertIn("Use OpenCode `work-code` with `--model litellm/global.openai.gpt-6-luna` for bounded implementation, debugging and checks by default.", text)
-        self.assertIn("Use read-only OpenCode `work-scout` with `--model litellm/corp-code-fast`", text)
-        self.assertIn("scouting is optional", text)
-        self.assertIn("Root handles deeper flow/contract analysis", text)
-        self.assertNotIn("corp-chat-max", text)
-        self.assertNotIn("Use native `luna_worker`", text)
-        self.assertNotIn("implementation requires an explicit user request", text)
-        self.assertIn("work-scout", text)
-        self.assertIn("luna_worker", text)
-        self.assertIn("work-code", text)
-        self.assertNotIn("это личная задача", text)
-        self.assertNotIn("sol_worker", text)
-        self.assertIn("Use the user-selected root model and effort", text)
-        self.assertIn("Only explicit Cloud quota exhaustion permits fallback to native `luna_worker`", text)
-        self.assertIn("only explicit native quota exhaustion permits Cursor", text)
-        self.assertIn("Authentication, network, tool, context and validation failures are not quota", text)
-        self.assertIn("Independent review only when the user explicitly requests one.", text)
-        self.assertEqual(
-            self.config()["agents"],
-            {"enabled": True, "max_concurrent_threads_per_session": 2},
-        )
-        self.assertEqual(
-            self.role_names(),
-            {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
-        )
+    def test_work_both_modes_keep_corporate_route_and_only_team_adds_native_workers(self):
+        for mode in ("solo", "team"):
+            with self.subTest(mode=mode):
+                self.home = Path(self.tmp.name) / mode
+                self.install("work", mode=mode)
+                text = (self.home / "AGENTS.md").read_text(encoding="utf-8")
+                self.assertIn("For work tasks, use OpenCode `work-code`", text)
+                self.assertIn("--model litellm/global.openai.gpt-6-luna", text)
+                self.assertIn("Use read-only OpenCode `work-scout` with `--model litellm/corp-code-fast`", text)
+                self.assertIn("scouting is optional", text)
+                self.assertIn("Root handles deeper flow/contract analysis", text)
+                self.assertNotIn("corp-chat-max", text)
+                self.assertNotIn("implementation requires an explicit user request", text)
+                self.assertIn("Use the user-selected root model and effort", text)
+                self.assertIn("Only explicit Cloud quota exhaustion permits fallback to native Codex under its native delegation instructions", text)
+                self.assertIn("only explicit native quota exhaustion permits Cursor", text)
+                self.assertIn("Authentication, network, tool, context and validation failures are not quota", text)
+                self.assertIn("Independent review only when the user explicitly requests one.", text)
+                self.assertEqual("luna_worker" in text, mode == "team")
+                self.assertEqual("sol_worker" in text, mode == "team")
+                if mode == "team":
+                    self.assertEqual(self.config()["agents"], {"enabled": True, "max_concurrent_threads_per_session": 2})
+                    self.assertEqual(self.role_names(), {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"})
+                else:
+                    self.assertNotIn("agents", self.config())
+                    self.assertEqual(self.role_names(), {"terra-computer.toml"})
 
     def test_mode_refresh_preserves_selected_root_and_updates_team_artifacts(self):
         self.install("private", mode="team")

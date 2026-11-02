@@ -337,6 +337,7 @@ def _git_history_blocks() -> list[str]:
         "private/agents-subset.md", "work/agents-subset.md",
         "work/personal-agents-subset.md", "shared/solo-agents-subset.md",
         "solo/agents-subset.md", "team/agents-subset.md", "work/team-agents-subset.md",
+        "profiles/work/team-agents-subset.md",
     )
     try:
         current = profile_sources.load(ROOT)

@@ -16,8 +16,7 @@ shared/
 profiles/
   private/AGENTS.md             Private profile metadata
   work/
-    AGENTS.md                   Work profile metadata
-    team-agents-subset.md        Corporate Team routing
+    AGENTS.md                   Work profile and corporate routing in both modes
     opencode-agents.json         Optional named OpenCode agents
 modes/
   solo/
@@ -30,7 +29,7 @@ scripts/                        Read the manifest and apply its files
 tests/                         Isolated lifecycle checks
 ```
 
-**Profile** means the computer's environment: `private` or `work`. **Mode** means delegation behavior: `solo` or `team`. All three role definitions are shared across profiles; Solo installs Terra only, Team all three. Role files describe workers; they do not start them.
+**Profile** means the computer's environment: `private` or `work`. **Mode** controls only native Codex delegation: `solo` or `team`. Corporate routing belongs to the Work profile and is present in both modes. All three native role definitions are shared across profiles; Solo installs Terra only, Team all three. Role files describe workers; they do not start them.
 
 Open `profiles.private.team` in **manifest.json** to see the complete Private Team recipe. Each recipe declares:
 
@@ -48,16 +47,16 @@ The scripts read this recipe. Models, effort, mode settings, instruction text an
 
 These are the same inputs the manager uses. No Python execution is needed to obtain their settings or instructions. When switching to Solo manually, remove the former Team-only keys and Sol/Luna role files; appending empty Solo config does not remove old settings. Restart Codex and use a new chat to load changed role/config definitions.
 
-| Profile | Global `AGENTS.md` | `WORK.md` | `PRIVATE.md` |
-| --- | --- | --- | --- |
-| `private` | Profile metadata + common rules + selected mode instructions | — | — |
-| `work` | Profile metadata | Common rules + Solo instructions or corporate Team instructions | Common rules + selected mode instructions |
+| Profile | Global `AGENTS.md` |
+| --- | --- |
+| `private` | Private profile + common rules + selected native mode |
+| `work` | Work profile including corporate routing + common rules + selected native mode |
 
-The Work router installed by **codex-config** chooses `WORK.md` or `PRIVATE.md` by project path. Private keeps all applicable instructions inline. Every source list is visible in the manifest, including the corporate Team override.
+All delegation instructions are assembled into global `AGENTS.md`. The Work router installed by **codex-config** chooses `WORK.md` or `PRIVATE.md` only for account/access policy by project path. This manager adds no delegation blocks to those sidecars; migration removes its former sidecar blocks while preserving other managers and user prose. Every source list is visible in the manifest.
 
 Common instructions prefer reusing workers and one active assignment, with at most two delegated jobs excluding root. Team also sets the native cap to two and an empty native mode hint; its source file supplies routing. Workers have nested delegation disabled. Terra requires actual model and Browser/Computer Use availability.
 
-Corporate Team routing uses OpenCode first, with optional bounded scouting; explicit quota exhaustion permits native Luna, then Cursor. Native Luna uses medium in both profiles. Corporate OpenCode model selection is separate from native role definitions.
+For work tasks, corporate routing uses OpenCode first with optional bounded scouting in both modes. Explicit Cloud quota exhaustion permits native Codex under its native delegation instructions, then explicit native quota exhaustion permits Cursor. Native Luna uses medium in both profiles. Corporate OpenCode model selection is separate from native role definitions.
 
 ## Apply and remove
 

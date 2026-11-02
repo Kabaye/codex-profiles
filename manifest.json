@@ -53,13 +53,7 @@
         ],
         "instructions": {
           "AGENTS.md": [
-            "profiles/work/AGENTS.md"
-          ],
-          "WORK.md": [
-            "shared/AGENTS.md",
-            "modes/solo/AGENTS.md"
-          ],
-          "PRIVATE.md": [
+            "profiles/work/AGENTS.md",
             "shared/AGENTS.md",
             "modes/solo/AGENTS.md"
           ]
@@ -77,13 +71,7 @@
         ],
         "instructions": {
           "AGENTS.md": [
-            "profiles/work/AGENTS.md"
-          ],
-          "WORK.md": [
-            "shared/AGENTS.md",
-            "profiles/work/team-agents-subset.md"
-          ],
-          "PRIVATE.md": [
+            "profiles/work/AGENTS.md",
             "shared/AGENTS.md",
             "modes/team/AGENTS.md"
           ]

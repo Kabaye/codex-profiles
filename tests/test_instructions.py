@@ -54,31 +54,22 @@ class InstructionLifecycleTests(unittest.TestCase):
             path.write_text(text, encoding="utf-8")
         return source
 
-    def test_only_work_profile_splits_instruction_documents_in_both_modes(self):
+    def test_all_profiles_and_modes_assemble_only_global_instruction_document(self):
         for profile in ("private", "work"):
             for mode in ("solo", "team"):
                 with self.subTest(profile=profile, mode=mode):
                     self.install(profile, mode)
-                    expected = set(instructions.DOCS) if profile == "work" else {"AGENTS.md"}
-                    self.assertEqual({p.name for p in self.home.glob("*.md")}, expected)
+                    self.assertEqual({p.name for p in self.home.glob("*.md")}, {"AGENTS.md"})
                     home_text = (self.home / "AGENTS.md").read_text()
                     self.assertIn(f"Active root profile: `{profile}`.", home_text)
                     self.assertNotIn("agent mode:", home_text)
-                    self.assertNotIn("work-code", home_text)
-                    self.assertEqual("sol_worker" in home_text, profile == "private" and mode == "team")
-                    for name in (("WORK.md", "PRIVATE.md") if profile == "work" else ("AGENTS.md",)):
-                        text = (self.home / name).read_text()
-                        self.assertNotIn("`solo`", text)
-                        self.assertNotIn("`team`", text)
-                        if mode == "solo":
-                            for route in ("sol_worker", "luna_worker", "work-code", "work-scout", "Cursor"):
-                                self.assertNotIn(route, text)
-                        else:
-                            self.assertIn("luna_worker", text)
-                    if profile == "private":
-                        self.assertNotIn("WORK.md", home_text)
-                        self.assertNotIn("PRIVATE.md", home_text)
-                        self.assertNotIn("work-scout", home_text)
+                    for role in ("sol_worker", "luna_worker"):
+                        self.assertEqual(role in home_text, mode == "team")
+                    for route in ("work-code", "work-scout", "Cursor"):
+                        self.assertEqual(route in home_text, profile == "work")
+                    self.assertNotIn("`solo`", home_text)
+                    self.assertNotIn("`team`", home_text)
+                    self.assertEqual(set(instructions.load_state(self.home)["owned"]), {"AGENTS.md"})
 
     def test_solo_assembly_works_without_any_team_sources(self):
         source = self.source_fixture("solo-only-source", {
@@ -91,10 +82,10 @@ class InstructionLifecycleTests(unittest.TestCase):
             for profile in ("private", "work"):
                 with self.subTest(profile=profile):
                     docs = instructions.desired_docs(profile, "solo")
-                    policies = (docs["WORK.md"], docs["PRIVATE.md"]) if profile == "work" else (docs["AGENTS.md"],)
-                    for text in policies:
-                        self.assertIn("Native behavior fixture.", text)
-                        self.assertEqual(text.count("Common specialist rule."), 1)
+                    self.assertIn("Native behavior fixture.", docs["AGENTS.md"])
+                    self.assertEqual(docs["AGENTS.md"].count("Common specialist rule."), 1)
+                    self.assertIsNone(docs["WORK.md"])
+                    self.assertIsNone(docs["PRIVATE.md"])
                     if profile == "private":
                         self.assertIn("Fixture profile private.", docs["AGENTS.md"])
                         self.assertNotIn("Fixture root rule.", docs["AGENTS.md"])
@@ -102,28 +93,26 @@ class InstructionLifecycleTests(unittest.TestCase):
                         self.assertIn("Fixture profile work.", docs["AGENTS.md"])
                         self.assertIn("Fixture root rule.", docs["AGENTS.md"])
 
-    def test_team_selects_generic_and_work_sources_without_reading_solo(self):
+    def test_team_selects_profile_and_native_sources_without_reading_solo(self):
         source = self.source_fixture("team-only-source", {
             "shared/AGENTS.md": "- Common fixture rule.\n",
             "profiles/private/AGENTS.md": "- Profile fixture private.\n",
-            "profiles/work/AGENTS.md": "- Profile fixture work.\n- Metadata fixture.\n",
+            "profiles/work/AGENTS.md": "- Profile fixture work.\n- Corporate fixture.\n",
             "modes/team/AGENTS.md": "- Generic fixture.\n",
-            "profiles/work/team-agents-subset.md": "- Corporate fixture.\n",
         })
         generic = source / "modes" / "team" / "AGENTS.md"
         with patch.object(instructions, "ROOT", source):
             work = instructions.desired_docs("work", "team")
             private = instructions.desired_docs("private", "team")
-            self.assertIn("Corporate fixture.", work["WORK.md"])
-            self.assertNotIn("Generic fixture.", work["WORK.md"])
-            self.assertIn("Generic fixture.", work["PRIVATE.md"])
-            self.assertNotIn("Corporate fixture.", work["PRIVATE.md"])
+            self.assertIn("Corporate fixture.", work["AGENTS.md"])
+            self.assertIn("Generic fixture.", work["AGENTS.md"])
             self.assertIn("Generic fixture.", private["AGENTS.md"])
             self.assertNotIn("Corporate fixture.", private["AGENTS.md"])
             self.assertIn("Profile fixture private.", private["AGENTS.md"])
-            self.assertNotIn("Metadata fixture.", private["AGENTS.md"])
-            self.assertIn("Metadata fixture.", work["AGENTS.md"])
-            for text in (work["WORK.md"], work["PRIVATE.md"], private["AGENTS.md"]):
+            for docs in (work, private):
+                self.assertIsNone(docs["WORK.md"])
+                self.assertIsNone(docs["PRIVATE.md"])
+            for text in (work["AGENTS.md"], private["AGENTS.md"]):
                 self.assertEqual(text.count("Common fixture rule."), 1)
             generic.write_text(generic.read_text().replace("Generic fixture.", "Updated fixture."), encoding="utf-8")
             self.assertIn("Updated fixture.", instructions.desired_docs("private", "team")["AGENTS.md"])
@@ -144,6 +133,7 @@ class InstructionLifecycleTests(unittest.TestCase):
             if command[3] == "log":
                 self.assertIn("private/agents-subset.md", command)
                 self.assertIn("team/agents-subset.md", command)
+                self.assertIn("profiles/work/team-agents-subset.md", command)
                 return subprocess.CompletedProcess(command, 0, stdout="fixture-revision\n")
             path = command[4].split(":", 1)[1]
             if path not in sources:
@@ -165,6 +155,7 @@ class InstructionLifecycleTests(unittest.TestCase):
         # Config first, profiles second.
         for name in instructions.DOCS:
             (self.home / name).write_text("user prefix\n\n" + self.config_block(name) + "\n\nuser suffix\n")
+        sidecars = {name: (self.home / name).read_bytes() for name in ("WORK.md", "PRIVATE.md")}
         self.install()
         for name in instructions.DOCS:
             path = self.home / name
@@ -172,7 +163,11 @@ class InstructionLifecycleTests(unittest.TestCase):
             self.assertIn(self.config_block(name), text)
             self.assertIn("user prefix", text)
             self.assertIn("user suffix", text)
-            self.assertLess(text.index(instructions.CONFIG_END), text.index(instructions.BEGIN))
+            if name == "AGENTS.md":
+                self.assertLess(text.index(instructions.CONFIG_END), text.index(instructions.BEGIN))
+            else:
+                self.assertNotIn(instructions.BEGIN, text)
+                self.assertEqual(path.read_bytes(), sidecars[name])
             # The other manager updates its own block and user text changes too.
             path.write_text(text.replace("shared", "new shared").replace("user suffix", "new suffix"))
         lifecycle.sync_instructions(self.home)
@@ -181,14 +176,23 @@ class InstructionLifecycleTests(unittest.TestCase):
             self.assertIn("new shared", (self.home / name).read_text())
             self.assertIn("new suffix", (self.home / name).read_text())
         # Profiles first, config later, as produced by an independent manager.
+        self.home = Path(self.tmp.name) / "profiles-first"
+        self.install()
         for name in instructions.DOCS:
             path = self.home / name
-            own = instructions.block(path.read_text())
-            path.write_text("user prefix\n\n" + own + "\n\n" + self.config_block(name) + "\n\nuser suffix\n")
+            own = instructions.block(path.read_text()) if path.exists() else None
+            path.write_text("user prefix\n\n" + ((own + "\n\n") if own else "")
+                            + self.config_block(name) + "\n\nuser suffix\n")
+        sidecars = {name: (self.home / name).read_bytes() for name in ("WORK.md", "PRIVATE.md")}
         lifecycle.sync_instructions(self.home)
         for name in instructions.DOCS:
             text = (self.home / name).read_text()
-            self.assertLess(text.index(instructions.CONFIG_END), text.index(instructions.BEGIN))
+            self.assertIn(self.config_block(name), text)
+            if name == "AGENTS.md":
+                self.assertLess(text.index(instructions.CONFIG_END), text.index(instructions.BEGIN))
+            else:
+                self.assertNotIn(instructions.BEGIN, text)
+                self.assertEqual((self.home / name).read_bytes(), sidecars[name])
             self.assertIn("user suffix", text)
 
     def test_sync_preserves_root_config_roles_and_role_state_byte_for_byte(self):
@@ -212,8 +216,8 @@ class InstructionLifecycleTests(unittest.TestCase):
                 f"{instructions.BEGIN}\n- Active root profile: `private`; agent mode: `team`.\n"
                 f"- Use the user-selected root model and effort.\n{instructions.END}"
             ),
-            "WORK.md": instructions.BEGIN + "\n" + (instructions.ROOT / "profiles/work/team-agents-subset.md").read_text().strip() + "\n" + instructions.END,
-            "PRIVATE.md": instructions.BEGIN + "\n" + (instructions.ROOT / "modes/team/AGENTS.md").read_text().strip() + "\n" + instructions.END,
+            "WORK.md": f"{instructions.BEGIN}\n- Historical corporate fixture.\n{instructions.END}",
+            "PRIVATE.md": f"{instructions.BEGIN}\n- Historical native fixture.\n{instructions.END}",
         }
         for name, content in previous.items():
             (self.home / name).write_text(content + "\n", encoding="utf-8")
@@ -241,11 +245,83 @@ class InstructionLifecycleTests(unittest.TestCase):
         lifecycle.sync_instructions(self.home)
         self.assertEqual(self.snapshot(), settled)
 
+    def seed_previous_split_work(self, mode):
+        """Keep exact ownership of old profile blocks beside foreign account policies."""
+        self.install("work", mode)
+        previous = {
+            "AGENTS.md": lifecycle._legacy_metadata("work"),
+            "WORK.md": f"{instructions.BEGIN}\n- Historical Work corporate fixture.\n{instructions.END}",
+            "PRIVATE.md": f"{instructions.BEGIN}\n- Historical Work native fixture.\n{instructions.END}",
+        }
+        expected_sidecars = {}
+        for name, content in previous.items():
+            prefix, suffix = f"user prefix for {name}", f"user suffix for {name}"
+            foreign = self.config_block(name, f"account policy fixture for {name}")
+            (self.home / name).write_text(
+                f"{prefix}\n\n{foreign}\n\n{content}\n\n{suffix}\n", encoding="utf-8"
+            )
+            if name != "AGENTS.md":
+                expected_sidecars[name] = f"{prefix}\n\n{foreign}\n\n{suffix}\n".encode()
+        state = instructions.load_state(self.home)
+        state["owned"] = {name: instructions.digest(value) for name, value in previous.items()}
+        (self.home / "profiles" / instructions.STATE).write_text(json.dumps(state), encoding="utf-8")
+        return expected_sidecars
+
+    def assert_work_split_retired(self, expected_sidecars, mode):
+        for name, expected in expected_sidecars.items():
+            self.assertEqual((self.home / name).read_bytes(), expected)
+        global_text = (self.home / "AGENTS.md").read_text()
+        self.assertIn(self.config_block("AGENTS.md", "account policy fixture for AGENTS.md"), global_text)
+        self.assertIn("user prefix for AGENTS.md", global_text)
+        self.assertIn("user suffix for AGENTS.md", global_text)
+        self.assertIn("work-code", global_text)
+        self.assertIn("work-scout", global_text)
+        self.assertEqual("sol_worker" in global_text, mode == "team")
+        self.assertEqual("luna_worker" in global_text, mode == "team")
+        self.assertNotIn("Historical Work", global_text)
+        self.assertLess(global_text.index(instructions.CONFIG_END), global_text.index(instructions.BEGIN))
+        self.assertEqual(set(instructions.load_state(self.home)["owned"]), {"AGENTS.md"})
+        self.assertEqual(instructions.status(self.home)["changed_blocks"], [])
+
+    def test_work_sync_migrates_owned_split_layout_preserving_account_policies_and_settings(self):
+        for mode in ("solo", "team"):
+            with self.subTest(mode=mode):
+                self.home = Path(self.tmp.name) / f"sync-{mode}"
+                expected_sidecars = self.seed_previous_split_work(mode)
+                before = self.snapshot()
+                lifecycle.sync_instructions(self.home)
+                self.assert_work_split_retired(expected_sidecars, mode)
+                after = self.snapshot()
+                changed = {"AGENTS.md", "WORK.md", "PRIVATE.md", "profiles/" + instructions.STATE}
+                for name, data in before.items():
+                    if Path(name).as_posix() not in changed:
+                        self.assertEqual(after[name], data)
+                settled = self.snapshot()
+                lifecycle.sync_instructions(self.home)
+                self.assertEqual(self.snapshot(), settled)
+
+    def test_work_install_and_mode_migrate_owned_split_layout_preserving_sidecars(self):
+        for command in ("install", "mode"):
+            for mode in ("solo", "team"):
+                with self.subTest(command=command, mode=mode):
+                    self.home = Path(self.tmp.name) / f"{command}-{mode}"
+                    expected_sidecars = self.seed_previous_split_work("team" if mode == "solo" else "solo")
+                    if command == "install":
+                        self.install("work", mode)
+                    else:
+                        config = self.home / "config.toml"
+                        config.write_text(config.read_text().replace('model = "gpt-6.1-sol"', 'model = "fixture-selected-root"'))
+                        args = ["manage_profile.py", "--home", str(self.home), "mode", mode]
+                        with patch.object(sys, "argv", args), redirect_stdout(StringIO()):
+                            self.assertEqual(lifecycle.main(), 0)
+                        self.assertIn('model = "fixture-selected-root"', config.read_text())
+                    self.assert_work_split_retired(expected_sidecars, mode)
+
     def test_modified_owned_block_refuses_sync_install_and_remove_before_any_write(self):
         for name in instructions.DOCS:
             with self.subTest(name=name):
                 self.home = Path(self.tmp.name) / name.replace(".md", "")
-                self.install()
+                self.seed_previous_split_work("team")
                 path = self.home / name
                 path.write_text(path.read_text().replace(instructions.BEGIN, instructions.BEGIN + "\nuser edit", 1))
                 before = self.snapshot()
@@ -259,7 +335,7 @@ class InstructionLifecycleTests(unittest.TestCase):
         self.install()
         for name in instructions.DOCS:
             path = self.home / name
-            path.write_text(self.config_block(name) + "\n\n" + path.read_text() + "\nuser added\n")
+            path.write_text(self.config_block(name) + "\n\n" + (path.read_text() if path.exists() else "") + "\nuser added\n")
         lifecycle.apply(self.home, None)
         for name in instructions.DOCS:
             text = (self.home / name).read_text()
