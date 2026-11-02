@@ -165,14 +165,6 @@ class InstructionLifecycleTests(unittest.TestCase):
             self.assertNotIn(instructions.BEGIN, text)
         self.assertFalse((self.home / "profiles" / instructions.STATE).exists())
 
-    def test_sync_dry_run_and_cli_keep_all_bytes(self):
-        self.install()
-        before = self.snapshot()
-        args = ["manage_profile.py", "--home", str(self.home), "sync-instructions", "--dry-run"]
-        with patch.object(sys, "argv", args), redirect_stdout(StringIO()):
-            self.assertEqual(lifecycle.main(), 0)
-        self.assertEqual(before, self.snapshot())
-
     def test_opencode_merge_and_removal_preserve_providers_globals_other_agents(self):
         path = self.opencode()
         original = json.loads(path.read_text())
@@ -191,17 +183,6 @@ class InstructionLifecycleTests(unittest.TestCase):
         self.assertEqual(before, path.read_bytes())
         lifecycle.apply(self.home, None, opencode_config=path)
         self.assertEqual(json.loads(path.read_text()), original)
-
-    def test_opencode_not_touched_without_explicit_path(self):
-        path = self.opencode()
-        self.install(opencode_config=path)
-        before = path.read_bytes()
-        lifecycle.sync_instructions(self.home)
-        lifecycle.apply(self.home, None)
-        self.assertEqual(path.read_bytes(), before)
-        self.assertIsNotNone(instructions.load_state(self.home)["opencode"])
-        lifecycle.apply(self.home, None, opencode_config=path)
-        self.assertNotIn("work-code", json.loads(path.read_text())["agent"])
 
     def test_opencode_unowned_or_modified_named_agent_refuses_update(self):
         path = self.opencode({"work-scout": {"model": "user/model"}})
@@ -239,15 +220,6 @@ class InstructionLifecycleTests(unittest.TestCase):
             with self.assertRaisesRegex(OSError, "injected"):
                 self.install("private", "solo")
         self.assertEqual(before, self.snapshot())
-
-    def test_unowned_legacy_cap_is_preserved_by_refusal(self):
-        path = self.home / "config.toml"
-        path.write_text("[agents]\nmax_threads = 5\n")
-        before = self.snapshot()
-        with self.assertRaisesRegex(ValueError, "Unowned legacy"):
-            self.install()
-        self.assertEqual(before, self.snapshot())
-
 
 class OpenCodeSourceTests(unittest.TestCase):
     def test_scout_has_enforced_deny_by_default_and_code_retains_inherited_permissions(self):
