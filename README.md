@@ -11,7 +11,7 @@ shared/
   AGENTS.md                     Common GUI, reuse and delegation limits
   agents/
     sol-worker.toml             Sol 6.1 / high
-    luna-worker.toml            Luna 6 / medium
+    luna-worker.toml            Luna 6 / high
     terra-computer.toml          Terra 6.1 / high
 profiles/
   private/AGENTS.md             Private profile metadata
@@ -56,7 +56,7 @@ All delegation instructions are assembled into global `AGENTS.md`. The Work rout
 
 Common instructions prefer reusing workers and one active assignment, with at most two delegated jobs excluding root. Team also sets the native cap to two and an empty native mode hint; its source file supplies routing. Workers have nested delegation disabled. Terra requires actual model and Browser/Computer Use availability.
 
-For work tasks, corporate routing uses OpenCode first with optional bounded scouting in both modes. Explicit Cloud quota exhaustion permits native Codex under its native delegation instructions, then explicit native quota exhaustion permits Cursor. Native Luna uses medium in both profiles. Corporate OpenCode model selection is separate from native role definitions.
+For work tasks, corporate routing uses OpenCode first with optional bounded scouting in both modes. Explicit Cloud quota exhaustion permits native Codex under its native delegation instructions, then explicit native quota exhaustion permits Cursor. Native Luna uses high in both profiles. Corporate OpenCode model selection is separate from native role definitions.
 
 ## Apply and remove
 
