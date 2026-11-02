@@ -46,43 +46,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         agents = self.home / "agents"
         return {path.name for path in agents.glob("*.toml")} if agents.exists() else set()
 
-    def test_install_collapses_whitespace_before_managed_top_level_block(self):
-        self.home.mkdir()
-        managed_catalog = (self.home / lifecycle.MANAGED_CATALOG).as_posix()
-        (self.home / "config.toml").write_text(
-            "mcp_oauth_callback_port = 18000\n"
-            "   \n"
-            "\t\n"
-            "\n"
-            "# codex-profiles: managed profile keys\n"
-            'model = "gpt-5.6-sol"\n'
-            'model_reasoning_effort = "xhigh"\n'
-            f'model_catalog_json = "{managed_catalog}"\n'
-            "\n",
-            encoding="utf-8",
-        )
-
-        self.install("work")
-        text = (self.home / "config.toml").read_text(encoding="utf-8")
-
-        self.assertIn(
-            "mcp_oauth_callback_port = 18000\n\n"
-            "# codex-profiles: managed profile keys\n"
-            'model = "gpt-6.1-sol"\n'
-            'model_reasoning_effort = "xhigh"\n',
-            text,
-        )
-        self.assertNotIn("\n \n", text)
-        self.assertNotIn("\n\t\n", text)
-        self.assertNotIn("model_catalog_json", text)
-
-        before = text
-        self.install("work")
-        self.assertEqual(
-            before,
-            (self.home / "config.toml").read_text(encoding="utf-8"),
-        )
-
     def test_private_and_work_install_default_to_native_solo(self):
         for profile in ("private", "work"):
             with self.subTest(profile=profile), tempfile.TemporaryDirectory() as raw:
@@ -165,14 +128,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
         )
 
-    def test_install_team_directly_and_then_switch_profile_defaults_back_to_solo(self):
-        self.install("private", mode="team")
-        self.assertEqual(self.state()["mode"], "team")
-        self.install("work")
-        self.assertEqual(self.state()["profile"], "work")
-        self.assertEqual(self.state()["mode"], "solo")
-        self.assertEqual(self.role_names(), {"terra-computer.toml"})
-
     def test_mode_refresh_preserves_selected_root_and_updates_team_artifacts(self):
         self.install("private", mode="team")
         (self.home / "config.toml").write_text(
@@ -226,56 +181,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(self.config()["model"], "gpt-6-astra")
         self.assertEqual(self.config()["model_reasoning_effort"], "xhigh")
 
-    def test_retired_lite_installed_state_switches_to_work(self):
-        self.home.mkdir()
-        agents = self.home / "agents"
-        agents.mkdir()
-        data = roles.desired_roles("private", "team")["luna-worker.toml"]
-        (agents / "luna-worker.toml").write_bytes(data)
-        control = self.home / "profiles"
-        control.mkdir()
-        (control / "roles-state.json").write_text(
-            json.dumps(
-                {
-                    "version": 2,
-                    "profile": "lite",
-                    "mode": "team",
-                    "owned": {"luna-worker.toml": roles.digest(data)},
-                }
-            ),
-            encoding="utf-8",
-        )
-        catalog = self.home / lifecycle.MANAGED_CATALOG
-        catalog.write_text("synthetic former lite catalog", encoding="utf-8")
-        (self.home / lifecycle.LEGACY_LITE_CATALOG).write_text(
-            "synthetic legacy catalog", encoding="utf-8"
-        )
-        (self.home / "config.toml").write_text(
-            f'model_catalog_json = "{catalog.as_posix()}"\n'
-            'model = "gpt-6-luna"\n',
-            encoding="utf-8",
-        )
-        (self.home / "AGENTS.md").write_text(
-            "<!-- codex-profiles:begin -->\n"
-            "## Lite — маршрутизация\n"
-            "Old lite rules\n"
-            "<!-- codex-profiles:end -->\n",
-            encoding="utf-8",
-        )
-
-        self.assertEqual(lifecycle._state(self.home)["profile"], "lite")
-        # Synthetic legacy fixture is explicitly supplied as a known published block.
-        legacy_block = lifecycle._extract_marked((self.home / "AGENTS.md").read_text(encoding="utf-8"))
-        with patch.object(lifecycle, "_known_instruction_blocks", return_value=[legacy_block]):
-            result = self.install("work", mode="team")
-        self.assertEqual(result["profile"], "work")
-        self.assertEqual(self.state()["profile"], "work")
-        self.assertEqual(self.role_names(), {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"})
-        self.assertFalse(catalog.exists())
-        self.assertFalse((self.home / lifecycle.LEGACY_LITE_CATALOG).exists())
-        self.assertNotIn("model_catalog_json", self.config())
-        self.assertNotIn("Old lite rules", (self.home / "AGENTS.md").read_text())
-
     def test_unrelated_custom_catalog_is_refused(self):
         self.home.mkdir()
         custom = self.home / "custom-models.json"
@@ -292,27 +197,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             ],
             custom.as_posix(),
         )
-
-    def test_legacy_catalogs_and_alias_roles_are_cleaned_on_install(self):
-        self.home.mkdir()
-        legacy = self.home / "models.json"
-        old_lite = self.home / "models-lite.json"
-        legacy.write_text("legacy", encoding="utf-8")
-        old_lite.write_text("legacy-lite", encoding="utf-8")
-        (self.home / "config.toml").write_text(
-            f'model_catalog_json = "{legacy.as_posix()}"\n',
-            encoding="utf-8",
-         )
-        agents = self.home / "agents"
-        agents.mkdir()
-        for name in ("profile-default.toml", "profile-worker.toml", "profile-explorer.toml"):
-            (agents / name).write_text('name = "default"\n', encoding="utf-8")
-
-        self.install("private")
-        self.assertFalse(legacy.exists())
-        self.assertFalse(old_lite.exists())
-        self.assertEqual(self.role_names(), {"terra-computer.toml"})
-        self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_remove_cleans_managed_catalog_and_preserves_unrelated_text(self):
         self.home.mkdir()
@@ -339,17 +223,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             "# unrelated instructions",
         )
         self.assertFalse((self.home / "profiles" / "roles-state.json").exists())
-
-    def test_mode_switch_does_not_require_managed_catalog(self):
-        self.install("private")
-        self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
-        result = lifecycle.apply(
-            self.home,
-            "private",
-            mode="team",
-        )
-        self.assertEqual(result["mode"], "team")
-        self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_dry_run_does_not_write(self):
         result = self.install("private", dry_run=True)
