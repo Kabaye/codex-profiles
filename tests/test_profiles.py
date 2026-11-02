@@ -136,7 +136,7 @@ class ProfileStaticTests(unittest.TestCase):
             {"slug": model, "supported_reasoning_levels": [{"effort": effort}]}
             for model, effort in (
                 ("fixture-root", "xhigh"), ("gpt-6.1-sol", "xhigh"),
-                ("gpt-6-luna", "medium"), ("gpt-6.1-terra", "medium"),
+                ("gpt-6-luna", "medium"), ("gpt-6.1-terra", "high"),
             )
         ]}
         self.assertEqual(presets.validate(root=root, catalog=catalog), [])
