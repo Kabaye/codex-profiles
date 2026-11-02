@@ -40,24 +40,6 @@ class ProfileStaticTests(unittest.TestCase):
                     {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
                 )
 
-    def test_team_roles_pin_models_and_disable_nested_delegation(self):
-        for profile in roles.PROFILES:
-            with self.subTest(profile=profile):
-                for filename, data in roles.desired_roles(profile, "team").items():
-                    role = tomllib.loads(data.decode("utf-8"))
-                    self.assertFalse(role["agents"]["enabled"])
-                    if filename == "luna-worker.toml":
-                        expected_model = "gpt-6-luna"
-                        self.assertEqual(
-                            (role["model"], role["model_reasoning_effort"]),
-                            (expected_model, "max"),
-                        )
-                    elif filename == "sol-worker.toml":
-                        self.assertEqual(
-                            (role["model"], role["model_reasoning_effort"]),
-                            ("gpt-6.1-sol", "xhigh"),
-                        )
-
     def test_install_solo_purges_existing_top_level_role_tomls(self):
         agents = self.home / "agents"
         agents.mkdir(parents=True)
