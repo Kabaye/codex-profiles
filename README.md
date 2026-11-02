@@ -1,95 +1,69 @@
-# Codex profiles
+# Codex Profiles
 
-Builds routing instructions and native worker roles for `work` and `private` profiles. The current user-selected root model and effort remain authoritative.
+Configures Codex root models, native agent roles and task routing for the **work** and **private** installations. The independent [codex-config](https://github.com/Kabaye/codex-config) manager owns shared instructions, account policy and skill installation; this repository owns only its own `codex-profiles` blocks and role/config keys.
 
-## Instruction build
+## Runtime layout
 
-The `work` profile splits runtime instructions into three adjacent documents under `$CODEX_HOME`:
+| Installation | Instructions written under `$CODEX_HOME` | Default root |
+| --- | --- | --- |
+| `work` | `AGENTS.md`, `WORK.md`, `PRIVATE.md` | GPT-6.1 Sol / xhigh |
+| `private` | One global `AGENTS.md` | GPT-6 Astra / xhigh |
 
-| Document | `codex-config` owns | `codex-profiles` owns |
-|---|---|---|
-| `AGENTS.md` | Common policy and short path-based router | Short active root profile / agent mode metadata |
-| `WORK.md` | Work account policy | Work routing and quota fallback chain |
-| `PRIVATE.md` | Personal account policy | Native Sol-first / Luna routing |
+On a work computer, `WORK.md` routes corporate tasks and `PRIVATE.md` routes personal tasks. Their routing sources are `work/agents-subset.md` and **`work/personal-agents-subset.md`**, respectively; the latter is independent of `private/agents-subset.md` used by the separate private installation. `scripts/manage_instructions.py` assembles the single shared GUI/budget fragment from `shared/agents-subset.md` into the applicable policy exactly once.
 
-In `work`, the router selects the policy from the target repository path: `$HOME/Projects/private` uses `PRIVATE.md` automatically, and other targets use `WORK.md`. No declaration phrase is required. Detailed routing stays out of the work home `AGENTS.md`.
+Root model/effort selected by the user remain authoritative. Running `mode` or `sync-instructions` preserves them; an explicit fresh `install` applies the profile defaults.
 
-Work's personal-sidecar routing is sourced from `work/personal-agents-subset.md`, not from the separate private profile. The single shared GUI routing fragment lives in `shared/agents-subset.md` and is assembled into work's `WORK.md` and `PRIVATE.md`, and into the separate private installation's global `AGENTS.md`. Neither profile source duplicates the Terra routing rule.
+## Agent selection
 
-The `private` profile keeps shared rules, personal account policy and native worker routing together in `AGENTS.md`. It has no path router and installs no policy sidecars. A private instruction sync removes only previously owned sidecar blocks, preserving other managers' blocks and user prose.
+| Mode | Installed native roles | Behavior |
+| --- | --- | --- |
+| `solo` (default) | `terra_computer` only | Native delegation; no automatic team routing |
+| `team` | `terra_computer`, `luna_worker`, `sol_worker` | Delegate useful independent work using the selected policy |
 
-Each manager replaces only its own marker block. The canonical order is the `codex-config` block followed by the `codex-profiles` block; unrelated user prose remains. Instruction state stores hashes of owned blocks, so another manager's changes do not invalidate ownership. Changed or missing owned blocks stop updates/removal before writes; review those changes explicitly.
+**Prefer one active worker; allow up to two only when parallel work is worthwhile.** In `team`, the native cap is `agents.max_concurrent_threads_per_session = 2` excluding root. The shared instructions also cap the combined native/OpenCode/Cursor delegated jobs at two.
 
-## Modes and routing
+`terra_computer` uses `gpt-6.1-terra` / medium for live GUI work: screenshots, clicking, typing and scrolling. It is not a substitute for coding or normal web research. It requires a compatible Codex CLI, model entitlement and usable Browser/Computer Use tools; the configuration alone cannot supply tools or guarantee a model launch.
 
-Both profiles default to `solo`. Instruction layout depends on the profile, independently of mode: work stays split; private stays inline.
+In `private/team`, Sol handles implementation and complex/debugging work; Luna handles bounded mechanical work and checks. In `work/team`, read-only OpenCode `work-scout` uses corporate fast/chat models and OpenCode `work-code` uses GPT-6 Luna. Only explicit Cloud quota exhaustion permits fallback to native Luna, then only explicit native quota exhaustion permits Cursor. Cursor jobs require `auto-smart[optimize_for=cost]` (Auto Cost); authentication, network or tool failures do not qualify as quota fallback. All workers must be bounded and cannot delegate further.
 
-| Mode | Behavior |
-|---|---|
-| `solo` | Native Codex delegation, with only the shared Terra computer-use specialist installed; no other automatic team routes, cap, or mode-hint override |
-| `team` | Automatic useful independent delegation plus the shared Terra computer-use specialist; root owns architecture, integration and acceptance; review only on user request |
+## Install, update, remove
 
-`private/team` uses native `sol_worker` for implementation, debugging and uncertain work, and native `luna_worker` for mechanical edits, exploration and routine checks. Workers cannot delegate. OpenCode is not used for these jobs.
-
-`work/team` uses named OpenCode primary agents: `work-scout` with `litellm/corp-code-fast` for file lookup or `litellm/corp-chat-max` for current-code explanations, both read-only; `work-code` with `litellm/global.openai.gpt-6-luna` for implementation and checks. Only explicit Cloud quota exhaustion permits native `luna_worker`, then only explicit native quota exhaustion permits Cursor. Automatic Cursor jobs explicitly use `auto-smart[optimize_for=cost]` (Auto Cost), with Max Mode off and exploration inheriting the parent model. If unavailable, stop instead of choosing another model; a different Cursor model requires an exact user request. Network/authentication/validation failures do not advance this chain.
-
-The `terra_computer` role (`gpt-6.1-terra`, medium) is shared by both installations and both modes, and is selected only for live visual computer-use actions when Browser/Computer Use tools are accessible. Non-GUI tasks retain existing routing. It requires Codex CLI 0.159.0+ and model availability; without the UI tools it cannot click.
-
-The native team cap is `agents.max_concurrent_threads_per_session = 2`, excluding the root. The shared policy prefers one active delegated job and allows a second only when worthwhile; the same two-job budget covers native threads and external OpenCode CLI/Cursor jobs because the native cap does not cover external processes. The native config key is documented in [official OpenAI documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents#global-settings); `agents.max_threads` is a legacy alias. Full lifecycle commands migrate a previously owned alias; an unowned alias requires explicit review.
-
-## Safe instruction-only activation
-
-For an existing installed profile, use this path to preserve `config.toml`, root model/effort, MCP/auth settings, role files and role-state bytes:
+Requires Python 3.11+ and the native Codex model catalog. Run in PowerShell 7 from the checkout:
 
 ```powershell
-python -X utf8 scripts/manage_profile.py --home "$HOME/.codex" sync-instructions --dry-run
-python -X utf8 scripts/manage_profile.py --home "$HOME/.codex" sync-instructions
-```
+# Fresh installation; full install replaces all top-level agents/*.toml files
+python -X utf8 scripts/manage_profile.py install work --dry-run
+python -X utf8 scripts/manage_profile.py install work --mode team
+# Or: install private / install private --mode team
 
-The command reads the current installed profile/mode from `profiles/roles-state.json`. It updates only that profile's managed instruction blocks and `profiles/instructions-state.json`. It can migrate an older managed home routing block or restore private's inline layout from a split installation. Install the matching instruction build from `codex-config` too so the common rules and account policies match the profile.
-
-Optionally merge the tracked [named OpenCode definitions](work/opencode-agents.json) into an **existing valid JSON** config by passing its exact path:
-
-```powershell
-python -X utf8 scripts/manage_profile.py --home "$HOME/.codex" sync-instructions --opencode-config "$HOME/.config/opencode/opencode.json" --dry-run
-python -X utf8 scripts/manage_profile.py --home "$HOME/.codex" sync-instructions --opencode-config "$HOME/.config/opencode/opencode.json"
-```
-
-Only `agent.work-scout` and `agent.work-code` are owned. Providers, environment references, credentials, global permissions, other agents and model settings retain their values. Existing different definitions at those names are refused rather than overwritten. Scout permissions deny all tools except read/glob/grep, deny env-file reads, and deny writing, shell, task and skill tools. The initial scout has a 16-step budget; split larger investigations into focused questions. `work-code` denies task/skill delegation and inherits other user permissions. No provider or credential data is copied into managed state.
-
-OpenCode is never read or changed when the path is omitted. To remove owned OpenCode agents, pass the same path to `remove`; omitting it retains their ownership record for later explicit cleanup. A changed owned definition requires review. JSONC and creation of an absent config are not supported.
-
-After any update, fully restart Codex and start a new chat/thread; running sessions retain instruction snapshots. Restart OpenCode before using updated named agents. Live service permissions, model realization and quota responses still require runtime verification.
-
-## Complete lifecycle
-
-```powershell
-python -X utf8 scripts/manage_profile.py install private --dry-run
-python -X utf8 scripts/manage_profile.py install private --mode team
-python -X utf8 scripts/manage_profile.py mode solo
+# Switch team/solo, keeping the user-selected root model/effort
+python -X utf8 scripts/manage_profile.py mode team --dry-run
 python -X utf8 scripts/manage_profile.py mode team
+python -X utf8 scripts/manage_profile.py mode solo
 python -X utf8 scripts/manage_profile.py status
+
+# Instructions only: leaves config.toml, role TOMLs, auth, MCP and root model intact
+python -X utf8 scripts/manage_profile.py sync-instructions --dry-run
+python -X utf8 scripts/manage_profile.py sync-instructions
+
+# Uninstall only manager-owned settings and blocks
 python -X utf8 scripts/manage_profile.py remove --dry-run
 python -X utf8 scripts/manage_profile.py remove
 ```
 
-`install`, `mode` and `remove` also maintain the new instruction documents and accept `--opencode-config PATH`. Mode changes preserve the configured root model/effort; explicit installation applies profile defaults (private: GPT-6 Astra xhigh; work: GPT-6.1 Sol xhigh). Both use the native catalog.
+The instruction-only sync **does not install new role TOMLs or change the native concurrency cap**. To activate a new role or cap, use a reviewed `mode` operation after a dry-run. Profile installation and mode changes deliberately replace the top-level role TOMLs; unrelated config and authorization data are preserved only as documented by the manager.
 
-Full `install` and `mode` retain the existing role-reset contract: every top-level `agents/*.toml` is deleted before writing the destination set. Team installs `luna-worker.toml`, `sol-worker.toml`, and `terra-computer.toml`; solo installs only `terra-computer.toml`. Use `sync-instructions` for instruction updates that must preserve unrelated roles. Removal validates recorded ownership and leaves unmanaged roles and prose intact. No persistent backup is created; rollback bytes exist only in process.
+Optional OpenCode integration: pass `--opencode-config "$HOME/.config/opencode/opencode.json"` to the relevant install/sync/remove command. The file must already exist as valid JSON. Only the named `work-scout` and `work-code` definitions are managed; providers, secrets and unrelated agents remain intact. Omitting the option never edits OpenCode.
+
+Managed instruction edits are hash-checked; unknown or modified blocks stop unsafe writes. Removal keeps `codex-config` blocks, unrelated user prose and unowned resources. A profile removed without its previously registered OpenCode path retains an ownership record for later explicit removal. Runtime rollback is transactional but no permanent backup is created.
+
+After an update, **fully restart Codex and start a new chat**. Restart OpenCode if its named-agent definitions changed. Verify the actual effective model, GUI tool availability and permissions rather than assuming a TOML file proves runtime access.
 
 ## Validation
-
-No dependencies beyond Python 3.11+ and Git are required. Run checks in PowerShell 7:
 
 ```powershell
 python -X utf8 scripts/validate.py
 python -X utf8 -m unittest discover -s tests -v
 ```
 
-Tests use temporary Codex homes and synthetic OpenCode configs, never the real global config. Optional native model metadata check:
-
-```powershell
-python -X utf8 scripts/validate.py --profile private --models PATH_TO_CAPTURED_MODELS_JSON
-```
-
-See [installation](docs/install.md), [routing](docs/routing-policy.md), [verification](docs/verification.md) and [removal](docs/remove.md).
+Tests use temporary homes and synthetic OpenCode configs; they do not edit your installed Codex. Optional model metadata validation: `python -X utf8 scripts/validate.py --profile work --models PATH_TO_MODELS_JSON`. Static checks cannot prove entitlement, actual quota behavior or that a child agent received GUI tools.
