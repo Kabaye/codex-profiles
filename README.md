@@ -56,6 +56,8 @@ All delegation instructions are assembled into global `AGENTS.md`. The Work rout
 
 Root owns architecture, implementation, integration and final acceptance. In Team, root handles sequential native work directly and delegates when several substantial, independent parts can progress in parallel, keeping one part for itself. Sol/Luna selection applies after deciding to delegate. Common instructions prefer reusing workers and one active assignment when delegating, with at most two delegated jobs excluding root. Team also sets the native cap to two and an empty native mode hint; its source file supplies routing. Workers have nested delegation disabled. Terra requires actual model and Browser/Computer Use availability.
 
+In both profiles and modes, browser tasks use Opera through the Browser extension; root handles straightforward browser workflows directly. Desktop Computer Use requires an explicit user request or task-specific approval before delegation to Terra. The in-app browser is limited to target tabs opened by the user. These are agent instructions; app permissions govern technical access separately.
+
 For work tasks, corporate routing uses OpenCode first with optional bounded scouting in both modes. Explicit Cloud quota exhaustion permits native Codex under its native delegation instructions, then explicit native quota exhaustion permits Cursor. Native Luna uses high in both profiles. Corporate OpenCode model selection is separate from native role definitions.
 
 ## Apply and remove

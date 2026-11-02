@@ -1,3 +1,5 @@
-- Delegate live browser and desktop GUI work to `terra_computer` and verify the visible result. Report unavailable model, tools or permissions.
+- Use Opera through the Browser extension for browser tasks. Handle straightforward browser workflows directly.
+- Use desktop Computer Use only when the user explicitly requests it or approves it for the task. Delegate authorized desktop GUI work to `terra_computer` and verify the visible result. Report unavailable model, tools or permissions.
+- Use the in-app browser only for a target tab opened by the user.
 - Prefer reusing suitable existing subagents. Create a new one when the task's context changes substantially or no existing subagent is suitable.
 - When delegating, prefer one active worker; use a second for worthwhile independent work. Allow at most two delegated jobs total, including native agents, external CLI jobs and waiting jobs; exclude root.
