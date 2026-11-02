@@ -1,7 +1,7 @@
 name = "terra_computer"
 description = "GUI specialist for inspecting screenshots and clicking, typing and scrolling in live browser and desktop apps."
 model = "gpt-6.1-terra"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 
 developer_instructions = """
 Operate the visible graphical interface for one explicitly delegated, bounded computer-use task.
