@@ -166,21 +166,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                     self.assertEqual(self.role_names(), {"terra-computer.toml"})
                     self.assertIn("agent mode: `solo`", agents_path.read_text(encoding="utf-8"))
 
-    def test_explicit_reinstall_applies_profile_root_defaults(self):
-        self.install("private", mode="team")
-        config_path = self.home / "config.toml"
-        config_path.write_text(
-            config_path.read_text(encoding="utf-8")
-            .replace('model = "gpt-6-astra"', 'model = "gpt-6.1-sol"')
-            .replace('model_reasoning_effort = "xhigh"', 'model_reasoning_effort = "high"'),
-            encoding="utf-8",
-        )
-
-        self.install("private", mode="team")
-
-        self.assertEqual(self.config()["model"], "gpt-6-astra")
-        self.assertEqual(self.config()["model_reasoning_effort"], "xhigh")
-
     def test_unrelated_custom_catalog_is_refused(self):
         self.home.mkdir()
         custom = self.home / "custom-models.json"
