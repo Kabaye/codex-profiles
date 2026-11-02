@@ -1,6 +1,6 @@
-- Use the user-selected root model and effort. Root owns architecture, integration and final acceptance.
-- Use `sol_worker` for native implementation, debugging and complex or uncertain tasks.
-- Use `luna_worker` for native mechanical edits, exploration and routine checks; return growing complexity to root.
+- Use the user-selected root model and effort. Root owns architecture, implementation, integration and final acceptance. Handle native work directly when it follows a single sequential path.
+- Delegate native work when a task has multiple substantial, independent parts that can progress in parallel. Work on one part yourself while workers handle the others.
+- When delegating native work, use `sol_worker` for implementation, debugging and complex or uncertain tasks, and `luna_worker` for mechanical edits, exploration and routine checks; return growing complexity to root.
 - Give each worker owned files, a bounded task, constraints and checks; use `fork_turns = "none"`.
 - Workers complete their assignment and checks directly, with delegation disabled.
 - Independent review only when the user explicitly requests one.

@@ -33,7 +33,7 @@ class TerraComputerRoutingTests(unittest.TestCase):
     def test_live_gui_policy_is_composed_once_in_both_profiles_and_modes(self):
         shared = (ROOT / "shared" / "AGENTS.md").read_text(encoding="utf-8").strip()
         self.assertEqual(shared.count("terra_computer"), 1)
-        self.assertIn("Prefer one active worker", shared)
+        self.assertIn("prefer one active worker", shared)
         self.assertIn("at most two delegated jobs", shared)
         for source in ("profiles/private/AGENTS.md", "profiles/work/AGENTS.md", "modes/solo/AGENTS.md", "modes/team/AGENTS.md"):
             with self.subTest(source=source):
@@ -58,8 +58,8 @@ class TerraComputerRoutingTests(unittest.TestCase):
         work_policy = instructions.desired_docs("work", "team")["AGENTS.md"]
         shared = (ROOT / "shared" / "AGENTS.md").read_text(encoding="utf-8").strip()
         self.assertIn(source.strip(), work_policy)
-        self.assertIn("Use `sol_worker`", work_policy)
-        self.assertIn("Use `luna_worker`", work_policy)
+        self.assertIn("`sol_worker` for", work_policy)
+        self.assertIn("`luna_worker` for", work_policy)
         self.assertIn(shared, work_policy)
         self.assertIn("work-scout", work_policy)
         self.assertNotIn("work-scout", source)

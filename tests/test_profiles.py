@@ -135,7 +135,7 @@ class ProfileStaticTests(unittest.TestCase):
         catalog = {"models": [
             {"slug": model, "supported_reasoning_levels": [{"effort": effort}]}
             for model, effort in (
-                ("fixture-root", "xhigh"), ("gpt-6.1-sol", "xhigh"),
+                ("fixture-root", "xhigh"), ("gpt-6.1-sol", "high"),
                 ("gpt-6-luna", "high"), ("gpt-6.1-terra", "high"),
             )
         ]}
