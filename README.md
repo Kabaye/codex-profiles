@@ -10,9 +10,9 @@ shared/
   config.toml                   Root defaults: Sol 6.1 / xhigh, context management
   AGENTS.md                     Common GUI, reuse and delegation limits
   agents/
-    sol-worker.toml             Sol 6.1 / xhigh
+    sol-worker.toml             Sol 6.1 / high
     luna-worker.toml            Luna 6 / medium
-    terra-computer.toml          Terra 6.1 / medium
+    terra-computer.toml          Terra 6.1 / high
 profiles/
   private/AGENTS.md             Private profile metadata
   work/
