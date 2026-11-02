@@ -1,9 +1,8 @@
-"""Terra's global GUI role and composed profile/mode routing sources."""
+"""Composed native profile/mode routing stays independent of universal config."""
 from __future__ import annotations
 
 from pathlib import Path
 import sys
-import tomllib
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,25 +13,20 @@ import manage_roles as roles
 import profile_sources
 
 
-class TerraComputerRoutingTests(unittest.TestCase):
-    def test_shared_role_in_both_profiles_and_modes(self):
+class ProfileRoutingTests(unittest.TestCase):
+    def test_only_native_workers_are_selected_by_mode(self):
         for profile in ("work", "private"):
             for mode in ("solo", "team"):
                 with self.subTest(profile=profile, mode=mode):
                     selected = roles.desired_roles(profile, mode)
-                    expected = {"terra-computer.toml"}
+                    expected = set()
                     if mode == "team":
                         expected |= {"luna-worker.toml", "sol-worker.toml"}
                     self.assertEqual(set(selected), expected)
-                    terra = tomllib.loads(selected["terra-computer.toml"].decode("utf-8"))
-                    self.assertEqual(terra["name"], "terra_computer")
-                    self.assertEqual(terra["model"], "gpt-6.1-terra")
-                    self.assertEqual(terra["model_reasoning_effort"], "high")
-                    self.assertIs(terra["agents"]["enabled"], False)
 
-    def test_live_gui_policy_is_composed_once_in_both_profiles_and_modes(self):
+    def test_shared_policy_is_composed_once_in_both_profiles_and_modes(self):
         shared = (ROOT / "shared" / "AGENTS.md").read_text(encoding="utf-8").strip()
-        self.assertEqual(shared.count("terra_computer"), 1)
+        self.assertNotIn("terra_computer", shared)
         self.assertIn("prefer one active worker", shared)
         self.assertIn("at most two delegated jobs", shared)
         for source in ("profiles/private/AGENTS.md", "profiles/work/AGENTS.md", "modes/solo/AGENTS.md", "modes/team/AGENTS.md"):
@@ -45,7 +39,7 @@ class TerraComputerRoutingTests(unittest.TestCase):
             for policy in (work["AGENTS.md"], private["AGENTS.md"]):
                 with self.subTest(mode=mode, policy=policy[:80]):
                     self.assertEqual(policy.count(shared), 1)
-                    self.assertEqual(policy.count("terra_computer"), 1)
+                    self.assertNotIn("terra_computer", policy)
                     self.assertEqual(policy.count(instructions.BEGIN), 1)
                     self.assertEqual(policy.count(instructions.END), 1)
             self.assertNotIn("work-code", private["AGENTS.md"])

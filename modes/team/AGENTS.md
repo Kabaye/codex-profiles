@@ -1,5 +1,5 @@
-- Use the user-selected root model and effort. Root owns architecture, implementation, integration and final acceptance. Handle native work directly when it follows a single sequential path.
-- Delegate native work when a task has multiple substantial, independent parts that can progress in parallel. Work on one part yourself while workers handle the others.
+- Use the user-selected root model and effort. Root owns architecture, implementation, integration and final acceptance. Handle sequential native work and routine research, data collection, calculations and checks directly.
+- Delegate complete, substantial, independent native deliverables that can progress in parallel. Work on one part yourself while workers handle the others.
 - When delegating native work, use `sol_worker` for implementation, debugging and complex or uncertain tasks, and `luna_worker` for mechanical edits, exploration and routine checks; return growing complexity to root.
 - Give each worker owned files, a bounded task, constraints and checks; use `fork_turns = "none"`.
 - Workers complete their assignment and checks directly, with delegation disabled.

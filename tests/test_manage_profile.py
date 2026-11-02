@@ -44,7 +44,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         return tomllib.loads((self.home / "config.toml").read_text(encoding="utf-8"))
 
     def role_names(self) -> set[str]:
-        agents = self.home / "agents"
+        agents = self.home / "agents" / "codex-profiles"
         return {path.name for path in agents.glob("*.toml")} if agents.exists() else set()
 
     def test_private_and_work_install_default_to_native_solo(self):
@@ -54,8 +54,8 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 result = self.install(profile)
                 self.assertEqual(result["mode"], "solo")
                 self.assertEqual(self.state()["mode"], "solo")
-                self.assertEqual(set(self.state()["owned"]), {"terra-computer.toml"})
-                self.assertEqual(self.role_names(), {"terra-computer.toml"})
+                self.assertEqual(set(self.state()["owned"]), set())
+                self.assertEqual(self.role_names(), set())
 
                 config = self.config()
                 self.assertNotIn("agents", config)
@@ -71,7 +71,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 self.assertEqual("work-scout" in agents_text, profile == "work")
                 self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
-    def test_private_team_switch_adds_terra_plus_explicit_luna_and_sol_roles(self):
+    def test_private_team_switch_adds_only_luna_and_sol_roles(self):
         self.install("private")
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
@@ -83,7 +83,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(team["mode"], "team")
         self.assertEqual(
             self.role_names(),
-            {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
+            {"luna-worker.toml", "sol-worker.toml"},
         )
         self.assertEqual(
             self.config()["agents"],
@@ -107,7 +107,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             mode="solo",
         )
         self.assertEqual(solo["mode"], "solo")
-        self.assertEqual(self.role_names(), {"terra-computer.toml"})
+        self.assertEqual(self.role_names(), set())
         self.assertNotIn("sol_worker", (self.home / "AGENTS.md").read_text())
         self.assertNotIn("agents", self.config())
         self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
@@ -135,10 +135,10 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 self.assertEqual("sol_worker" in text, mode == "team")
                 if mode == "team":
                     self.assertEqual(self.config()["agents"], {"enabled": True, "max_concurrent_threads_per_session": 2})
-                    self.assertEqual(self.role_names(), {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"})
+                    self.assertEqual(self.role_names(), {"luna-worker.toml", "sol-worker.toml"})
                 else:
                     self.assertNotIn("agents", self.config())
-                    self.assertEqual(self.role_names(), {"terra-computer.toml"})
+                    self.assertEqual(self.role_names(), set())
 
     def test_mode_refresh_preserves_selected_root_and_updates_team_artifacts(self):
         self.install("private", mode="team")
@@ -151,7 +151,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
             'max_concurrent_threads_per_session = 4\n',
             encoding="utf-8",
         )
-        worker_path = self.home / "agents" / "sol-worker.toml"
+        worker_path = self.home / "agents" / "codex-profiles" / "sol-worker.toml"
         worker_path.write_bytes(worker_path.read_bytes() + b"# former version\n")
         agents_path = self.home / "AGENTS.md"
 
@@ -175,7 +175,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                     self.assertIn("sol_worker", agents_path.read_text(encoding="utf-8"))
                 else:
                     self.assertNotIn("agents", config)
-                    self.assertEqual(self.role_names(), {"terra-computer.toml"})
+                    self.assertEqual(self.role_names(), set())
                     self.assertNotIn("sol_worker", agents_path.read_text(encoding="utf-8"))
 
     def test_unrelated_custom_catalog_is_refused(self):

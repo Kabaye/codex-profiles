@@ -1,6 +1,6 @@
 # Codex Profiles
 
-Models, native roles and delegation instructions. [codex-config](https://github.com/Kabaye/codex-config) separately owns common rules, account policy and skill installation.
+Root models, Sol/Luna roles and native delegation instructions. [codex-config](https://github.com/Kabaye/codex-config) owns common rules, account policy, browser/Computer Use policy, Terra and skill installation.
 
 ## Files and assembly
 
@@ -8,11 +8,10 @@ Models, native roles and delegation instructions. [codex-config](https://github.
 manifest.json                   Source lists, order, destinations and role selection
 shared/
   config.toml                   Root defaults: Sol 6.1 / xhigh, context management
-  AGENTS.md                     Common GUI, reuse and delegation limits
+  AGENTS.md                     Worker reuse and delegation limits
   agents/
     sol-worker.toml             Sol 6.1 / high
     luna-worker.toml            Luna 6 / high
-    terra-computer.toml          Terra 6.1 / high
 profiles/
   private/AGENTS.md             Private profile metadata
   work/
@@ -29,13 +28,13 @@ scripts/                        Read the manifest and apply its files
 tests/                         Isolated lifecycle checks
 ```
 
-**Profile** means the computer's environment: `private` or `work`. **Mode** controls only native Codex delegation: `solo` or `team`. Corporate routing belongs to the Work profile and is present in both modes. All three native role definitions are shared across profiles; Solo installs Terra only, Team all three. Role files describe workers; they do not start them.
+**Profile** means the computer's environment: `private` or `work`. **Mode** controls native Sol/Luna delegation: `solo` installs neither, `team` installs both. Their role definitions are shared across profiles. Corporate routing belongs to the Work profile and is present in both modes. Terra is installed independently by codex-config in both profiles and remains available in either native mode. Role files describe workers; they do not start them.
 
 Open `profiles.private.team` in **manifest.json** to see the complete Private Team recipe. Each recipe declares:
 
 - `config`: TOML files to merge in the listed order into `$CODEX_HOME/config.toml`.
 - `instructions`: destination filenames and the ordered Markdown parts for each.
-- `roles`: role files to copy into `$CODEX_HOME/agents/`, retaining their filenames.
+- `roles`: role files to copy into `$CODEX_HOME/agents/codex-profiles/`, retaining their filenames. The destination directory is declared by `roles_directory`.
 
 The scripts read this recipe. Models, effort, mode settings, instruction text and source selection come from files. Historical migration fingerprints and ownership checks remain implementation details.
 
@@ -43,7 +42,7 @@ The scripts read this recipe. Models, effort, mode settings, instruction text an
 
 1. Combine `shared/config.toml` and `modes/team/config.toml`. Merge their keys into the existing `$CODEX_HOME/config.toml`, preserving unrelated settings and any root model/effort you selected.
 2. Concatenate `profiles/private/AGENTS.md`, `shared/AGENTS.md` and `modes/team/AGENTS.md` in that order. Put the result in the `codex-profiles` block of `$CODEX_HOME/AGENTS.md`, preserving the separate `codex-config` block and user text. The begin/end markers are declared in the manifest.
-3. Copy the three declared files from `shared/agents/` to `$CODEX_HOME/agents/`.
+3. Copy the two declared Sol/Luna files from `shared/agents/` to `$CODEX_HOME/agents/codex-profiles/`. Terra lives separately in `$CODEX_HOME/agents/codex-config/`.
 
 These are the same inputs the manager uses. No Python execution is needed to obtain their settings or instructions. When switching to Solo manually, remove the former Team-only keys and Sol/Luna role files; appending empty Solo config does not remove old settings. Restart Codex and use a new chat to load changed role/config definitions.
 
@@ -52,11 +51,11 @@ These are the same inputs the manager uses. No Python execution is needed to obt
 | `private` | Private profile + common rules + selected native mode |
 | `work` | Work profile including corporate routing + common rules + selected native mode |
 
-All delegation instructions are assembled into global `AGENTS.md`. The Work router installed by **codex-config** chooses `WORK.md` or `PRIVATE.md` only for account/access policy by project path. This manager adds no delegation blocks to those sidecars; migration removes its former sidecar blocks while preserving other managers and user prose. Every source list is visible in the manifest.
+All instructions are assembled into global `AGENTS.md`. **codex-config** includes account/access rules directly, with path conditions for personal projects on work computers. Neither manager installs separate `WORK.md` or `PRIVATE.md` policies. Migration removes former managed sidecar blocks while preserving user prose. Every source list is visible in the manifest.
 
-Root owns architecture, implementation, integration and final acceptance. In Team, root handles sequential native work directly and delegates when several substantial, independent parts can progress in parallel, keeping one part for itself. Sol/Luna selection applies after deciding to delegate. Common instructions prefer reusing workers and one active assignment when delegating, with at most two delegated jobs excluding root. Team also sets the native cap to two and an empty native mode hint; its source file supplies routing. Workers have nested delegation disabled. Terra requires actual model and Browser/Computer Use availability.
+Root owns architecture, implementation, integration and final acceptance. In Team, root handles sequential native work and routine research, data collection, calculations and checks directly. Workers receive complete, substantial, independent deliverables that can progress in parallel with root's own implementation. Sol/Luna selection applies after deciding to delegate. Common instructions prefer reusing workers and one active assignment when delegating, with at most two delegated jobs excluding root. Team also sets the native cap to two and an empty native mode hint; its source file supplies routing. Workers have nested delegation disabled.
 
-In both profiles and modes, browser tasks use Opera through the Browser extension; root handles straightforward browser workflows directly. Desktop Computer Use requires an explicit user request or task-specific approval before delegation to Terra. The in-app browser is limited to target tabs opened by the user. These are agent instructions; app permissions govern technical access separately.
+Universal browser/Computer Use rules and the Terra role are defined only in codex-config. Each manager owns its named folder under `agents/`; Codex discovers roles recursively. Profile operations preserve the config folder and custom roles.
 
 For work tasks, corporate routing uses OpenCode first with optional bounded scouting in both modes. Explicit Cloud quota exhaustion permits native Codex under its native delegation instructions, then explicit native quota exhaustion permits Cursor. Native Luna uses high in both profiles. Corporate OpenCode model selection is separate from native role definitions.
 
@@ -84,7 +83,9 @@ python -X utf8 scripts/manage_profile.py remove --dry-run
 python -X utf8 scripts/manage_profile.py remove
 ```
 
-Install and mode changes replace **all top-level `$CODEX_HOME/agents/*.toml` files**, including custom roles; review the dry-run. Instruction-only sync does not update models, role effort or config. Installed profile/mode and ownership hashes live under `$CODEX_HOME/profiles/`.
+Install and mode changes update `agents/codex-profiles/` and migrate verified former flat role files. Unrelated roles and the config namespace remain. Instruction-only sync does not update models, role effort or role ownership. Installed profile/mode and ownership hashes live under `$CODEX_HOME/profiles/`.
+
+For an older flat installation, update codex-config first and run `../codex-config/manage.ps1 sync-roles -DryRun`, then `../codex-config/manage.ps1 sync-roles`. This moves Terra into `agents/codex-config/`. Apply the current native mode with `scripts/manage_profile.py mode team` or `mode solo` to move Sol/Luna into `agents/codex-profiles/` and release old Terra ownership. Modified flat files stop migration for review. Both managers coordinate role writes through the same short-lived `.agent-roles.lock`.
 
 Optional OpenCode integration: pass `--opencode-config "$HOME/.config/opencode/opencode.json"` to install, mode, sync or remove. The file must already contain valid JSON. Only the named agents declared in the manifest's `opencode_agents` source are managed; providers, secrets and unrelated agents remain. Omitting the option leaves OpenCode untouched.
 

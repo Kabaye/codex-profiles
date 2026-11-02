@@ -47,8 +47,11 @@ def load(root: Path = ROOT) -> dict:
     data = json.loads(source_text(root, "manifest.json"))
     if (not isinstance(data, dict) or type(data.get("schema_version")) is not int
             or data["schema_version"] != 1
-            or set(data) != {"schema_version", "markers", "profiles", "opencode_agents"}):
+            or set(data) != {"schema_version", "markers", "profiles", "opencode_agents", "roles_directory"}):
         raise ValueError("Unknown assembly manifest schema")
+    role_dir = relative_path(data["roles_directory"])
+    if not re.fullmatch(r"agents/[a-z][a-z0-9-]*", role_dir):
+        raise ValueError("Role directory must be a named folder under agents/")
     markers = data.get("markers")
     if (not isinstance(markers, dict) or set(markers) != {"begin", "end"}
             or any(not isinstance(value, str) or not value.strip() or "\n" in value or "\r" in value

@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "roles_directory": "agents/codex-profiles",
   "opencode_agents": "profiles/work/opencode-agents.json",
   "markers": {
     "begin": "<!-- codex-profiles:begin -->",
@@ -12,9 +13,7 @@
           "shared/config.toml",
           "modes/solo/config.toml"
         ],
-        "roles": [
-          "shared/agents/terra-computer.toml"
-        ],
+        "roles": [],
         "instructions": {
           "AGENTS.md": [
             "profiles/private/AGENTS.md",
@@ -30,8 +29,7 @@
         ],
         "roles": [
           "shared/agents/luna-worker.toml",
-          "shared/agents/sol-worker.toml",
-          "shared/agents/terra-computer.toml"
+          "shared/agents/sol-worker.toml"
         ],
         "instructions": {
           "AGENTS.md": [
@@ -48,9 +46,7 @@
           "shared/config.toml",
           "modes/solo/config.toml"
         ],
-        "roles": [
-          "shared/agents/terra-computer.toml"
-        ],
+        "roles": [],
         "instructions": {
           "AGENTS.md": [
             "profiles/work/AGENTS.md",
@@ -66,8 +62,7 @@
         ],
         "roles": [
           "shared/agents/luna-worker.toml",
-          "shared/agents/sol-worker.toml",
-          "shared/agents/terra-computer.toml"
+          "shared/agents/sol-worker.toml"
         ],
         "instructions": {
           "AGENTS.md": [

@@ -22,22 +22,22 @@ class ProfileStaticTests(unittest.TestCase):
         self.home = Path(self.tmp.name) / "codex-home"
 
     def snapshot(self):
-        agents = self.home / "agents"
+        agents = self.home / "agents" / "codex-profiles"
         return {path.name: path.read_bytes() for path in agents.glob("*.toml")} if agents.exists() else {}
 
     def test_static_profiles(self):
         self.assertEqual(presets.validate(), [])
 
-    def test_private_and_work_solo_keep_only_shared_gui_role(self):
+    def test_private_and_work_solo_install_no_profile_roles(self):
         for profile in ("private", "work"):
             with self.subTest(profile=profile):
                 self.assertEqual(
                     set(roles.desired_roles(profile, "solo")),
-                    {"terra-computer.toml"},
+                    set(),
                 )
                 self.assertEqual(
                     set(roles.desired_roles(profile, "team")),
-                    {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
+                    {"luna-worker.toml", "sol-worker.toml"},
                 )
 
     def test_team_roles_are_identical_shared_bytes_for_both_profiles(self):
@@ -48,34 +48,35 @@ class ProfileStaticTests(unittest.TestCase):
         luna = tomllib.loads(private["luna-worker.toml"].decode("utf-8"))
         self.assertEqual((luna["model"], luna["model_reasoning_effort"]), ("gpt-6-luna", "high"))
 
-    def test_install_solo_purges_existing_top_level_role_tomls(self):
+    def test_install_solo_preserves_unrelated_top_level_role_tomls(self):
         agents = self.home / "agents"
         agents.mkdir(parents=True)
         (agents / "sol-advisor.toml").write_text('name = "sol_advisor"\n')
         result = roles.manage(self.home, "private", mode="solo")
-        self.assertIn("sol-advisor.toml", result["changed_roles"])
-        self.assertEqual(set(self.snapshot()), {"terra-computer.toml"})
+        self.assertEqual(result["changed_roles"], [])
+        self.assertEqual(set(self.snapshot()), set())
+        self.assertTrue((agents / "sol-advisor.toml").is_file())
         state = json.loads((self.home / "profiles" / "roles-state.json").read_text())
-        self.assertEqual(state["version"], 2)
+        self.assertEqual(state["version"], 3)
         self.assertEqual(state["profile"], "private")
         self.assertEqual(state["mode"], "solo")
         self.assertEqual(
             state["owned"],
-            {"terra-computer.toml": roles.digest(self.snapshot()["terra-computer.toml"])},
+            {},
         )
 
     def test_team_then_solo_replaces_exact_role_set(self):
         roles.manage(self.home, "private", mode="team")
         self.assertEqual(
             set(self.snapshot()),
-            {"luna-worker.toml", "sol-worker.toml", "terra-computer.toml"},
+            {"luna-worker.toml", "sol-worker.toml"},
         )
         roles.manage(self.home, "private", mode="solo")
-        self.assertEqual(set(self.snapshot()), {"terra-computer.toml"})
+        self.assertEqual(set(self.snapshot()), set())
 
     def test_modified_owned_file_refuses_removal(self):
         roles.manage(self.home, "private", mode="team")
-        target = self.home / "agents" / "sol-worker.toml"
+        target = self.home / "agents" / "codex-profiles" / "sol-worker.toml"
         target.write_bytes(target.read_bytes() + b"# user edit\n")
         before = self.snapshot()
         with self.assertRaisesRegex(ValueError, "changed or missing"):
@@ -136,7 +137,7 @@ class ProfileStaticTests(unittest.TestCase):
             {"slug": model, "supported_reasoning_levels": [{"effort": effort}]}
             for model, effort in (
                 ("fixture-root", "xhigh"), ("gpt-6.1-sol", "high"),
-                ("gpt-6-luna", "high"), ("gpt-6.1-terra", "high"),
+                ("gpt-6-luna", "high"),
             )
         ]}
         self.assertEqual(presets.validate(root=root, catalog=catalog), [])

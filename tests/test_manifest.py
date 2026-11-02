@@ -35,6 +35,7 @@ class ManifestAssemblyTests(unittest.TestCase):
     def manifest(self):
         return {
             "schema_version": 1,
+            "roles_directory": "agents/codex-profiles",
             "markers": {"begin": instructions.BEGIN, "end": instructions.END},
             "opencode_agents": "optional/agents.json",
             "profiles": {"synthetic": {

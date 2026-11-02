@@ -200,7 +200,7 @@ class InstructionLifecycleTests(unittest.TestCase):
         config = self.home / "config.toml"
         config.write_text(config.read_text().replace('model = "gpt-6.1-sol"', 'model = "user-selected"')
                           + '\n[mcp_servers.synthetic]\nurl = "http://example.invalid"\n')
-        (self.home / "agents" / "sol-worker.toml").write_text("user edited role; sync must not inspect or overwrite\n")
+        (self.home / "agents" / "codex-profiles" / "sol-worker.toml").write_text("user edited role; sync must not inspect or overwrite\n")
         (self.home / "agents" / "custom.toml").write_text("custom role\n")
         auth = self.home / "auth.json"
         auth.write_text('{"synthetic": "test data"}')
