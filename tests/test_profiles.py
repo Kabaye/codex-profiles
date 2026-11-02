@@ -46,7 +46,7 @@ class ProfileStaticTests(unittest.TestCase):
         for filename, raw in private.items():
             self.assertEqual(raw, (roles.ROOT / "shared" / "agents" / filename).read_bytes().replace(b"\r\n", b"\n"))
         luna = tomllib.loads(private["luna-worker.toml"].decode("utf-8"))
-        self.assertEqual((luna["model"], luna["model_reasoning_effort"]), ("gpt-6-luna", "medium"))
+        self.assertEqual((luna["model"], luna["model_reasoning_effort"]), ("gpt-6-luna", "high"))
 
     def test_install_solo_purges_existing_top_level_role_tomls(self):
         agents = self.home / "agents"
@@ -136,7 +136,7 @@ class ProfileStaticTests(unittest.TestCase):
             {"slug": model, "supported_reasoning_levels": [{"effort": effort}]}
             for model, effort in (
                 ("fixture-root", "xhigh"), ("gpt-6.1-sol", "xhigh"),
-                ("gpt-6-luna", "medium"), ("gpt-6.1-terra", "high"),
+                ("gpt-6-luna", "high"), ("gpt-6.1-terra", "high"),
             )
         ]}
         self.assertEqual(presets.validate(root=root, catalog=catalog), [])
