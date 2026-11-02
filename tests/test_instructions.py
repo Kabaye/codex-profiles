@@ -54,8 +54,8 @@ class InstructionLifecycleTests(unittest.TestCase):
                     self.assertEqual("sol_worker" in home_text, profile == "private")
                     for name in (("WORK.md", "PRIVATE.md") if profile == "work" else ("AGENTS.md",)):
                         text = (self.home / name).read_text()
-                        self.assertIn("In `solo` mode, retain native Codex delegation behavior", text)
-                        self.assertIn("In `team` mode, delegate useful independent work", text)
+                        self.assertIn("In `solo` mode, use native delegation", text)
+                        self.assertIn("in `team` mode, use the routes below", text)
                     if profile == "private":
                         self.assertNotIn("WORK.md", home_text)
                         self.assertNotIn("PRIVATE.md", home_text)

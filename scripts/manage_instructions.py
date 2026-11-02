@@ -77,7 +77,7 @@ def _compose_policy(source: Path, shared: str) -> str:
         raise ValueError(f"Profile routing source has no managed policy block: {source}")
     anchor_lines = [
         line for line in policy.splitlines()
-        if line.startswith("- In `solo` mode, retain native Codex delegation behavior;")
+        if line.startswith("- In `solo` mode,")
     ]
     if len(anchor_lines) != 1:
         raise ValueError(f"Profile routing source has no unique mode anchor: {source}")

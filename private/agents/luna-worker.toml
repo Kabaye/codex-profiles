@@ -1,7 +1,7 @@
 name = "luna_worker"
 description = "Mechanical edits, exploration and routine checks."
 model = "gpt-6-luna"
-model_reasoning_effort = "max"
+model_reasoning_effort = "medium"
 
 developer_instructions = """
 Perform the assigned mechanical edits, exploration or routine checks. Return uncertain or expanding work to the root for reassignment.

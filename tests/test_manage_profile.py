@@ -91,7 +91,6 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertIn("luna_worker", agents_text)
         self.assertIn("sol_worker", agents_text)
         self.assertNotIn("three open child threads", agents_text)
-        self.assertIn("Sol-first", agents_text)
         self.assertIn("Independent review only when the user explicitly requests one.", agents_text)
         self.assertNotIn("profile-default", agents_text)
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())

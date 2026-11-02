@@ -14,12 +14,12 @@ BEGIN = "<!-- codex-profiles:begin -->"
 END = "<!-- codex-profiles:end -->"
 
 ROOTS = {
-    "private": ("gpt-6-astra", "xhigh"),
+    "private": ("gpt-6.1-sol", "xhigh"),
     "work": ("gpt-6.1-sol", "xhigh"),
 }
 TEAM_ROLES = {
     "private": {
-        "luna_worker": ("gpt-6-luna", "max"),
+        "luna_worker": ("gpt-6-luna", "medium"),
         "sol_worker": ("gpt-6.1-sol", "xhigh"),
         "terra_computer": ("gpt-6.1-terra", "medium"),
     },
@@ -85,7 +85,7 @@ def validate(
     shared_path = root / "shared" / "agents-subset.md"
     shared = shared_path.read_text(encoding="utf-8").strip() if shared_path.is_file() else ""
     check(shared.count("terra_computer") == 1, "shared: Terra GUI routing must have one source")
-    check("Prefer one active delegated worker" in shared and "never have more than two delegated jobs" in shared,
+    check("Prefer one active worker" in shared and "at most two delegated jobs" in shared,
           "shared: conservative one-default/two-maximum delegation budget missing")
     check(BEGIN not in shared and END not in shared, "shared: fragment must have no managed markers")
     personal_work_path = root / "work" / "personal-agents-subset.md"
@@ -175,14 +175,10 @@ def validate(
             check("corp-chat-max" not in text, "work: retired corporate analysis route restored")
             check("private" not in text.lower() and "personal" not in text.lower(), "work: unrelated scenario leaked into routing")
         else:
-            check("Sol-first" in text, "private: Sol-first routing policy missing")
             check("three" not in text, "private: numeric cap belongs in config")
         if profile is None or profile == name:
             required.add((root_model, root_effort))
-            if name in {"private", "work"}:
-                required.add(("gpt-6-luna", "max"))
-                required.add(("gpt-6.1-sol", "xhigh"))
-                required.add(("gpt-6.1-terra", "medium"))
+            required.update(TEAM_ROLES[name].values())
 
     if catalog is not None:
         errors.extend(_catalog_errors(catalog, required))
