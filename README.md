@@ -57,7 +57,13 @@ Root owns architecture, implementation, integration and final acceptance. In Tea
 
 Universal browser/Computer Use rules and the Terra role are defined only in codex-config. Each manager owns its named folder under `agents/`; Codex discovers roles recursively. Profile operations preserve the config folder and custom roles.
 
-For work tasks, corporate routing uses OpenCode first with optional bounded scouting in both modes. Explicit Cloud quota exhaustion permits native Codex under its native delegation instructions, then explicit native quota exhaustion permits Cursor. Native Luna uses high in both profiles. Corporate OpenCode model selection is separate from native role definitions.
+For work tasks, OpenCode Luna and Cursor Auto Cost are equal primary executors in both modes. Aim for approximately **50/50 by count of new unpinned bounded assignments**, not by tokens, spend or runtime. Alternate the initial route using available task-plan history and record the executor. When there is no history, either route may start; do not always start with OpenCode. An explicit user-selected route takes precedence.
+
+Corrections and technical continuations keep their executor and count as the same assignment. Do not run both executors on the same assignment or split/rerun work just to balance the ratio. The policy uses the available task history; it is not an account-wide scheduling service or a promise of an exact ratio across unrelated chats. Optional Code Fast scouting is separate from implementation-route balancing, and the common limit of two delegated jobs remains in effect.
+
+Automatic Cursor assignments use `--model "auto-smart[optimize_for=cost]"` (Auto Cost), with Max Mode off and `exploreSubagentModel=inherit`; verify Cost before launch and stop/report if unavailable. Cursor no longer needs a quota-exhaustion prerequisite for initial selection. Only explicit quota exhaustion of the selected primary route permits fallback to native Codex under its native delegation instructions; authentication, network, tool, context and validation failures do not. Record quota fallback separately from the initial route. Native Luna uses high in both profiles. Corporate OpenCode model selection is separate from native role definitions.
+
+Invoke the installed `opencode` and `cursor-agent` commands directly by name from PATH, without absolute launcher paths or additional wrappers; the Work profile contains the invocation examples.
 
 ## Apply and remove
 
