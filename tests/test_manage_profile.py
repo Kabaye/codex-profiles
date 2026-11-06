@@ -61,8 +61,8 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
 
                 config = self.config()
                 self.assertNotIn("agents", config)
-                self.assertEqual(config["features"]["multi_agent_v2"], WAIT_SETTINGS)
-                self.assertEqual(config["features"]["code_mode"], {"default_exec_yield_time_ms": 60000})
+                self.assertNotIn("multi_agent_v2", config.get("features", {}))
+                self.assertNotIn("code_mode", config.get("features", {}))
                 self.assertNotIn("model_catalog_json", config)
                 agents_text = (self.home / "AGENTS.md").read_text()
                 self.assertIn(f"Active root profile: `{profile}`.", agents_text)
@@ -94,7 +94,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(
             self.config()["features"]["multi_agent_v2"],
-            {**WAIT_SETTINGS, "multi_agent_mode_hint_text": ""},
+            {"multi_agent_mode_hint_text": ""},
         )
         agents_text = (self.home / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn("luna_worker", agents_text)
@@ -113,7 +113,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(self.role_names(), set())
         self.assertNotIn("sol_worker", (self.home / "AGENTS.md").read_text())
         self.assertNotIn("agents", self.config())
-        self.assertEqual(self.config()["features"]["multi_agent_v2"], WAIT_SETTINGS)
+        self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_work_both_modes_keep_corporate_route_and_only_team_adds_native_workers(self):
@@ -231,7 +231,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(result["mode"], "solo")
         self.assertFalse(self.home.exists())
 
-    def test_wait_settings_switch_and_remove_without_changing_unowned_feature_keys(self):
+    def test_disabled_wait_settings_are_removed_without_changing_unowned_feature_keys(self):
         for profile in ("private", "work"):
             with self.subTest(profile=profile):
                 self.home = Path(self.tmp.name) / profile
@@ -252,10 +252,9 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                     features = config["features"]
                     self.assertEqual(features["code_mode"], {
                         "enabled": False, "experimental_show_cell_overhead": True,
-                        "default_exec_yield_time_ms": 60000,
                     })
-                    for key, value in WAIT_SETTINGS.items():
-                        self.assertEqual(features["multi_agent_v2"][key], value)
+                    for key in WAIT_SETTINGS:
+                        self.assertNotIn(key, features["multi_agent_v2"])
                     self.assertEqual(features["multi_agent_v2"]["max_wait_timeout_ms"], 120000)
                     self.assertEqual("multi_agent_mode_hint_text" in features["multi_agent_v2"], mode == "team")
                 lifecycle.apply(self.home, None)
@@ -264,18 +263,33 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                     "multi_agent_v2": {"max_wait_timeout_ms": 120000},
                 })
 
-    def test_existing_boolean_code_mode_flag_keeps_its_value_when_waits_are_added(self):
-        for enabled in (True, False):
-            original = f'[features]\ncode_mode = {str(enabled).lower()}\n'
-            for profile in ("private", "work"):
-                for mode in ("solo", "team"):
-                    with self.subTest(enabled=enabled, profile=profile, mode=mode):
-                        text = lifecycle.build_config(original, profile, self.home, mode=mode)
-                        self.assertEqual(tomllib.loads(text)["features"]["code_mode"], {
-                            "enabled": enabled, "default_exec_yield_time_ms": 60000,
-                        })
-                        removed = tomllib.loads(lifecycle.build_config(text, None, self.home))
-                        self.assertEqual(removed["features"]["code_mode"], {"enabled": enabled})
+    def test_commented_wait_examples_can_be_enabled_without_changing_code_mode_flag(self):
+        source = Path(self.tmp.name) / "optional-sources"
+        original_root = lifecycle.ROOT
+        names = ("manifest.json", "shared/config.toml", "modes/solo/config.toml", "modes/team/config.toml")
+        for name in names:
+            target = source / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            text = (original_root / name).read_text(encoding="utf-8")
+            for prefix in ("[features.code_mode]", "[features.multi_agent_v2]",
+                           "default_exec_yield_time_ms", "min_wait_timeout_ms", "default_wait_timeout_ms"):
+                text = text.replace("# " + prefix, prefix)
+            target.write_text(text, encoding="utf-8")
+        with patch.object(lifecycle, "ROOT", source):
+            for enabled in (True, False):
+                original = f'[features]\ncode_mode = {str(enabled).lower()}\n'
+                for profile in ("private", "work"):
+                    for mode in ("solo", "team"):
+                        with self.subTest(enabled=enabled, profile=profile, mode=mode):
+                            text = lifecycle.build_config(original, profile, self.home, mode=mode)
+                            parsed = tomllib.loads(text)
+                            self.assertEqual(parsed["features"]["code_mode"], {
+                                "enabled": enabled, "default_exec_yield_time_ms": 60000,
+                            })
+                            for key, value in WAIT_SETTINGS.items():
+                                self.assertEqual(parsed["features"]["multi_agent_v2"][key], value)
+                            removed = tomllib.loads(lifecycle.build_config(text, None, self.home))
+                            self.assertEqual(removed["features"]["code_mode"], {"enabled": enabled})
 
     def test_config_merges_common_and_selected_mode_source_values(self):
         source = Path(self.tmp.name) / "sources"

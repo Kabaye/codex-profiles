@@ -1,4 +1,5 @@
-# Keep native delegation behavior and use longer blocking waits.
-[features.multi_agent_v2]
-min_wait_timeout_ms = 30000
-default_wait_timeout_ms = 60000
+# Keep native Codex delegation behavior and wait defaults.
+# Optional agent wait tuning (milliseconds):
+# [features.multi_agent_v2]
+# min_wait_timeout_ms = 30000
+# default_wait_timeout_ms = 60000

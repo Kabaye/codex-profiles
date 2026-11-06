@@ -5,6 +5,7 @@ model_reasoning_effort = "xhigh"
 [features.context_management]
 experimental_mode = true
 
-[features.code_mode]
-default_exec_yield_time_ms = 60000
+# Optional wait tuning, currently disabled (milliseconds).
+# [features.code_mode]
+# default_exec_yield_time_ms = 60000
 

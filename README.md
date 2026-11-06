@@ -7,7 +7,7 @@ Root models, Sol/Luna roles and native delegation instructions. [codex-config](h
 ```text
 manifest.json                   Source lists, order, destinations and role selection
 shared/
-  config.toml                   Root defaults, context management, 60-second Code Mode wait
+  config.toml                   Root defaults, context management, optional wait examples
   AGENTS.md                     Worker reuse and delegation limits
   agents/
     sol-worker.toml             Sol 6.1 / high
@@ -19,10 +19,10 @@ profiles/
     opencode-agents.json         Optional named OpenCode agents
 modes/
   solo/
-    config.toml                 Native delegation with 30–60 second agent waits
+    config.toml                 Native delegation and wait defaults
     AGENTS.md                   Solo instructions
   team/
-    config.toml                 Two workers, empty native hint, 30–60 second agent waits
+    config.toml                 Two workers, empty native hint, optional wait examples
     AGENTS.md                   Sol/Luna routing and assignment instructions
 scripts/                        Read the manifest and apply its files
 tests/                         Isolated lifecycle checks
@@ -44,7 +44,7 @@ The scripts read this recipe. Models, effort, mode settings, instruction text an
 2. Concatenate `profiles/private/AGENTS.md`, `shared/AGENTS.md` and `modes/team/AGENTS.md` in that order. Put the result in the `codex-profiles` block of `$CODEX_HOME/AGENTS.md`, preserving the separate `codex-config` block and user text. The begin/end markers are declared in the manifest.
 3. Copy the two declared Sol/Luna files from `shared/agents/` to `$CODEX_HOME/agents/codex-profiles/`. Terra lives separately in `$CODEX_HOME/agents/codex-config/`.
 
-These are the same inputs the manager uses. No Python execution is needed to obtain their settings or instructions. When switching to Solo manually, remove the former Team-only keys and Sol/Luna role files and apply the Solo wait settings. Restart Codex and use a new chat to load changed role/config definitions.
+These are the same inputs the manager uses. No Python execution is needed to obtain their settings or instructions. When switching to Solo manually, remove the former Team-only keys and Sol/Luna role files. Restart Codex and use a new chat to load changed role/config definitions.
 
 | Profile | Global `AGENTS.md` |
 | --- | --- |
@@ -53,7 +53,7 @@ These are the same inputs the manager uses. No Python execution is needed to obt
 
 All instructions are assembled into global `AGENTS.md`. **codex-config** includes account/access rules directly, with path conditions for personal projects on work computers. Neither manager installs separate `WORK.md` or `PRIVATE.md` policies. Migration removes former managed sidecar blocks while preserving user prose. Every source list is visible in the manifest.
 
-Both profiles and modes use a 60-second default Code Mode execution wait. Native agent waits default to 60 seconds, with a 30-second minimum; completion or new activity can return earlier. Command polling follows the common 30–60 second blocking-wait rule in **codex-config**. These settings control waiting, not command execution deadlines, and do not enable Code Mode or change Solo/Team selection.
+Native wait defaults are unchanged. Optional Code Mode and agent wait settings are kept as commented TOML examples; uncomment them to enable tuning. Values are milliseconds and control waiting, not command execution deadlines.
 
 Root owns architecture, implementation, integration and final acceptance. In Team, root handles sequential native work and routine research, data collection, calculations and checks directly. Workers receive complete, substantial, independent deliverables that can progress in parallel with root's own implementation. Sol/Luna selection applies after deciding to delegate. Common instructions prefer reusing workers and one active assignment when delegating, with at most two delegated jobs excluding root. Team also sets the native cap to two and an empty native mode hint; its source file supplies routing. Workers have nested delegation disabled.
 
