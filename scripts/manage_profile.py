@@ -41,7 +41,10 @@ LEGACY_OWNED_KEYS = {
         "default_subagent_reasoning_effort",
     },
     "features.context_management": {"experimental_mode"},
-    "features.multi_agent_v2": {"multi_agent_mode_hint_text"},
+    "features.code_mode": {"default_exec_yield_time_ms"},
+    "features.multi_agent_v2": {
+        "multi_agent_mode_hint_text", "min_wait_timeout_ms", "default_wait_timeout_ms",
+    },
     "memories": {"extract_model", "consolidation_model"},
 }
 LEGACY_KEYS = {
@@ -140,12 +143,17 @@ def _prune_empty_managed_sections(text: str) -> str:
     return "\n".join(out).rstrip() + ("\n" if out else "")
 
 
-def _remove_managed_assignments(text: str, *, remove_catalog: bool, remove_legacy_cap: bool = False) -> str:
+def _remove_managed_assignments(
+    text: str, *, remove_catalog: bool, remove_legacy_cap: bool = False,
+    remove_code_mode_flag: bool = False,
+) -> str:
     remove = {section: set(keys) for section, keys in LEGACY_OWNED_KEYS.items()}
     for section, keys in LEGACY_KEYS.items():
         remove.setdefault(section, set()).update(keys)
     if remove_legacy_cap:
         remove["agents"].add("max_threads")
+    if remove_code_mode_flag:
+        remove.setdefault("features", set()).add("code_mode")
     if not remove_catalog:
         remove[""].discard("model_catalog_json")
 
@@ -270,16 +278,23 @@ def build_config(
 
     if "max_threads" in parsed.get("agents", {}) and previous_profile is None:
         raise ValueError("Unowned legacy agents.max_threads requires explicit review")
+    desired = (
+        _desired_config(profile, manage_roles.normalize_mode(profile, mode, ROOT), home)
+        if profile is not None else {}
+    )
+    code_mode_flag = parsed.get("features", {}).get("code_mode")
+    migrate_code_mode_flag = isinstance(code_mode_flag, bool) and "features.code_mode" in desired
     cleaned = _remove_managed_assignments(
-        text, remove_catalog=remove_catalog, remove_legacy_cap=previous_profile is not None
+        text, remove_catalog=remove_catalog, remove_legacy_cap=previous_profile is not None,
+        remove_code_mode_flag=migrate_code_mode_flag,
     )
     if profile is None:
         if cleaned.strip():
             tomllib.loads(cleaned)
         return cleaned
 
-    selected_mode = manage_roles.normalize_mode(profile, mode, ROOT)
-    desired = _desired_config(profile, selected_mode, home)
+    if migrate_code_mode_flag:
+        desired["features.code_mode"]["enabled"] = code_mode_flag
     if preserve_root:
         for key in ("model", "model_reasoning_effort"):
             if key in parsed:

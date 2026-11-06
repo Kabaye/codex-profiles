@@ -1,1 +1,4 @@
-# Keep native Codex delegation settings; apply no mode overrides.
+# Keep native delegation behavior and use longer blocking waits.
+[features.multi_agent_v2]
+min_wait_timeout_ms = 30000
+default_wait_timeout_ms = 60000

@@ -16,6 +16,8 @@ import manage_profile as lifecycle
 import manage_roles as roles
 import profile_sources
 
+WAIT_SETTINGS = {"min_wait_timeout_ms": 30000, "default_wait_timeout_ms": 60000}
+
 
 class UnifiedProfileLifecycleTests(unittest.TestCase):
     def setUp(self):
@@ -59,7 +61,8 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
 
                 config = self.config()
                 self.assertNotIn("agents", config)
-                self.assertNotIn("multi_agent_v2", config.get("features", {}))
+                self.assertEqual(config["features"]["multi_agent_v2"], WAIT_SETTINGS)
+                self.assertEqual(config["features"]["code_mode"], {"default_exec_yield_time_ms": 60000})
                 self.assertNotIn("model_catalog_json", config)
                 agents_text = (self.home / "AGENTS.md").read_text()
                 self.assertIn(f"Active root profile: `{profile}`.", agents_text)
@@ -91,7 +94,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(
             self.config()["features"]["multi_agent_v2"],
-            {"multi_agent_mode_hint_text": ""},
+            {**WAIT_SETTINGS, "multi_agent_mode_hint_text": ""},
         )
         agents_text = (self.home / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn("luna_worker", agents_text)
@@ -110,7 +113,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(self.role_names(), set())
         self.assertNotIn("sol_worker", (self.home / "AGENTS.md").read_text())
         self.assertNotIn("agents", self.config())
-        self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
+        self.assertEqual(self.config()["features"]["multi_agent_v2"], WAIT_SETTINGS)
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
 
     def test_work_both_modes_keep_corporate_route_and_only_team_adds_native_workers(self):
@@ -227,6 +230,52 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         result = self.install("private", dry_run=True)
         self.assertEqual(result["mode"], "solo")
         self.assertFalse(self.home.exists())
+
+    def test_wait_settings_switch_and_remove_without_changing_unowned_feature_keys(self):
+        for profile in ("private", "work"):
+            with self.subTest(profile=profile):
+                self.home = Path(self.tmp.name) / profile
+                self.home.mkdir()
+                (self.home / "config.toml").write_text(
+                    'model = "fixture-selected"\nmodel_reasoning_effort = "high"\n'
+                    '[features.code_mode]\nenabled = false\n'
+                    'experimental_show_cell_overhead = true\ndefault_exec_yield_time_ms = 17\n'
+                    '[features.multi_agent_v2]\nmax_wait_timeout_ms = 120000\n'
+                    'min_wait_timeout_ms = 1\ndefault_wait_timeout_ms = 2\n',
+                    encoding="utf-8",
+                )
+                for mode in ("team", "solo", "team"):
+                    lifecycle.apply(self.home, profile, mode=mode, preserve_root=True)
+                    config = self.config()
+                    self.assertEqual(config["model"], "fixture-selected")
+                    self.assertEqual(config["model_reasoning_effort"], "high")
+                    features = config["features"]
+                    self.assertEqual(features["code_mode"], {
+                        "enabled": False, "experimental_show_cell_overhead": True,
+                        "default_exec_yield_time_ms": 60000,
+                    })
+                    for key, value in WAIT_SETTINGS.items():
+                        self.assertEqual(features["multi_agent_v2"][key], value)
+                    self.assertEqual(features["multi_agent_v2"]["max_wait_timeout_ms"], 120000)
+                    self.assertEqual("multi_agent_mode_hint_text" in features["multi_agent_v2"], mode == "team")
+                lifecycle.apply(self.home, None)
+                self.assertEqual(self.config()["features"], {
+                    "code_mode": {"enabled": False, "experimental_show_cell_overhead": True},
+                    "multi_agent_v2": {"max_wait_timeout_ms": 120000},
+                })
+
+    def test_existing_boolean_code_mode_flag_keeps_its_value_when_waits_are_added(self):
+        for enabled in (True, False):
+            original = f'[features]\ncode_mode = {str(enabled).lower()}\n'
+            for profile in ("private", "work"):
+                for mode in ("solo", "team"):
+                    with self.subTest(enabled=enabled, profile=profile, mode=mode):
+                        text = lifecycle.build_config(original, profile, self.home, mode=mode)
+                        self.assertEqual(tomllib.loads(text)["features"]["code_mode"], {
+                            "enabled": enabled, "default_exec_yield_time_ms": 60000,
+                        })
+                        removed = tomllib.loads(lifecycle.build_config(text, None, self.home))
+                        self.assertEqual(removed["features"]["code_mode"], {"enabled": enabled})
 
     def test_config_merges_common_and_selected_mode_source_values(self):
         source = Path(self.tmp.name) / "sources"

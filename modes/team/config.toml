@@ -3,4 +3,6 @@ enabled = true
 max_concurrent_threads_per_session = 2
 
 [features.multi_agent_v2]
+min_wait_timeout_ms = 30000
+default_wait_timeout_ms = 60000
 multi_agent_mode_hint_text = ""
