@@ -1,2 +1,3 @@
 - Prefer reusing suitable existing subagents. Create a new one when the task's context changes substantially or no existing subagent is suitable.
 - When delegating, prefer one active worker; use a second for worthwhile independent work. Allow at most two delegated jobs total, including native agents, external CLI jobs and waiting jobs; exclude root.
+- Use English for all subagent instructions and communication; subagents must reason and respond in English.
