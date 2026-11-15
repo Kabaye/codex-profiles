@@ -55,7 +55,7 @@ All instructions are assembled into global `AGENTS.md`. **codex-config** include
 
 Native wait defaults are unchanged. Optional Code Mode and agent wait settings are kept as commented TOML examples; uncomment them to enable tuning. Values are milliseconds and control waiting, not command execution deadlines.
 
-Root owns architecture, implementation, integration and final acceptance. In Team, root handles sequential native work and routine research, data collection, calculations and checks directly. Workers receive complete, substantial, independent deliverables that can progress in parallel with root's own implementation. Sol/Luna selection applies after deciding to delegate. Common instructions prefer reusing workers and one active assignment when delegating, with at most two delegated jobs excluding root. Team also sets the native cap to two and an empty native mode hint; its source file supplies routing. Workers have nested delegation disabled.
+Root does the main work and delegates only substantial independent work alongside its own implementation. Reuse a suitable worker when delegation is warranted. Sol/Luna selection applies after that decision. Common instructions prefer one active worker and allow at most two delegated jobs excluding root. Team also sets the native cap to two and an empty native mode hint. Workers have nested delegation disabled.
 
 Universal browser/Computer Use rules and the Terra role are defined only in codex-config. Each manager owns its named folder under `agents/`; Codex discovers roles recursively. Profile operations preserve the config folder and custom roles.
 
