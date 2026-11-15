@@ -1,3 +1,4 @@
+- Do the main work yourself. Delegate only substantial independent work alongside your own implementation. When delegation is warranted, reuse a suitable existing subagent.
 - Use the user-selected root model and effort.
 - When delegating native work, use `sol_worker` for implementation, debugging and complex or uncertain tasks, and `luna_worker` for mechanical edits, exploration and routine checks; return growing complexity to root.
 - Give each worker owned files, a bounded task, constraints and checks; use `fork_turns = "none"`.
