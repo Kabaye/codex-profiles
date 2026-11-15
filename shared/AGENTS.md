@@ -1,2 +1,0 @@
-- When delegating, prefer one active worker; use a second for worthwhile independent work. Allow at most two delegated jobs total, including native agents, external CLI jobs and waiting jobs; exclude root.
-- Use English for all subagent instructions and communication; subagents must reason and respond in English.

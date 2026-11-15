@@ -8,7 +8,6 @@ Root models, Sol/Luna roles and native delegation instructions. [codex-config](h
 manifest.json                   Source lists, order, destinations and role selection
 shared/
   config.toml                   Root defaults, context management, optional wait examples
-  AGENTS.md                     Worker reuse and delegation limits
   agents/
     sol-worker.toml             Sol 6.1 / high
     luna-worker.toml            Luna 6 / high
@@ -20,10 +19,10 @@ profiles/
 modes/
   solo/
     config.toml                 Native delegation and wait defaults
-    AGENTS.md                   Solo instructions
+    AGENTS.md                   Root model preference only
   team/
     config.toml                 Two workers, empty native hint, optional wait examples
-    AGENTS.md                   Sol/Luna routing and assignment instructions
+    AGENTS.md                   All native subagent rules, limits and English policy
 scripts/                        Read the manifest and apply its files
 tests/                         Isolated lifecycle checks
 ```
@@ -41,27 +40,27 @@ The scripts read this recipe. Models, effort, mode settings, instruction text an
 ## Manual Private Team installation
 
 1. Combine `shared/config.toml` and `modes/team/config.toml`. Merge their keys into the existing `$CODEX_HOME/config.toml`, preserving unrelated settings and any root model/effort you selected.
-2. Concatenate `profiles/private/AGENTS.md`, `shared/AGENTS.md` and `modes/team/AGENTS.md` in that order. Put the result in the `codex-profiles` block of `$CODEX_HOME/AGENTS.md`, preserving the separate `codex-config` block and user text. The begin/end markers are declared in the manifest.
+2. Concatenate `profiles/private/AGENTS.md` and `modes/team/AGENTS.md` in that order. Put the result in the `codex-profiles` block of `$CODEX_HOME/AGENTS.md`, preserving the separate `codex-config` block and user text. The begin/end markers are declared in the manifest.
 3. Copy the two declared Sol/Luna files from `shared/agents/` to `$CODEX_HOME/agents/codex-profiles/`. Terra lives separately in `$CODEX_HOME/agents/codex-config/`.
 
 These are the same inputs the manager uses. No Python execution is needed to obtain their settings or instructions. When switching to Solo manually, remove the former Team-only keys and Sol/Luna role files. Restart Codex and use a new chat to load changed role/config definitions.
 
 | Profile | Global `AGENTS.md` |
 | --- | --- |
-| `private` | Private profile + common rules + selected native mode |
-| `work` | Work profile including corporate routing + common rules + selected native mode |
+| `private` | Private profile + selected native mode |
+| `work` | Work profile including corporate routing + selected native mode |
 
 All instructions are assembled into global `AGENTS.md`. **codex-config** includes account/access rules directly, with path conditions for personal projects on work computers. Neither manager installs separate `WORK.md` or `PRIVATE.md` policies. Migration removes former managed sidecar blocks while preserving user prose. Every source list is visible in the manifest.
 
 Native wait defaults are unchanged. Optional Code Mode and agent wait settings are kept as commented TOML examples; uncomment them to enable tuning. Values are milliseconds and control waiting, not command execution deadlines.
 
-In Team, root does the main work and delegates only substantial independent work alongside its own implementation. Reuse a suitable worker when delegation is warranted. This rule lives only in `modes/team/AGENTS.md`; Solo follows native Codex delegation behavior. Sol/Luna selection applies after deciding to delegate. Common instructions prefer one active worker and allow at most two delegated jobs excluding root. Team also sets the native cap to two and an empty native mode hint. Workers have nested delegation disabled.
+All native subagent rules live in `modes/team/AGENTS.md`: root does the main work, delegates substantial independent parts, reuses suitable workers, prefers one active worker and allows at most two delegated jobs excluding root. Team also requires English communication and reasoning, explicit requests for independent review and no nested delegation. Solo loads none of these rules; its mode instructions preserve the selected root model and effort.
 
 Universal browser/Computer Use rules and the Terra role are defined only in codex-config. Each manager owns its named folder under `agents/`; Codex discovers roles recursively. Profile operations preserve the config folder and custom roles.
 
 For work tasks, OpenCode Luna and Cursor Auto Cost are equal primary executors in both modes. Aim for approximately **50/50 by count of new unpinned bounded assignments**, not by tokens, spend or runtime. Alternate the initial route using available task-plan history and record the executor. When there is no history, either route may start; do not always start with OpenCode. An explicit user-selected route takes precedence.
 
-Corrections and technical continuations keep their executor and count as the same assignment. Do not run both executors on the same assignment or split/rerun work just to balance the ratio. The policy uses the available task history; it is not an account-wide scheduling service or a promise of an exact ratio across unrelated chats. Optional Code Fast scouting is separate from implementation-route balancing, and the common limit of two delegated jobs remains in effect.
+Corrections and technical continuations keep their executor and count as the same assignment. Do not run both executors on the same assignment or split/rerun work just to balance the ratio. The policy uses the available task history; it is not an account-wide scheduling service or a promise of an exact ratio across unrelated chats. Optional Code Fast scouting is separate from implementation-route balancing. In Team, corporate assignments share its two-job limit.
 
 Automatic Cursor assignments use `--model "auto-smart[optimize_for=cost]"` (Auto Cost), with Max Mode off and `exploreSubagentModel=inherit`; verify Cost before launch and stop/report if unavailable. Cursor no longer needs a quota-exhaustion prerequisite for initial selection. Only explicit quota exhaustion of the selected primary route permits fallback to native Codex under its native delegation instructions; authentication, network, tool, context and validation failures do not. Record quota fallback separately from the initial route. Native Luna uses high in both profiles. Corporate OpenCode model selection is separate from native role definitions.
 

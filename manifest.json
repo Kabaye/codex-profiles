@@ -17,7 +17,6 @@
         "instructions": {
           "AGENTS.md": [
             "profiles/private/AGENTS.md",
-            "shared/AGENTS.md",
             "modes/solo/AGENTS.md"
           ]
         }
@@ -34,7 +33,6 @@
         "instructions": {
           "AGENTS.md": [
             "profiles/private/AGENTS.md",
-            "shared/AGENTS.md",
             "modes/team/AGENTS.md"
           ]
         }
@@ -50,7 +48,6 @@
         "instructions": {
           "AGENTS.md": [
             "profiles/work/AGENTS.md",
-            "shared/AGENTS.md",
             "modes/solo/AGENTS.md"
           ]
         }
@@ -67,7 +64,6 @@
         "instructions": {
           "AGENTS.md": [
             "profiles/work/AGENTS.md",
-            "shared/AGENTS.md",
             "modes/team/AGENTS.md"
           ]
         }

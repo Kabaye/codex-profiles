@@ -111,7 +111,9 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(solo["mode"], "solo")
         self.assertEqual(self.role_names(), set())
-        self.assertNotIn("sol_worker", (self.home / "AGENTS.md").read_text())
+        solo_instructions = (self.home / "AGENTS.md").read_text()
+        for rule in ("sol_worker", "luna_worker", "at most two delegated jobs", "Use English for all subagent", "Independent review only"):
+            self.assertNotIn(rule, solo_instructions)
         self.assertNotIn("agents", self.config())
         self.assertNotIn("multi_agent_v2", self.config().get("features", {}))
         self.assertFalse((self.home / lifecycle.MANAGED_CATALOG).exists())
@@ -135,7 +137,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
                 self.assertIn("Only explicit quota exhaustion from the selected primary route permits fallback to native Codex under its native delegation instructions", text)
                 self.assertIn("Initial Cursor selection requires no quota exhaustion", text)
                 self.assertIn("Authentication, network, tool, context and validation failures are not quota", text)
-                self.assertIn("Independent review only when the user explicitly requests one.", text)
+                self.assertEqual("Independent review only when the user explicitly requests one." in text, mode == "team")
                 self.assertEqual("luna_worker" in text, mode == "team")
                 self.assertEqual("sol_worker" in text, mode == "team")
                 if mode == "team":

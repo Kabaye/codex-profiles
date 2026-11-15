@@ -24,11 +24,14 @@ class ProfileRoutingTests(unittest.TestCase):
                         expected |= {"luna-worker.toml", "sol-worker.toml"}
                     self.assertEqual(set(selected), expected)
 
-    def test_shared_policy_is_composed_once_in_both_profiles_and_modes(self):
-        shared = (ROOT / "shared" / "AGENTS.md").read_text(encoding="utf-8").strip()
-        self.assertNotIn("terra_computer", shared)
-        self.assertIn("prefer one active worker", shared)
-        self.assertIn("at most two delegated jobs", shared)
+    def test_native_delegation_policy_is_selected_only_in_team(self):
+        team = (ROOT / "modes" / "team" / "AGENTS.md").read_text(encoding="utf-8").strip()
+        self.assertFalse((ROOT / "shared" / "AGENTS.md").exists())
+        team_rules = (
+            "Do the main work yourself.", "prefer one active worker", "at most two delegated jobs",
+            "Use English for all subagent", "sol_worker", "luna_worker", "fork_turns",
+            "Workers complete their assignment", "Independent review only",
+        )
         for source in ("profiles/private/AGENTS.md", "profiles/work/AGENTS.md", "modes/solo/AGENTS.md", "modes/team/AGENTS.md"):
             with self.subTest(source=source):
                 self.assertNotIn("terra_computer", (ROOT / source).read_text(encoding="utf-8"))
@@ -38,7 +41,10 @@ class ProfileRoutingTests(unittest.TestCase):
             private = instructions.desired_docs("private", mode)
             for policy in (work["AGENTS.md"], private["AGENTS.md"]):
                 with self.subTest(mode=mode, policy=policy[:80]):
-                    self.assertEqual(policy.count(shared), 1)
+                    if mode == "team":
+                        self.assertEqual(policy.count(team), 1)
+                    for rule in team_rules:
+                        self.assertEqual(rule in policy, mode == "team", rule)
                     self.assertNotIn("terra_computer", policy)
                     self.assertEqual(policy.count(instructions.BEGIN), 1)
                     self.assertEqual(policy.count(instructions.END), 1)
@@ -50,24 +56,24 @@ class ProfileRoutingTests(unittest.TestCase):
     def test_work_native_routing_uses_generic_team_source(self):
         source = (ROOT / "modes" / "team" / "AGENTS.md").read_text(encoding="utf-8")
         work_policy = instructions.desired_docs("work", "team")["AGENTS.md"]
-        shared = (ROOT / "shared" / "AGENTS.md").read_text(encoding="utf-8").strip()
         self.assertIn(source.strip(), work_policy)
         self.assertIn("`sol_worker` for", work_policy)
         self.assertIn("`luna_worker` for", work_policy)
-        self.assertIn(shared, work_policy)
+        self.assertEqual(work_policy.count("at most two delegated jobs"), 1)
+        self.assertEqual(work_policy.count("Use English for all subagent"), 1)
         self.assertIn("work-scout", work_policy)
         self.assertNotIn("work-scout", source)
         self.assertNotIn("terra_computer", source)
 
-    def test_shared_fragment_rejects_managed_markers(self):
+    def test_manifest_fragment_rejects_managed_markers(self):
         from tempfile import TemporaryDirectory
         from unittest.mock import patch
         with TemporaryDirectory() as tmp:
-            shared_file = Path(tmp) / "shared" / "AGENTS.md"
-            shared_file.parent.mkdir()
-            shared_file.write_text(instructions.BEGIN + "\ninvalid", encoding="utf-8")
+            fragment = Path(tmp) / "fragments" / "rules.md"
+            fragment.parent.mkdir()
+            fragment.write_text(instructions.BEGIN + "\ninvalid", encoding="utf-8")
             data = profile_sources.load(ROOT)
-            data["profiles"] = {"work": {"solo": {"config": [], "roles": [], "instructions": {"AGENTS.md": ["shared/AGENTS.md"]}}}}
+            data["profiles"] = {"work": {"solo": {"config": [], "roles": [], "instructions": {"AGENTS.md": ["fragments/rules.md"]}}}}
             import json
             (Path(tmp) / "manifest.json").write_text(json.dumps(data), encoding="utf-8")
             with patch.object(instructions, "ROOT", Path(tmp)):

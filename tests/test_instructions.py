@@ -71,9 +71,8 @@ class InstructionLifecycleTests(unittest.TestCase):
                     self.assertNotIn("`team`", home_text)
                     self.assertEqual(set(instructions.load_state(self.home)["owned"]), {"AGENTS.md"})
 
-    def test_solo_assembly_works_without_any_team_sources(self):
+    def test_solo_assembly_works_without_shared_or_team_instruction_sources(self):
         source = self.source_fixture("solo-only-source", {
-            "shared/AGENTS.md": "- Common specialist rule.\n",
             "profiles/private/AGENTS.md": "- Fixture profile private.\n",
             "profiles/work/AGENTS.md": "- Fixture profile work.\n- Fixture root rule.\n",
             "modes/solo/AGENTS.md": "- Native behavior fixture.\n",
@@ -83,7 +82,6 @@ class InstructionLifecycleTests(unittest.TestCase):
                 with self.subTest(profile=profile):
                     docs = instructions.desired_docs(profile, "solo")
                     self.assertIn("Native behavior fixture.", docs["AGENTS.md"])
-                    self.assertEqual(docs["AGENTS.md"].count("Common specialist rule."), 1)
                     self.assertIsNone(docs["WORK.md"])
                     self.assertIsNone(docs["PRIVATE.md"])
                     if profile == "private":
@@ -95,7 +93,6 @@ class InstructionLifecycleTests(unittest.TestCase):
 
     def test_team_selects_profile_and_native_sources_without_reading_solo(self):
         source = self.source_fixture("team-only-source", {
-            "shared/AGENTS.md": "- Common fixture rule.\n",
             "profiles/private/AGENTS.md": "- Profile fixture private.\n",
             "profiles/work/AGENTS.md": "- Profile fixture work.\n- Corporate fixture.\n",
             "modes/team/AGENTS.md": "- Generic fixture.\n",
@@ -113,7 +110,7 @@ class InstructionLifecycleTests(unittest.TestCase):
                 self.assertIsNone(docs["WORK.md"])
                 self.assertIsNone(docs["PRIVATE.md"])
             for text in (work["AGENTS.md"], private["AGENTS.md"]):
-                self.assertEqual(text.count("Common fixture rule."), 1)
+                self.assertEqual(text.count("Generic fixture."), 1)
             generic.write_text(generic.read_text().replace("Generic fixture.", "Updated fixture."), encoding="utf-8")
             self.assertIn("Updated fixture.", instructions.desired_docs("private", "team")["AGENTS.md"])
 
