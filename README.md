@@ -66,7 +66,7 @@ Corrections and technical continuations keep their executor and count as the sam
 
 Automatic Cursor assignments use `--model "auto-smart[optimize_for=cost]"` (Auto Cost), with Max Mode off and `exploreSubagentModel=inherit`; verify Cost before launch and stop/report if unavailable. Cursor no longer needs a quota-exhaustion prerequisite for initial selection. Only explicit quota exhaustion of the selected primary route permits fallback to native Codex under its native delegation instructions; authentication, network, tool, context and validation failures do not. Record quota fallback separately from the initial route. Native Luna uses high in both profiles. Corporate OpenCode model selection is separate from native role definitions.
 
-Invoke the installed `opencode` and `cursor-agent` commands directly by name from PATH, without absolute launcher paths or additional wrappers; the Work profile contains the invocation examples.
+Invoke the installed `opencode` and `cursor-agent` commands directly by name from PATH; the Work profile contains the invocation examples. Cursor uses the installed standard launcher with `--model "auto-smart[optimize_for=cost]"`, without new proxy/wrapper scripts, absolute launcher paths, versioned runtime selection or direct Node/index.js invocation. If that launcher is missing or broken, preserve the error and stop; repair the installation separately before retrying the same route. A launcher failure does not authorize native fallback. These rules apply to Work in both Solo and Team and keep the 50/50 assignment balance.
 
 ## Apply and remove
 
