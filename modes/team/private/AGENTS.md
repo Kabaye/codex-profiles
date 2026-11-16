@@ -1,0 +1,1 @@
+- Do the main work yourself. Delegate only substantial independent work alongside your own implementation. When delegation is warranted, reuse a suitable existing subagent.

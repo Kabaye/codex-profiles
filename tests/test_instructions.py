@@ -95,6 +95,8 @@ class InstructionLifecycleTests(unittest.TestCase):
         source = self.source_fixture("team-only-source", {
             "profiles/private/AGENTS.md": "- Profile fixture private.\n",
             "profiles/work/AGENTS.md": "- Profile fixture work.\n- Corporate fixture.\n",
+            "modes/team/private/AGENTS.md": "- Private native fixture.\n",
+            "modes/team/work/AGENTS.md": "- Work fallback fixture.\n",
             "modes/team/AGENTS.md": "- Generic fixture.\n",
         })
         generic = source / "modes" / "team" / "AGENTS.md"
@@ -106,6 +108,12 @@ class InstructionLifecycleTests(unittest.TestCase):
             self.assertIn("Generic fixture.", private["AGENTS.md"])
             self.assertNotIn("Corporate fixture.", private["AGENTS.md"])
             self.assertIn("Profile fixture private.", private["AGENTS.md"])
+            self.assertIn("Work fallback fixture.", work["AGENTS.md"])
+            self.assertNotIn("Private native fixture.", work["AGENTS.md"])
+            self.assertIn("Private native fixture.", private["AGENTS.md"])
+            self.assertNotIn("Work fallback fixture.", private["AGENTS.md"])
+            self.assertLess(work["AGENTS.md"].index("Corporate fixture."), work["AGENTS.md"].index("Work fallback fixture."))
+            self.assertLess(work["AGENTS.md"].index("Work fallback fixture."), work["AGENTS.md"].index("Generic fixture."))
             for docs in (work, private):
                 self.assertIsNone(docs["WORK.md"])
                 self.assertIsNone(docs["PRIVATE.md"])

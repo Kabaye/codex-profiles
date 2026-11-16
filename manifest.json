@@ -33,6 +33,7 @@
         "instructions": {
           "AGENTS.md": [
             "profiles/private/AGENTS.md",
+            "modes/team/private/AGENTS.md",
             "modes/team/AGENTS.md"
           ]
         }
@@ -64,6 +65,7 @@
         "instructions": {
           "AGENTS.md": [
             "profiles/work/AGENTS.md",
+            "modes/team/work/AGENTS.md",
             "modes/team/AGENTS.md"
           ]
         }

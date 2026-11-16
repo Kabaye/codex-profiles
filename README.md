@@ -22,7 +22,9 @@ modes/
     AGENTS.md                   Root model preference only
   team/
     config.toml                 Two workers, empty native hint, optional wait examples
-    AGENTS.md                   All native subagent rules, limits and English policy
+    AGENTS.md                   Common native subagent rules, limits and English policy
+    private/AGENTS.md           Native primary-work instruction for Private Team
+    work/AGENTS.md              Native primary-work instruction scoped to the work fallback
 scripts/                        Read the manifest and apply its files
 tests/                         Isolated lifecycle checks
 ```
@@ -40,7 +42,7 @@ The scripts read this recipe. Models, effort, mode settings, instruction text an
 ## Manual Private Team installation
 
 1. Combine `shared/config.toml` and `modes/team/config.toml`. Merge their keys into the existing `$CODEX_HOME/config.toml`, preserving unrelated settings and any root model/effort you selected.
-2. Concatenate `profiles/private/AGENTS.md` and `modes/team/AGENTS.md` in that order. Put the result in the `codex-profiles` block of `$CODEX_HOME/AGENTS.md`, preserving the separate `codex-config` block and user text. The begin/end markers are declared in the manifest.
+2. Concatenate `profiles/private/AGENTS.md`, `modes/team/private/AGENTS.md` and `modes/team/AGENTS.md` in that order. Put the result in the `codex-profiles` block of `$CODEX_HOME/AGENTS.md`, preserving the separate `codex-config` block and user text. The begin/end markers are declared in the manifest.
 3. Copy the two declared Sol/Luna files from `shared/agents/` to `$CODEX_HOME/agents/codex-profiles/`. Terra lives separately in `$CODEX_HOME/agents/codex-config/`.
 
 These are the same inputs the manager uses. No Python execution is needed to obtain their settings or instructions. When switching to Solo manually, remove the former Team-only keys and Sol/Luna role files. Restart Codex and use a new chat to load changed role/config definitions.
@@ -54,7 +56,7 @@ All instructions are assembled into global `AGENTS.md`. **codex-config** include
 
 Native wait defaults are unchanged. Optional Code Mode and agent wait settings are kept as commented TOML examples; uncomment them to enable tuning. Values are milliseconds and control waiting, not command execution deadlines.
 
-All native subagent rules live in `modes/team/AGENTS.md`: root does the main work, delegates substantial independent parts, reuses suitable workers, prefers one active worker and allows at most two delegated jobs excluding root. Team also requires English communication and reasoning, explicit requests for independent review and no nested delegation. Solo loads none of these rules; its mode instructions preserve the selected root model and effort.
+Team selects its primary-work instruction from `modes/team/private/AGENTS.md` or `modes/team/work/AGENTS.md`. Private keeps the direct instruction to do the main work yourself; Work scopes it to the native Codex route, which is a fallback for work tasks. Common rules in `modes/team/AGENTS.md` prefer one active worker and allow at most two delegated jobs excluding root, require English communication and reasoning, explicit requests for independent review and no nested delegation. Solo loads none of these rules; its mode instructions preserve the selected root model and effort.
 
 Universal browser/Computer Use rules and the Terra role are defined only in codex-config. Each manager owns its named folder under `agents/`; Codex discovers roles recursively. Profile operations preserve the config folder and custom roles.
 

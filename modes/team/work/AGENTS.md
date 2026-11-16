@@ -1,0 +1,1 @@
+- On the native Codex route only (fallback for work tasks), do the main work yourself. Delegate only substantial independent work alongside your own implementation; reuse suitable existing subagents.

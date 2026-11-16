@@ -28,7 +28,7 @@ class ProfileRoutingTests(unittest.TestCase):
         team = (ROOT / "modes" / "team" / "AGENTS.md").read_text(encoding="utf-8").strip()
         self.assertFalse((ROOT / "shared" / "AGENTS.md").exists())
         team_rules = (
-            "Do the main work yourself.", "prefer one active worker", "at most two delegated jobs",
+            "prefer one active worker", "at most two delegated jobs",
             "Use English for all subagent", "sol_worker", "luna_worker", "fork_turns",
             "Workers complete their assignment", "Independent review only",
         )
@@ -53,7 +53,17 @@ class ProfileRoutingTests(unittest.TestCase):
                 self.assertIsNone(docs["WORK.md"])
                 self.assertIsNone(docs["PRIVATE.md"])
 
-    def test_work_native_routing_uses_generic_team_source(self):
+    def test_team_selects_profile_specific_primary_work_instruction(self):
+        private_rule = "- Do the main work yourself."
+        native_scope = "- On the native Codex route only (fallback for work tasks), do the main work yourself."
+        for profile in ("work", "private"):
+            for mode in ("solo", "team"):
+                with self.subTest(profile=profile, mode=mode):
+                    policy = instructions.desired_docs(profile, mode)["AGENTS.md"]
+                    self.assertEqual(policy.count(private_rule), int(profile == "private" and mode == "team"))
+                    self.assertEqual(policy.count(native_scope), int(profile == "work" and mode == "team"))
+
+    def test_work_native_routing_preserves_corporate_and_common_team_rules(self):
         source = (ROOT / "modes" / "team" / "AGENTS.md").read_text(encoding="utf-8")
         work_policy = instructions.desired_docs("work", "team")["AGENTS.md"]
         self.assertIn(source.strip(), work_policy)
@@ -62,6 +72,8 @@ class ProfileRoutingTests(unittest.TestCase):
         self.assertEqual(work_policy.count("at most two delegated jobs"), 1)
         self.assertEqual(work_policy.count("Use English for all subagent"), 1)
         self.assertIn("work-scout", work_policy)
+        self.assertIn("are equal primary routes", work_policy)
+        self.assertIn("Only explicit quota exhaustion from the selected primary route permits fallback", work_policy)
         self.assertNotIn("work-scout", source)
         self.assertNotIn("terra_computer", source)
 
