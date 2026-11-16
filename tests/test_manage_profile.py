@@ -112,7 +112,7 @@ class UnifiedProfileLifecycleTests(unittest.TestCase):
         self.assertEqual(solo["mode"], "solo")
         self.assertEqual(self.role_names(), set())
         solo_instructions = (self.home / "AGENTS.md").read_text()
-        for rule in ("sol_worker", "luna_worker", "at most two delegated jobs", "Use English for all subagent", "Independent review only"):
+        for rule in ("sol_worker", "luna_worker", "at most two delegated jobs", "Independent review only"):
             self.assertNotIn(rule, solo_instructions)
         self.assertNotIn("agents", self.config())
         self.assertNotIn("multi_agent_v2", self.config().get("features", {}))

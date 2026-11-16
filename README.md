@@ -22,7 +22,7 @@ modes/
     AGENTS.md                   Root model preference only
   team/
     config.toml                 Two workers, empty native hint, optional wait examples
-    AGENTS.md                   Common native subagent rules, limits and English policy
+    AGENTS.md                   Common native subagent rules, limits and review policy
     private/AGENTS.md           Native primary-work instruction for Private Team
     work/AGENTS.md              Native primary-work instruction scoped to the work fallback
 scripts/                        Read the manifest and apply its files
@@ -56,9 +56,9 @@ All instructions are assembled into global `AGENTS.md`. **codex-config** include
 
 Native wait defaults are unchanged. Optional Code Mode and agent wait settings are kept as commented TOML examples; uncomment them to enable tuning. Values are milliseconds and control waiting, not command execution deadlines.
 
-Team selects its primary-work instruction from `modes/team/private/AGENTS.md` or `modes/team/work/AGENTS.md`. Private keeps the direct instruction to do the main work yourself; Work scopes it to the native Codex route, which is a fallback for work tasks. Common rules in `modes/team/AGENTS.md` prefer one active worker and allow at most two delegated jobs excluding root, require English communication and reasoning, explicit requests for independent review and no nested delegation. Solo loads none of these rules; its mode instructions preserve the selected root model and effort.
+Team selects its primary-work instruction from `modes/team/private/AGENTS.md` or `modes/team/work/AGENTS.md`. Private keeps the direct instruction to do the main work yourself; Work scopes it to the native Codex route, which is a fallback for work tasks. Common rules in `modes/team/AGENTS.md` prefer one active worker and allow at most two delegated jobs excluding root, require explicit requests for independent review and no nested delegation. Solo loads none of these rules; its mode instructions preserve the selected root model and effort.
 
-Universal browser/Computer Use rules and the Terra role are defined only in codex-config. Each manager owns its named folder under `agents/`; Codex discovers roles recursively. Profile operations preserve the config folder and custom roles.
+Universal browser/Computer Use and default language rules and the Terra role are defined only in codex-config. Each manager owns its named folder under `agents/`; Codex discovers roles recursively. Profile operations preserve the config folder and custom roles.
 
 For work tasks, OpenCode Luna and Cursor Auto Cost are equal primary executors in both modes. Aim for approximately **50/50 by count of new unpinned bounded assignments**, not by tokens, spend or runtime. Alternate the initial route using available task-plan history and record the executor. When there is no history, either route may start; do not always start with OpenCode. An explicit user-selected route takes precedence.
 

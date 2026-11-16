@@ -29,7 +29,7 @@ class ProfileRoutingTests(unittest.TestCase):
         self.assertFalse((ROOT / "shared" / "AGENTS.md").exists())
         team_rules = (
             "prefer one active worker", "at most two delegated jobs",
-            "Use English for all subagent", "sol_worker", "luna_worker", "fork_turns",
+            "sol_worker", "luna_worker", "fork_turns",
             "Workers complete their assignment", "Independent review only",
         )
         for source in ("profiles/private/AGENTS.md", "profiles/work/AGENTS.md", "modes/solo/AGENTS.md", "modes/team/AGENTS.md"):
@@ -70,7 +70,7 @@ class ProfileRoutingTests(unittest.TestCase):
         self.assertIn("`sol_worker` for", work_policy)
         self.assertIn("`luna_worker` for", work_policy)
         self.assertEqual(work_policy.count("at most two delegated jobs"), 1)
-        self.assertEqual(work_policy.count("Use English for all subagent"), 1)
+        self.assertNotIn("Use English", source)
         self.assertIn("work-scout", work_policy)
         self.assertIn("are equal primary routes", work_policy)
         self.assertIn("Only explicit quota exhaustion from the selected primary route permits fallback", work_policy)
