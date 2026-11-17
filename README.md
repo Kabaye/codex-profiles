@@ -68,6 +68,8 @@ Automatic Cursor assignments use `--model "auto-smart[optimize_for=cost]"` (Auto
 
 Invoke the installed `opencode` and `cursor-agent` commands directly by name from PATH; the Work profile contains the invocation examples. Cursor uses the installed standard launcher with `--model "auto-smart[optimize_for=cost]"`, without new proxy/wrapper scripts, absolute launcher paths, versioned runtime selection or direct Node/index.js invocation. If that launcher is missing or broken, preserve the error and stop; repair the installation separately before retrying the same route. A launcher failure does not authorize native fallback. These rules apply to Work in both Solo and Team and keep the 50/50 assignment balance.
 
+Every OpenCode/Cursor assignment explicitly prohibits local builds and compilation (including through tests) and in-app browser use, and requires cloud CI verification for the pushed commit. The managed `work-code` prompt carries the same constraints and reports build verification as pending when CI is unavailable or outside its assignment. The read-only `work-scout` has no shell access.
+
 ## Apply and remove
 
 Requires Python 3.11+ and the native Codex model catalog. Run in PowerShell 7 from this checkout:

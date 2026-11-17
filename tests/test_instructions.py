@@ -358,6 +358,7 @@ class InstructionLifecycleTests(unittest.TestCase):
             self.assertEqual(merged[key], original[key])
         self.assertEqual(merged["agent"]["existing"], original["agent"]["existing"])
         self.assertEqual(set(merged["agent"]), {"existing", "work-code", "work-scout"})
+        self.assertEqual(merged["agent"]["work-code"], instructions.opencode_definitions()["work-code"])
         stored = (self.home / "profiles" / instructions.STATE).read_text()
         self.assertNotIn("apiKey", stored)
         self.assertNotIn("provider", stored)
