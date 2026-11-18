@@ -9,7 +9,7 @@ manifest.json                   Source lists, order, destinations and role selec
 shared/
   config.toml                   Root defaults, context management, optional wait examples
   agents/
-    sol-worker.toml             Sol 6.1 / high
+    sol-worker.toml             Sol 6.2 / high
     luna-worker.toml            Luna 6 / high
 profiles/
   private/AGENTS.md             Private profile metadata
@@ -58,7 +58,7 @@ Native wait defaults are unchanged. Optional Code Mode and agent wait settings a
 
 Team selects its primary-work instruction from `modes/team/private/AGENTS.md` or `modes/team/work/AGENTS.md`. Private keeps the direct instruction to do the main work yourself; Work scopes it to the native Codex route, which is a fallback for work tasks. Common rules in `modes/team/AGENTS.md` prefer one active worker and allow at most two delegated jobs excluding root, require explicit requests for independent review and no nested delegation. Solo loads none of these rules; its mode instructions preserve the selected root model and effort.
 
-Universal browser/Computer Use and default language rules and the Terra role are defined only in codex-config. Each manager owns its named folder under `agents/`; Codex discovers roles recursively. Profile operations preserve the config folder and custom roles.
+Universal browser/Computer Use and default language rules, Terra Computer and the explicitly selected Astra 6.2 Designer are defined only in codex-config. Each manager owns its named folder under `agents/`; Codex discovers roles recursively. Profile operations preserve the config folder and custom roles.
 
 For work tasks, OpenCode Luna and Cursor Auto Cost are equal primary executors in both modes. Aim for approximately **50/50 by count of new unpinned bounded assignments**, not by tokens, spend or runtime. Alternate the initial route using available task-plan history and record the executor. When there is no history, either route may start; do not always start with OpenCode. An explicit user-selected route takes precedence.
 

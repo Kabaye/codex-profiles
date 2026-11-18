@@ -203,7 +203,7 @@ class InstructionLifecycleTests(unittest.TestCase):
     def test_sync_preserves_root_config_roles_and_role_state_byte_for_byte(self):
         self.install()
         config = self.home / "config.toml"
-        config.write_text(config.read_text().replace('model = "gpt-6.1-sol"', 'model = "user-selected"')
+        config.write_text(config.read_text().replace('model = "gpt-6.2-sol"', 'model = "user-selected"')
                           + '\n[mcp_servers.synthetic]\nurl = "http://example.invalid"\n')
         (self.home / "agents" / "codex-profiles" / "sol-worker.toml").write_text("user edited role; sync must not inspect or overwrite\n")
         (self.home / "agents" / "custom.toml").write_text("custom role\n")
@@ -315,7 +315,7 @@ class InstructionLifecycleTests(unittest.TestCase):
                         self.install("work", mode)
                     else:
                         config = self.home / "config.toml"
-                        config.write_text(config.read_text().replace('model = "gpt-6.1-sol"', 'model = "fixture-selected-root"'))
+                        config.write_text(config.read_text().replace('model = "gpt-6.2-sol"', 'model = "fixture-selected-root"'))
                         args = ["manage_profile.py", "--home", str(self.home), "mode", mode]
                         with patch.object(sys, "argv", args), redirect_stdout(StringIO()):
                             self.assertEqual(lifecycle.main(), 0)

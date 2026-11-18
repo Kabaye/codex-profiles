@@ -130,13 +130,13 @@ class ProfileStaticTests(unittest.TestCase):
         )
         config = root / "shared" / "config.toml"
         config.write_text(
-            config.read_text(encoding="utf-8").replace('model = "gpt-6.1-sol"', 'model = "fixture-root"'),
+            config.read_text(encoding="utf-8").replace('model = "gpt-6.2-sol"', 'model = "fixture-root"'),
             encoding="utf-8",
         )
         catalog = {"models": [
             {"slug": model, "supported_reasoning_levels": [{"effort": effort}]}
             for model, effort in (
-                ("fixture-root", "xhigh"), ("gpt-6.1-sol", "high"),
+                ("fixture-root", "xhigh"), ("gpt-6.2-sol", "high"),
                 ("gpt-6-luna", "high"),
             )
         ]}
