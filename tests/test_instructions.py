@@ -425,7 +425,7 @@ class OpenCodeSourceTests(unittest.TestCase):
             self.assertEqual(permission[tool], "deny")
         for tool in ("glob", "grep"):
             self.assertEqual(permission[tool], "allow")
-        self.assertEqual(code["model"], "litellm/global.openai.gpt-6-luna")
+        self.assertEqual(code["model"], "litellm/sonnet")
         self.assertEqual(code["mode"], "primary")
         self.assertEqual(code["permission"], {"task": "deny", "skill": "deny"})
 
